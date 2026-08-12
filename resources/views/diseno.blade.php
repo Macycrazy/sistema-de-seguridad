@@ -45,7 +45,11 @@ tamano:   chico · normal · grande</code></pre>
 
         <x-tarjeta class="mt-3">
             <div class="max-w-md space-y-5">
-                <x-campo etiqueta="Cédula" nombre="cedula" tamano="grande" placeholder="0.000.000" />
+                {{-- El campo de la cédula solo admite dígitos. «inputmode» elige el teclado del
+                     teléfono; lo que impide teclear letras son «maxlength» y el «oninput». --}}
+                <x-campo etiqueta="Cédula" nombre="cedula" tamano="grande" placeholder="Solo números"
+                         inputmode="numeric" maxlength="{{ App\Services\Marcaje::DIGITOS_MAXIMOS }}"
+                         oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
                 <x-campo etiqueta="Nombre y apellido" nombre="nombre" ayuda="Como aparece en el documento." />
                 <x-campo etiqueta="Motivo de visita" nombre="motivo"
                          error="Este dato es obligatorio para un invitado." />

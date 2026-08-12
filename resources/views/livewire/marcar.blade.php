@@ -35,14 +35,28 @@
                 El formulario se queda igualmente: el lector de carnets termina con un Enter, y
                 quien tenga la costumbre de pulsarlo no tiene por qué perderla.
             --}}
+            {{--
+                El campo solo admite dígitos, y como máximo los de una cédula.
+
+                «inputmode» solo elige el teclado del teléfono: no impide teclear nada. Lo que de
+                verdad lo limita son «maxlength» y el «oninput», que borra al instante cualquier
+                cosa que no sea un dígito — también lo que se intente pegar.
+
+                Esto es comodidad para quien teclea, NO seguridad: el servidor vuelve a revisarlo
+                en Marcaje::exigirCedulaValida(), porque cualquiera puede enviar lo que quiera sin
+                pasar por esta pantalla.
+            --}}
             <x-campo
                 etiqueta="Cédula"
                 nombre="cedula"
                 tamano="grande"
-                placeholder="0.000.000"
+                placeholder="Solo números"
                 autofocus
                 autocomplete="off"
                 inputmode="numeric"
+                pattern="[0-9]*"
+                maxlength="{{ $this->maximoDigitos() }}"
+                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, {{ $this->maximoDigitos() }})"
                 wire:model.live.debounce.400ms="cedula"
                 :error="$errors->first('cedula')"
                 ayuda="Teclea la cédula o pasa el carnet: los datos salen solos."

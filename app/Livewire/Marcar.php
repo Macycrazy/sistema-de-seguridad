@@ -23,14 +23,6 @@ use Livewire\Component;
  */
 class Marcar extends Component
 {
-    /**
-     * Cuántos dígitos hacen falta antes de ponerse a buscar sola.
-     *
-     * Seis es el mínimo de una cédula venezolana, el mismo que exige el servidor. Buscar con
-     * menos solo daría «no existe» sobre cédulas que aún se están escribiendo.
-     */
-    public const DIGITOS_MINIMOS = 6;
-
     /** Lo único que el vigilante teclea. */
     public string $cedula = '';
 
@@ -78,6 +70,12 @@ class Marcar extends Component
         return $this->marcaje->cuantosDentro();
     }
 
+    /** Cuántos dígitos deja teclear el campo. Lo decide el servicio, no la pantalla. */
+    public function maximoDigitos(): int
+    {
+        return Marcaje::DIGITOS_MAXIMOS;
+    }
+
     /**
      * Se dispara sola al dejar de teclear, sin pulsar nada.
      *
@@ -93,15 +91,17 @@ class Marcar extends Component
         $this->confirmacion = '';
         $this->resetValidation();
 
-        $digitos = Persona::normalizarCedula($this->cedula);
+        $digitos = strlen(Persona::normalizarCedula($this->cedula));
 
-        if (strlen($digitos) < self::DIGITOS_MINIMOS) {
+        // Fuera del rango de una cédula no se busca. Por arriba tampoco: el campo ya no deja
+        // teclear de más, pero esto no depende de que el navegador se porte bien.
+        if ($digitos < Marcaje::DIGITOS_MINIMOS || $digitos > Marcaje::DIGITOS_MAXIMOS) {
             $this->olvidarPersona();
 
             return;
         }
 
-        $this->localizar($digitos);
+        $this->localizar(Persona::normalizarCedula($this->cedula));
     }
 
     /**

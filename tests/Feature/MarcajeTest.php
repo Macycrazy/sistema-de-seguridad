@@ -182,7 +182,7 @@ class MarcajeTest extends TestCase
 
     public function test_una_cedula_demasiado_corta_o_larga_se_rechaza(): void
     {
-        foreach (['', '123', '12345', '1234567890'] as $invalida) {
+        foreach (['', '123', '12345', '1234567890', '12345678901234'] as $invalida) {
             try {
                 $this->marcaje->exigirCedulaValida($invalida);
                 $this->fail("Aceptó la cédula inválida «{$invalida}»");
@@ -190,6 +190,26 @@ class MarcajeTest extends TestCase
                 $this->assertTrue(true);
             }
         }
+    }
+
+    public function test_una_cedula_de_puras_letras_se_rechaza(): void
+    {
+        // La pantalla ya no deja teclear letras, pero eso es comodidad, no seguridad: quien
+        // envie una peticion a mano se topa igual con el servidor.
+        foreach (['abcdefgh', 'V-ABCDEFG', '????????'] as $invalida) {
+            try {
+                $this->marcaje->exigirCedulaValida($invalida);
+                $this->fail("Aceptó «{$invalida}» como cédula");
+            } catch (ValidationException) {
+                $this->assertTrue(true);
+            }
+        }
+    }
+
+    public function test_las_letras_mezcladas_no_cuentan_como_digitos(): void
+    {
+        // «12a34b56» tiene ocho caracteres pero solo seis dígitos: es la cédula 123456.
+        $this->assertSame('123456', $this->marcaje->exigirCedulaValida('12a34b56'));
     }
 
     public function test_el_contador_de_quien_esta_dentro_cuenta_solo_a_los_que_no_han_salido(): void

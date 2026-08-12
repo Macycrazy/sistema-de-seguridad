@@ -118,14 +118,24 @@ Se guarda y se busca **siempre normalizada a solo dígitos**, con
 `Persona::normalizarCedula($cedula)`. Así `12345678`, `12.345.678` y `V-12.345.678` son la misma
 persona. Si escribes una consulta por cédula, normaliza antes o no encontrarás nada.
 
-Se valida en el servidor con `Marcaje::exigirCedulaValida()`: entre 6 y 9 dígitos.
+Cuántos dígitos puede tener lo dicen `Marcaje::DIGITOS_MINIMOS` (6) y `Marcaje::DIGITOS_MAXIMOS`
+(9). **Es la única definición**: la usa el servidor para validar en `exigirCedulaValida()` y la
+pantalla para el `maxlength` del campo, así no se pueden desajustar. Si el rango cambia, se cambia
+ahí y ya.
+
+El campo de la cédula **solo admite dígitos**: `maxlength` corta por longitud y un `oninput` borra
+al instante cualquier cosa que no sea un número, también lo que se pegue. Ojo con no confundirse:
+eso es **comodidad para quien teclea, no seguridad** — quien mande una petición sin pasar por la
+pantalla se topa igual con `exigirCedulaValida()`. Por eso hay pruebas de las dos cosas por
+separado.
 
 **La pantalla busca sola**, sin pulsar Enter: el campo va con `wire:model.live.debounce.400ms` y
 `Marcar::updatedCedula()` hace el resto. Dos reglas de ahí que conviene conocer si la parte 2
 monta su propia búsqueda:
 
-1. **Por debajo de `Marcar::DIGITOS_MINIMOS` (6) no se consulta nada.** Al teclear `25375258` se
-   pasa por `253752`, que no existe; sin ese mínimo, el aviso de invitado saltaría a media cédula.
+1. **Fuera del rango de dígitos no se consulta nada.** Al teclear `25375258` se pasa por `253752`,
+   que no existe; sin el mínimo, el aviso de invitado saltaría a media cédula. Por arriba se
+   comprueba igual, sin fiarse de que el navegador respete el `maxlength`.
 2. **Mientras se teclea no se muestran errores de validación.** Una cédula a medias no es un error,
    es una cédula a medias. Los errores solo salen al pulsar Enter (`Marcar::buscar()`), que es la
    forma de decir «ya terminé» — y es también como llega el carnet del lector.

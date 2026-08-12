@@ -154,6 +154,39 @@ class MarcarPantallaTest extends TestCase
             ->assertSee('Ana Rodríguez Peña');
     }
 
+    public function test_el_campo_no_deja_teclear_letras_ni_pasar_del_maximo(): void
+    {
+        // Se comprueba en el HTML porque esto lo impone el navegador. La regla de verdad la pone
+        // el servidor, y eso lo cubre MarcajeTest.
+        $html = $this->get('/marcar')->assertOk()->getContent();
+
+        $this->assertStringContainsString('maxlength="'.Marcaje::DIGITOS_MAXIMOS.'"', $html);
+        $this->assertStringContainsString('inputmode="numeric"', $html);
+        $this->assertStringContainsString('replace(/[^0-9]/g', $html);
+    }
+
+    public function test_una_cedula_con_mas_digitos_de_los_posibles_no_busca_a_nadie(): void
+    {
+        $this->trabajador(['cedula' => '12345678']);
+
+        // Aunque el campo lo impida, el componente no se fía: 14 dígitos no son una cédula.
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678901234')
+            ->assertSet('personaId', null)
+            ->assertSet('invitadoNuevo', false)
+            ->assertDontSee('Ana Rodríguez Peña');
+    }
+
+    public function test_si_llegan_letras_mezcladas_solo_cuentan_los_digitos(): void
+    {
+        $this->trabajador(['cedula' => '12345678']);
+
+        // Nadie puede teclear esto en la pantalla, pero si llega, se entiende como la cédula.
+        Livewire::test(Marcar::class)
+            ->set('cedula', '1a2b3c4d5e6f7g8')
+            ->assertSee('Ana Rodríguez Peña');
+    }
+
     public function test_una_cedula_invalida_no_llega_a_buscar_nada(): void
     {
         Livewire::test(Marcar::class)

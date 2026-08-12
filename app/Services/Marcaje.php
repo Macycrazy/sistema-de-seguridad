@@ -29,6 +29,14 @@ class Marcaje
     public const SEGUNDOS_ANTIDUPLICADO = 10;
 
     /**
+     * Cuántos dígitos puede tener una cédula. Es la única definición: la pantalla la usa para
+     * no dejar teclear de más y el servidor para validar, así no se pueden desajustar.
+     */
+    public const DIGITOS_MINIMOS = 6;
+
+    public const DIGITOS_MAXIMOS = 9;
+
+    /**
      * Busca a quién pertenece una cédula. Devuelve null si no está en el sistema, que es la
      * señal de que estamos ante un invitado nuevo.
      */
@@ -181,8 +189,9 @@ class Marcaje
     }
 
     /**
-     * Una cédula venezolana tiene entre 6 y 9 dígitos. Se revisa aquí, en el servidor, para que
-     * no entre basura al sistema por mucho que la pantalla diga otra cosa.
+     * Se revisa aquí, en el servidor, para que no entre basura al sistema por mucho que la
+     * pantalla diga otra cosa. El campo ya no deja teclear letras ni pasar del máximo, pero eso
+     * es comodidad para quien teclea, no seguridad: cualquiera puede enviar lo que quiera.
      *
      * @throws ValidationException
      */
@@ -196,9 +205,13 @@ class Marcaje
             ]);
         }
 
-        if (strlen($cedula) < 6 || strlen($cedula) > 9) {
+        if (strlen($cedula) < self::DIGITOS_MINIMOS || strlen($cedula) > self::DIGITOS_MAXIMOS) {
             throw ValidationException::withMessages([
-                'cedula' => 'Esa cédula no parece válida: debe tener entre 6 y 9 dígitos.',
+                'cedula' => sprintf(
+                    'Esa cédula no parece válida: debe tener entre %d y %d dígitos.',
+                    self::DIGITOS_MINIMOS,
+                    self::DIGITOS_MAXIMOS,
+                ),
             ]);
         }
 
