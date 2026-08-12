@@ -23,6 +23,14 @@ use Livewire\Component;
  */
 class Marcar extends Component
 {
+    /**
+     * Cuántos dígitos hacen falta antes de ponerse a buscar sola.
+     *
+     * Seis es el mínimo de una cédula venezolana, el mismo que exige el servidor. Buscar con
+     * menos solo daría «no existe» sobre cédulas que aún se están escribiendo.
+     */
+    public const DIGITOS_MINIMOS = 6;
+
     /** Lo único que el vigilante teclea. */
     public string $cedula = '';
 
@@ -71,14 +79,43 @@ class Marcar extends Component
     }
 
     /**
-     * Se dispara al pulsar Enter en el campo de la cédula, que es como llega el carnet del lector.
+     * Se dispara sola al dejar de teclear, sin pulsar nada.
+     *
+     * Aquí NO se muestran errores de validación: mientras se teclea, una cédula a medias no es un
+     * error, es una cédula a medias. Regañar a alguien por el segundo dígito sería absurdo.
+     *
+     * Por debajo del mínimo de dígitos no se busca nada, y esa es la clave para que el aviso de
+     * invitado no salte a media cédula: al teclear «25375258» se pasa por «253752», que no existe
+     * en el sistema, pero no se llega a consultar.
+     */
+    public function updatedCedula(): void
+    {
+        $this->confirmacion = '';
+        $this->resetValidation();
+
+        $digitos = Persona::normalizarCedula($this->cedula);
+
+        if (strlen($digitos) < self::DIGITOS_MINIMOS) {
+            $this->olvidarPersona();
+
+            return;
+        }
+
+        $this->localizar($digitos);
+    }
+
+    /**
+     * Se dispara al pulsar Enter, y es también como llega el carnet del lector.
+     *
+     * Sigue existiendo aunque la búsqueda ya sea automática: el lector termina con un Enter, y
+     * quien está acostumbrado a pulsarlo no tiene por qué cambiar de costumbre. La diferencia es
+     * que aquí sí se valida y se avisa, porque pulsar Enter es decir «ya terminé».
      */
     public function buscar(): void
     {
         $this->confirmacion = '';
         $this->resetValidation();
-        $this->personaId = null;
-        $this->invitadoNuevo = false;
+        $this->olvidarPersona();
 
         try {
             $cedula = $this->marcaje->exigirCedulaValida($this->cedula);
@@ -88,23 +125,45 @@ class Marcar extends Component
             return;
         }
 
+        $this->localizar($cedula);
+    }
+
+    /** A quién pertenece esta cédula, y qué se le muestra al vigilante. */
+    protected function localizar(string $cedula): void
+    {
         $persona = $this->marcaje->buscarPorCedula($cedula);
 
         if (! $persona) {
             // No está en la lista del personal: es un invitado.
+            // Si ya se estaba escribiendo su ficha no se borra lo escrito.
+            if (! $this->invitadoNuevo) {
+                $this->nombre = '';
+                $this->visita = '';
+            }
+
+            $this->personaId = null;
             $this->invitadoNuevo = true;
-            $this->nombre = '';
-            $this->visita = '';
+            unset($this->persona, $this->sugerido);
 
             return;
         }
 
         $this->personaId = $persona->id;
+        $this->invitadoNuevo = false;
+        unset($this->persona, $this->sugerido);
 
         // Un invitado que vuelve ya trae sus datos: se muestran para poder confirmarlos o cambiarlos.
         if ($persona->esInvitado()) {
             $this->visita = (string) $persona->visita;
         }
+    }
+
+    /** Deja de mostrar a nadie, sin tocar la cédula que se está teclando. */
+    protected function olvidarPersona(): void
+    {
+        $this->personaId = null;
+        $this->invitadoNuevo = false;
+        unset($this->persona, $this->sugerido);
     }
 
     /** Da de alta al invitado nuevo y lo deja listo para marcar, sin teclear la cédula otra vez. */

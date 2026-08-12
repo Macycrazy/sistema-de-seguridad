@@ -114,6 +114,16 @@ persona. Si escribes una consulta por cédula, normaliza antes o no encontrarás
 
 Se valida en el servidor con `Marcaje::exigirCedulaValida()`: entre 6 y 9 dígitos.
 
+**La pantalla busca sola**, sin pulsar Enter: el campo va con `wire:model.live.debounce.400ms` y
+`Marcar::updatedCedula()` hace el resto. Dos reglas de ahí que conviene conocer si la parte 2
+monta su propia búsqueda:
+
+1. **Por debajo de `Marcar::DIGITOS_MINIMOS` (6) no se consulta nada.** Al teclear `25375258` se
+   pasa por `253752`, que no existe; sin ese mínimo, el aviso de invitado saltaría a media cédula.
+2. **Mientras se teclea no se muestran errores de validación.** Una cédula a medias no es un error,
+   es una cédula a medias. Los errores solo salen al pulsar Enter (`Marcar::buscar()`), que es la
+   forma de decir «ya terminé» — y es también como llega el carnet del lector.
+
 ---
 
 ## Lo que ya hay hecho y se puede reutilizar

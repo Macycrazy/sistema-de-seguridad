@@ -68,6 +68,92 @@ class MarcarPantallaTest extends TestCase
             ->assertSee('A quién viene a ver');
     }
 
+    public function test_los_datos_salen_solos_sin_pulsar_enter(): void
+    {
+        $this->trabajador();
+
+        // Solo se escribe la cédula. No se llama a «buscar»: nadie pulsó nada.
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->assertSee('Ana Rodríguez Peña')
+            ->assertSee('Recursos Humanos');
+    }
+
+    public function test_mientras_la_cedula_esta_a_medias_no_se_muestra_nada(): void
+    {
+        $this->trabajador(['cedula' => '253752'.'58']);
+
+        // Al teclear «25375258» se pasa por estos pasos. Ninguno debe mostrar nada:
+        // ni una ficha equivocada, ni el aviso de invitado, ni un error.
+        $componente = Livewire::test(Marcar::class);
+
+        foreach (['2', '25', '253', '2537', '25375'] as $aMedias) {
+            $componente->set('cedula', $aMedias)
+                ->assertSet('invitadoNuevo', false)
+                ->assertSet('personaId', null)
+                ->assertHasNoErrors()
+                ->assertDontSee('es un invitado');
+        }
+    }
+
+    public function test_al_completar_la_cedula_aparece_la_persona(): void
+    {
+        $this->trabajador(['cedula' => '25375258', 'nombre' => 'María Fernández']);
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '2537525')      // a medias: nada
+            ->assertSet('personaId', null)
+            ->set('cedula', '25375258')     // completa: sale
+            ->assertSee('María Fernández');
+    }
+
+    public function test_una_cedula_desconocida_ya_completa_si_avisa_que_es_un_invitado(): void
+    {
+        // Sin pulsar Enter: con seis dígitos ya se puede afirmar que no está.
+        Livewire::test(Marcar::class)
+            ->set('cedula', '876543')
+            ->assertSet('invitadoNuevo', true)
+            ->assertSee('es un invitado');
+    }
+
+    public function test_borrar_la_cedula_deja_la_pantalla_como_al_principio(): void
+    {
+        $this->trabajador();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->assertSee('Ana Rodríguez Peña')
+            ->set('cedula', '')
+            ->assertSet('personaId', null)
+            ->assertSet('invitadoNuevo', false)
+            ->assertHasNoErrors()
+            ->assertDontSee('Ana Rodríguez Peña');
+    }
+
+    public function test_teclear_no_borra_lo_que_ya_se_escribio_de_la_ficha_del_invitado(): void
+    {
+        $componente = Livewire::test(Marcar::class)
+            ->set('cedula', '87654321')
+            ->set('nombre', 'Carlos Pérez')
+            ->set('visita', 'Ana Rodríguez');
+
+        // Otra búsqueda de la misma cédula desconocida no debe vaciar lo ya escrito.
+        $componente->set('cedula', '87654321')
+            ->assertSet('nombre', 'Carlos Pérez')
+            ->assertSet('visita', 'Ana Rodríguez');
+    }
+
+    public function test_pulsar_enter_sigue_funcionando_para_el_lector_de_carnets(): void
+    {
+        $this->trabajador();
+
+        // El lector teclea la cédula y termina con un Enter, que es lo que hace «buscar».
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSee('Ana Rodríguez Peña');
+    }
+
     public function test_una_cedula_invalida_no_llega_a_buscar_nada(): void
     {
         Livewire::test(Marcar::class)

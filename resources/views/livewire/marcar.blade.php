@@ -27,6 +27,14 @@
     {{-- EL CAMPO DE LA CÉDULA --}}
     <x-tarjeta parte="1">
         <form wire:submit="buscar">
+            {{--
+                «live.debounce» busca sola en cuanto se deja de teclear, sin pulsar nada. Los
+                400 ms son el rato que se espera: bastante para no consultar en cada tecla, y
+                poco para que no se note la espera.
+
+                El formulario se queda igualmente: el lector de carnets termina con un Enter, y
+                quien tenga la costumbre de pulsarlo no tiene por qué perderla.
+            --}}
             <x-campo
                 etiqueta="Cédula"
                 nombre="cedula"
@@ -35,12 +43,18 @@
                 autofocus
                 autocomplete="off"
                 inputmode="numeric"
-                wire:model="cedula"
+                wire:model.live.debounce.400ms="cedula"
                 :error="$errors->first('cedula')"
-                ayuda="Teclea la cédula y pulsa Enter, o pasa el carnet por el lector."
+                ayuda="Teclea la cédula o pasa el carnet: los datos salen solos."
             />
-            {{-- El submit del formulario es lo que responde al Enter y al lector de carnets. --}}
             <button type="submit" class="sr-only">Buscar</button>
+
+            {{-- Señal de que el sistema está mirando. Sin esto, el rato entre dejar de teclear
+                 y ver la ficha parece que no pasa nada. --}}
+            <p wire:loading.delay.shortest wire:target="cedula"
+               class="mt-2 font-mono text-xs uppercase tracking-widest text-slate-400">
+                Buscando…
+            </p>
         </form>
     </x-tarjeta>
 
