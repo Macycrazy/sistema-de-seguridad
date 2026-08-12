@@ -1,0 +1,11 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+/* Sin fuentes externas a propósito: el servidor corre en red interna,
+   sin salida a Internet. Todo lo que se dibuje tiene que venir del propio servidor. */
+@theme {
+    --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', 'Liberation Sans', sans-serif;
+    --font-mono: ui-monospace, 'Cascadia Mono', 'Liberation Mono', monospace;
+}
