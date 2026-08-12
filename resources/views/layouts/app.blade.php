@@ -25,7 +25,9 @@
                 {{-- En pantallas estrechas se queda solo el logo: el nombre ocuparía el ancho
                      que necesita la sección. --}}
                 <span class="hidden h-9 w-px shrink-0 bg-white/25 sm:block"></span>
-                <span class="hidden min-w-0 truncate text-sm font-semibold tracking-tight text-white sm:block">
+                {{-- En tableta va algo menor que en computadora: a 640 px, el nombre a tamaño
+                     completo se quedaría sin sitio y saldría recortado. --}}
+                <span class="hidden min-w-0 truncate text-lg font-semibold tracking-tight text-white sm:block lg:text-xl">
                     Registro de Entradas y Salidas
                 </span>
             </a>
