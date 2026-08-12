@@ -312,6 +312,72 @@ class RegistroDelDiaTest extends TestCase
     }
 
     #[Test]
+    public function cada_fila_ofrece_un_control_accionable_con_el_teclado(): void
+    {
+        // Antes la fila era un <tr wire:click> pelado: con Tab no se llegaba y con Enter
+        // no se abría nada. La única ruta al histórico era el buscador.
+        $persona = $this->primeraPersona();
+
+        $html = Livewire::test(RegistroDelDia::class)->html();
+
+        $this->assertStringContainsString(
+            'wire:click.stop="abrirPanel(\''.$persona->id.'\')"',
+            $html,
+        );
+        $this->assertStringContainsString('Ver el histórico de', $html);
+    }
+
+    #[Test]
+    public function abrir_el_historico_desde_el_boton_de_la_fila_funciona(): void
+    {
+        $persona = $this->primeraPersona();
+
+        Livewire::test(RegistroDelDia::class)
+            ->call('abrirPanel', $persona->id)
+            ->assertSet('personaEnPanel', $persona->id)
+            ->assertSee('Histórico');
+    }
+
+    #[Test]
+    public function la_tabla_se_anuncia_con_cabeceras_y_titulo(): void
+    {
+        $html = Livewire::test(RegistroDelDia::class)->html();
+
+        $this->assertStringContainsString('<caption', $html);
+        $this->assertStringContainsString('scope="col"', $html);
+        $this->assertStringContainsString('aria-live="polite"', $html);
+    }
+
+    #[Test]
+    public function exportar_solo_se_deshabilita_por_su_propia_accion(): void
+    {
+        // Sin wire:target, el botón se apagaba en cada pulsación de cualquier filtro.
+        $html = Livewire::test(RegistroDelDia::class)->html();
+
+        $this->assertMatchesRegularExpression(
+            '/wire:loading\.attr="disabled"\s+wire:target="exportar"/',
+            $html,
+        );
+    }
+
+    #[Test]
+    public function la_paginacion_sale_en_espanol(): void
+    {
+        $componente = Livewire::test(RegistroDelDia::class);
+
+        $this->assertTrue(
+            $componente->instance()->movimientos()->hasPages(),
+            'Hacen falta más de una página para probar el paginador.',
+        );
+
+        $componente
+            ->assertSee('Siguiente')
+            ->assertSee('Mostrando')
+            ->assertDontSee('Next')
+            ->assertDontSee('Showing');
+    }
+
+    #[Test]
     public function el_panel_se_cierra(): void
     {
         $persona = $this->primeraPersona();

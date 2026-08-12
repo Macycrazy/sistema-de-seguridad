@@ -1,14 +1,28 @@
+@php
+    // Todo lo que rehace la lista. Los estados de carga se acotan a esto para que no se
+    // disparen con acciones que no la tocan, como abrir o cerrar el panel.
+    $recalcula = 'fecha,tipo,ente,verHoy,previousPage,nextPage,gotoPage';
+@endphp
+
 <div>
-    {{-- Rojo solo para esto: un dato que no se entiende. --}}
+    {{-- Rojo solo para esto: un dato que no se entiende.
+         role=alert porque aparece a mitad de sesión, al cambiar la fecha. --}}
     @if ($this->fechaIlegible)
-        <p class="mb-4 rounded border border-alto bg-alto-suave px-4 py-3 text-sm text-alto">
+        <p role="alert" class="mb-4 rounded border border-alto bg-alto-suave px-4 py-3 text-sm text-alto">
             No se entiende la fecha «{{ $fecha }}». Se está mostrando el día de hoy.
         </p>
     @endif
 
     {{-- La cifra que gobierna la pantalla, y al lado el botón que produce el reporte. --}}
     <x-contador :numero="$this->dentro" :leyenda="$this->leyendaDelContador">
-        <x-boton variante="secundario" wire:click="exportar" wire:loading.attr="disabled">
+        {{-- El wire:target no es opcional: sin él, el botón se deshabilitaba en cada
+             pulsación de cualquier filtro, no solo al exportar. --}}
+        <x-boton
+            variante="secundario"
+            wire:click="exportar"
+            wire:loading.attr="disabled"
+            wire:target="exportar"
+        >
             <span wire:loading.remove wire:target="exportar">Exportar</span>
             <span wire:loading wire:target="exportar">Generando…</span>
         </x-boton>
@@ -45,6 +59,7 @@
                 type="search"
                 autocomplete="off"
                 placeholder="Cédula o nombre"
+                ayuda="Al menos dos caracteres."
                 wire:model.live.debounce.300ms="busqueda"
             />
 
@@ -91,9 +106,14 @@
                     @endunless
                 </div>
 
-                <p class="text-sm text-slate-500">
-                    {{ $this->movimientos->total() }}
-                    {{ $this->movimientos->total() === 1 ? 'movimiento' : 'movimientos' }}
+                {{-- El recuento cambia solo, al filtrar: se anuncia en vez de mutar en
+                     silencio, y avisa de que hay una consulta en curso. --}}
+                <p aria-live="polite" class="text-sm text-slate-500">
+                    <span wire:loading.remove wire:target="{{ $recalcula }}">
+                        {{ $this->movimientos->total() }}
+                        {{ $this->movimientos->total() === 1 ? 'movimiento' : 'movimientos' }}
+                    </span>
+                    <span wire:loading wire:target="{{ $recalcula }}">Actualizando…</span>
                 </p>
             </div>
 
@@ -104,27 +124,63 @@
             @else
                 {{-- Misma estructura que la tabla de la base visual, para que las tres
                      partes se vean como un solo sistema. --}}
-                <div class="mt-3 overflow-x-auto rounded border border-slate-200 bg-white shadow-sm">
-                    <table class="w-full text-sm">
-                        <thead>
+                {{-- La altura acotada no es estética: `overflow-x-auto` convierte al div en
+                     área de scroll en los DOS ejes, así que un `sticky` de dentro se ancla
+                     a él y no a la ventana. Sin altura, ese contenedor nunca desplaza en
+                     vertical y la cabecera fija no fijaría nada. Con max-h sí desplaza, la
+                     cabecera se queda arriba, y el contador y los filtros no se pierden de
+                     vista mientras se recorre la lista. --}}
+                <div
+                    class="mt-3 max-h-[70vh] overflow-auto rounded border border-slate-200 bg-white shadow-sm transition-opacity"
+                    wire:loading.class="opacity-50"
+                    wire:loading.delay
+                    wire:target="{{ $recalcula }}"
+                >
+                    {{-- table-fixed: sin esto un nombre largo empuja la tabla al scroll
+                         horizontal y las columnas bailan entre página y página. --}}
+                    <table class="w-full table-fixed text-sm">
+                        <caption class="sr-only">
+                            Movimientos del {{ $this->diaElegido()->format('d/m/Y') }}, del más reciente al más antiguo.
+                        </caption>
+
+                        <thead class="sticky top-0 z-10 bg-white">
                             <tr class="border-b border-slate-200 text-left font-mono text-xs uppercase tracking-widest text-slate-500">
-                                <th class="px-4 py-3 font-semibold">Hora</th>
-                                <th class="px-4 py-3 font-semibold">Persona</th>
-                                <th class="px-4 py-3 font-semibold">Ente</th>
-                                <th class="px-4 py-3 font-semibold">Tipo</th>
-                                <th class="px-4 py-3 font-semibold">Movimiento</th>
+                                <th scope="col" class="w-20 px-4 py-3 font-semibold">Hora</th>
+                                <th scope="col" class="px-4 py-3 font-semibold">Persona</th>
+                                <th scope="col" class="w-28 px-4 py-3 font-semibold">Ente</th>
+                                <th scope="col" class="w-36 px-4 py-3 font-semibold">Tipo</th>
+                                <th scope="col" class="w-32 px-4 py-3 font-semibold">Mov.</th>
                             </tr>
                         </thead>
+
                         <tbody class="divide-y divide-slate-100">
                             @foreach ($this->movimientos as $movimiento)
                                 <tr
                                     wire:key="{{ $movimiento->id }}"
                                     wire:click="abrirPanel('{{ $movimiento->persona->id }}')"
-                                    class="cursor-pointer hover:bg-slate-50"
+                                    class="cursor-pointer hover:bg-slate-50 has-[:focus-visible]:bg-slate-50"
                                 >
-                                    <td class="px-4 py-3 font-mono text-slate-500">{{ $movimiento->hora() }}</td>
-                                    <td class="px-4 py-3 font-medium">{{ $movimiento->persona->nombre() }}</td>
-                                    <td class="px-4 py-3 font-mono text-xs text-slate-500">
+                                    <td class="px-4 py-3 font-mono tabular-nums text-slate-500">{{ $movimiento->hora() }}</td>
+
+                                    {{-- El botón no es decorativo: la fila entera responde al
+                                         ratón, pero sin un control de verdad no había forma de
+                                         llegar aquí con el teclado ni de anunciarlo. El .stop
+                                         evita que la acción se dispare dos veces. --}}
+                                    <td class="px-4 py-3">
+                                        <button
+                                            type="button"
+                                            wire:click.stop="abrirPanel('{{ $movimiento->persona->id }}')"
+                                            title="{{ $movimiento->persona->nombre() }}"
+                                            class="block w-full truncate rounded text-left font-medium
+                                                   focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900
+                                                   focus-visible:ring-offset-2"
+                                        >
+                                            <span class="sr-only">Ver el histórico de</span>
+                                            {{ $movimiento->persona->nombre() }}
+                                        </button>
+                                    </td>
+
+                                    <td class="truncate px-4 py-3 font-mono text-xs text-slate-500">
                                         {{ $movimiento->persona->ente?->etiqueta() ?? '—' }}
                                     </td>
                                     <td class="px-4 py-3"><x-etiqueta :tipo="$movimiento->persona->tipo->value" /></td>

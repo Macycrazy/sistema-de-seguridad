@@ -1,6 +1,6 @@
 {{-- El histórico de una persona, al lado de la lista: buscar no debe hacer perder de
      vista el registro del día. --}}
-<aside>
+<aside aria-label="Histórico de la persona">
     <x-tarjeta parte="2" class="lg:sticky lg:top-6">
         <div class="flex items-start justify-between gap-3">
             <div>
@@ -55,7 +55,7 @@
         {{-- La ficha se muestra igual, pero se avisa: el registro no corrige datos de
              origen, y callarlo dejaría el error ahí para siempre. --}}
         @if ($persona->nombresRepitenApellidos())
-            <p class="mt-3 rounded border border-alto bg-alto-suave px-3 py-2 text-xs text-alto">
+            <p role="alert" class="mt-3 rounded border border-alto bg-alto-suave px-3 py-2 text-xs text-alto">
                 Esta ficha trae los apellidos repetidos en el campo de nombres.
                 Hay que corregirla en el listado de personal.
             </p>
