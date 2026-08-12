@@ -107,11 +107,16 @@
 
                     // Se calculan aquí y se pasan con «:class», que es la forma de dar una
                     // expresión PHP a un componente sin meterla dentro del atributo.
-                    $claseEntrada = $this->sugerido === 'entrada' ? $realce : $apagado;
-                    $claseSalida = $this->sugerido === 'salida' ? $realce : $apagado;
+                    //
+                    // En el teléfono los dos botones ocupan todo el ancho y van uno debajo del
+                    // otro: a 320 px, dos botones en fila quedan tan estrechos que el texto se
+                    // parte y el dedo falla. Desde tableta en adelante van en fila.
+                    $ancho = 'w-full sm:w-auto';
+                    $claseEntrada = $ancho.' '.($this->sugerido === 'entrada' ? $realce : $apagado);
+                    $claseSalida = $ancho.' '.($this->sugerido === 'salida' ? $realce : $apagado);
                 @endphp
 
-                <div class="mt-6 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-5">
+                <div class="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:flex-wrap sm:items-center">
                     <x-boton
                         variante="entrada"
                         tamano="grande"
@@ -128,7 +133,7 @@
                         wire:loading.attr="disabled"
                     >SALIDA</x-boton>
 
-                    <p class="ml-auto max-w-[16rem] text-sm text-slate-500">
+                    <p class="text-sm text-slate-500 sm:ml-auto sm:max-w-[16rem] sm:text-right">
                         @if ($this->sugerido === 'salida')
                             Está dentro: lo que toca es la salida.
                         @else
@@ -181,9 +186,15 @@
                     :error="$errors->first('visita')"
                 />
 
-                <div class="flex items-center gap-3">
-                    <x-boton type="submit" wire:loading.attr="disabled">Guardar y continuar</x-boton>
-                    <x-boton variante="secundario" wire:click="limpiar" type="button">Cancelar</x-boton>
+                {{-- En el teléfono, uno debajo del otro y a todo el ancho: en fila, «Guardar y
+                     continuar» se parte en dos líneas. --}}
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <x-boton type="submit" class="w-full sm:w-auto" wire:loading.attr="disabled">
+                        Guardar y continuar
+                    </x-boton>
+                    <x-boton variante="secundario" class="w-full sm:w-auto" wire:click="limpiar" type="button">
+                        Cancelar
+                    </x-boton>
                 </div>
             </form>
         </x-tarjeta>
