@@ -21,5 +21,8 @@ class DatabaseSeeder extends Seeder
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
+
+        // Personal inventado para poder usar la pantalla de marcar en desarrollo.
+        $this->call(TrabajadoresSeeder::class);
     }
 }
