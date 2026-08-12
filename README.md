@@ -185,13 +185,41 @@ esperar a las otras.
 
 ---
 
+## Ramas
+
+Cada parte trabaja en su propia rama. `main` se mantiene siempre funcionando.
+
+| Rama | Parte |
+|---|---|
+| `main` | Base común. No se trabaja directo aquí. |
+| `parte-1-marcar-invitados` | Parte 1 · Marcar e invitados |
+| `parte-2-registro` | Parte 2 · El registro |
+| `parte-3-usuarios-roles` | Parte 3 · Usuarios y roles |
+
+```bash
+git checkout parte-1-marcar-invitados     # cambiar a la rama de tu parte
+git pull                                  # traer lo último antes de empezar
+# ... trabajar, hacer commits ...
+git push                                  # subir tu avance
+```
+
+Cuando una parte esté lista, se integra a `main` con un **pull request** que revisa otra persona.
+Para traer a tu rama lo que ya se integró en `main`:
+
+```bash
+git checkout main && git pull
+git checkout tu-rama && git merge main
+```
+
 ## Convenciones
 
 - Formatear con `./vendor/bin/pint` antes de cada commit.
 - Los controladores no llevan lógica: validan la entrada y llaman a un service.
 - Toda validación se repite en el servidor, aunque la pantalla ya haya validado.
 - Los movimientos no se editan ni se borran: se corrigen con un asiento nuevo.
-- Una rama por parte; nada se integra a `main` sin que otra persona lo revise.
+- Nada se integra a `main` sin que otra persona lo revise.
+- Antes de maquetar una pantalla, mirar la página `/diseno`: los botones, campos y etiquetas ya
+  están hechos, para que las tres partes se vean como un solo sistema.
 
 ## Qué nunca se sube al repositorio
 
