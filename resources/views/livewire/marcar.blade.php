@@ -54,10 +54,11 @@
         <x-tarjeta class="mt-5" wire:key="persona-{{ $persona->id }}">
             <div class="flex items-start gap-5">
 
-                {{-- La foto. Si no hay, las iniciales: no se piden imágenes a Internet. --}}
+                {{-- La foto sale por su ruta, no de una carpeta pública. Si no hay, las
+                     iniciales: no se piden imágenes a Internet. --}}
                 <div class="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-slate-100">
-                    @if ($persona->foto_ruta)
-                        <img src="{{ asset($persona->foto_ruta) }}"
+                    @if ($persona->tieneFoto())
+                        <img src="{{ route('persona.foto', $persona) }}"
                              alt="Foto de {{ $persona->nombre }}"
                              class="h-full w-full object-cover">
                     @else

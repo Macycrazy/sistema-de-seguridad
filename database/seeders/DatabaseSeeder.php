@@ -24,5 +24,8 @@ class DatabaseSeeder extends Seeder
 
         // Personal inventado para poder usar la pantalla de marcar en desarrollo.
         $this->call(TrabajadoresSeeder::class);
+
+        // Fotos de mentira para algunos de ellos, para ver la pantalla con foto y sin ella.
+        $this->call(FotosInventadasSeeder::class);
     }
 }

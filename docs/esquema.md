@@ -22,7 +22,7 @@ nadie es trabajador e invitado a la vez.
 | `tipo` | varchar(20), indexada | `trabajador` o `invitado` |
 | `nombre` | varchar(120) | |
 | `dependencia` | varchar(120), nula | Solo trabajador. Viene del sistema de carnets. |
-| `foto_ruta` | varchar(255), nula | Solo trabajador. Nula mientras no haya enlace con los carnets. |
+| `foto_ruta` | varchar(255), nula | Solo trabajador. Ruta relativa dentro del disco privado: `fotos/12345678.jpg`. Ver «las fotos». |
 | `visita` | varchar(120), nula | Solo invitado: a quién viene a ver **la última vez**. |
 | `activo` | boolean, por omisión `true` | |
 | `created_at`, `updated_at` | timestamps | |
@@ -64,6 +64,48 @@ a Ana y el jueves a ver a Luis, el asiento del lunes tiene que seguir diciendo �
 
 ---
 
+## Las fotos
+
+**No están en ninguna carpeta pública.** Viven en `storage/app/private/fotos/` (el disco `local`),
+y salen únicamente por esta ruta:
+
+```
+GET /personas/{persona}/foto      ->  FotoPersonaController
+```
+
+Si estuvieran en `storage/app/public` o en `public/`, cualquiera con la URL vería la cara de un
+trabajador sin pasar por el sistema, y en un sistema de seguridad eso no se sostiene. Al ir por una
+ruta hay **un único portero**, que es donde la parte 3 pone el permiso por rol y el rastro de quién
+miró la cara de quién. Hoy no filtra a nadie, igual que el resto de la parte 1.
+
+La respuesta lleva `Cache-Control: private, no-store` para que la cara no se quede en la caché de
+un proxy ni del navegador.
+
+En la vista se usa `$persona->tieneFoto()` y no `$persona->foto_ruta`: comprueba además que el
+archivo exista de verdad, porque una ficha puede venir del sistema de carnets con la ruta puesta y
+sin que la imagen haya llegado. Cuando no hay foto se dibujan las iniciales con
+`$persona->iniciales()`, que no pide nada a Internet.
+
+`Persona::rutaFotoSegura()` exige que la ruta empiece por `fotos/` y no contenga `..`. Así, si
+alguien lograra escribir otra ruta en la base, no serviría para leer un archivo cualquiera del
+servidor. Hay una prueba que lo comprueba con `../.env` y `/etc/passwd`.
+
+---
+
+## Movimientos repetidos
+
+`Marcaje::registrar()` **no crea un asiento nuevo** si el último de esa persona es del mismo tipo y
+ocurrió hace menos de `Marcaje::SEGUNDOS_ANTIDUPLICADO` (10 s): devuelve el que ya existe. Cubre la
+doble pulsación del botón y la doble lectura del carnet.
+
+Solo mira el último movimiento y solo si es del **mismo tipo**, así que no estorba a la regla de
+corregir con un asiento nuevo: marcar una salida después de una entrada equivocada pasa siempre.
+
+Si a la parte 2 le aparecen dos movimientos iguales separados por más de esos 10 segundos, **son
+reales** y se corrigen como cualquier otro error: con un movimiento más, nunca editando.
+
+---
+
 ## La cédula
 
 Se guarda y se busca **siempre normalizada a solo dígitos**, con
@@ -88,7 +130,8 @@ todo a este servicio:
 | `cuantosDentro(): int` | **Le sirve a la parte 2** para su contador de quién está dentro. |
 
 En el modelo `Persona`: `estaDentro()`, `ultimoMovimiento()`, `esInvitado()`, `esTrabajador()`,
-`iniciales()` (para el hueco de la foto, sin pedir imágenes a Internet) y `cedulaConPuntos()`.
+`tieneFoto()`, `rutaFotoSegura()`, `iniciales()` (para el hueco de la foto, sin pedir imágenes a
+Internet) y `cedulaConPuntos()`.
 
 ---
 
@@ -101,10 +144,14 @@ empieza a llenar solo. Cuando la parte 3 esté lista hay que:
 1. Hacer `usuario_id` obligatorio con una migración nueva.
 2. Poner la ruta `/marcar` detrás del ingreso, y que solo la vea el rol vigilante.
 
-**La auditoría es de la parte 3**, pero la parte 1 ya deja el enganche puesto: como toda consulta
-de cédula pasa por `Marcaje::buscarPorCedula()` y toda escritura por `Marcaje::registrar()`,
-basta con registrar el rastro **dentro de esos dos métodos** para cubrir la parte 1 completa. No
-hace falta tocar la pantalla.
+**La auditoría es de la parte 3**, pero la parte 1 ya deja los enganches puestos. Son tres sitios,
+y cubren la parte 1 completa sin tocar la pantalla:
+
+| Enganche | Qué rastro deja |
+|---|---|
+| `Marcaje::buscarPorCedula()` | Quién consultó qué cédula. Es el único sitio por donde se consulta. |
+| `Marcaje::registrar()` | Quién registró qué movimiento (además del `usuario_id` de la tabla). |
+| `FotoPersonaController` | Quién miró la cara de quién. Es el único sitio por donde sale una foto. |
 
 **Las pruebas corren en SQLite en memoria** (`phpunit.xml`), no en PostgreSQL. Para la parte 1
 da igual porque no usa SQL propio de Postgres, pero la parte 2 va a usar `ILIKE` en su búsqueda por
@@ -119,8 +166,17 @@ pruebas a una base PostgreSQL de prueba, o usar `whereRaw` con algo que valga en
 de teclear (`11111111`, `22222222`, … y `12345678`, `87654321`). El de cédula `99999999` está
 **desactivado** a propósito, para probar que el sistema no lo deja marcar.
 
+`database/seeders/FotosInventadasSeeder.php` genera con GD una foto de mentira —un color plano con
+las iniciales— para **uno de cada dos** trabajadores, así en la pantalla se ven los dos casos: con
+foto y con las iniciales de respaldo. Se generan en vez de venir en el repositorio para no
+versionar imágenes binarias.
+
 ```bash
-php artisan migrate:fresh --seed    # borrar todo y volver a empezar (solo en local)
+php artisan db:seed             # añadir los datos de prueba
+php artisan migrate:fresh --seed    # BORRA TODO y vuelve a empezar (solo en local)
 ```
 
-Datos reales de personas no se copian a la máquina de nadie.
+Cuidado con `migrate:fresh`: se lleva por delante los invitados y los movimientos que hayas
+registrado probando a mano.
+
+Datos reales de personas no se copian a la máquina de nadie, y las fotos de verdad tampoco.

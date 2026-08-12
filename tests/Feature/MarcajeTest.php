@@ -143,8 +143,10 @@ class MarcajeTest extends TestCase
 
         $primero = $this->marcaje->registrar($invitado, Movimiento::ENTRADA);
         $this->assertSame('Ana Rodríguez', $primero->visita);
+        $this->marcaje->registrar($invitado->fresh(), Movimiento::SALIDA);
 
         // Vuelve otro día a ver a otra persona: el asiento viejo no se toca.
+        $this->travel(1)->day();
         $segundo = $this->marcaje->registrar($invitado->fresh(), Movimiento::ENTRADA, visita: 'Luis Hernández');
 
         $this->assertSame('Luis Hernández', $segundo->visita);
@@ -209,6 +211,57 @@ class MarcajeTest extends TestCase
         // Vuelve a entrar: cuenta otra vez.
         $this->marcaje->registrar($luis->fresh(), Movimiento::ENTRADA);
         $this->assertSame(3, $this->marcaje->cuantosDentro());
+    }
+
+    public function test_una_doble_pulsacion_no_deja_dos_movimientos(): void
+    {
+        $persona = $this->trabajador();
+
+        $primero = $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+        $segundo = $this->marcaje->registrar($persona->fresh(), Movimiento::ENTRADA);
+
+        // Es el mismo asiento devuelto otra vez, no uno nuevo.
+        $this->assertSame($primero->id, $segundo->id);
+        $this->assertDatabaseCount('movimientos', 1);
+    }
+
+    public function test_el_antiduplicado_no_estorba_a_una_correccion(): void
+    {
+        $persona = $this->trabajador();
+
+        // Se marcó una entrada por error y se corrige en el acto con una salida.
+        $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+        $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
+
+        // Los dos quedan: el tipo es distinto, así que no es una repetición.
+        $this->assertDatabaseCount('movimientos', 2);
+    }
+
+    public function test_pasada_la_ventana_el_mismo_movimiento_si_se_registra(): void
+    {
+        $persona = $this->trabajador();
+
+        $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+
+        // Un rato después, sin haber salido, se le vuelve a marcar entrada: es un asiento nuevo,
+        // aunque sea del mismo tipo. Corregirlo es asunto del supervisor, no de este servicio.
+        $this->travel(Marcaje::SEGUNDOS_ANTIDUPLICADO + 5)->seconds();
+        $this->marcaje->registrar($persona->fresh(), Movimiento::ENTRADA);
+
+        $this->assertDatabaseCount('movimientos', 2);
+    }
+
+    public function test_la_doble_pulsacion_de_dos_personas_distintas_no_se_confunde(): void
+    {
+        $ana = $this->trabajador(['cedula' => '11111111', 'nombre' => 'Ana']);
+        $luis = $this->trabajador(['cedula' => '22222222', 'nombre' => 'Luis']);
+
+        // Dos personas seguidas, la misma acción y en el mismo segundo: son dos asientos.
+        $this->marcaje->registrar($ana, Movimiento::ENTRADA);
+        $this->marcaje->registrar($luis, Movimiento::ENTRADA);
+
+        $this->assertDatabaseCount('movimientos', 2);
+        $this->assertSame(2, $this->marcaje->cuantosDentro());
     }
 
     public function test_un_movimiento_no_se_puede_borrar_si_arrastra_a_la_persona(): void

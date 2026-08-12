@@ -20,6 +20,15 @@ use Illuminate\Validation\ValidationException;
 class Marcaje
 {
     /**
+     * Ventana para considerar que un movimiento es una repetición del anterior y no uno nuevo.
+     *
+     * Diez segundos: de sobra para absorber una doble pulsación o una doble lectura del carnet,
+     * y demasiado poco para tapar un movimiento de verdad — nadie entra y vuelve a entrar en
+     * diez segundos.
+     */
+    public const SEGUNDOS_ANTIDUPLICADO = 10;
+
+    /**
      * Busca a quién pertenece una cédula. Devuelve null si no está en el sistema, que es la
      * señal de que estamos ante un invitado nuevo.
      */
@@ -113,6 +122,14 @@ class Marcaje
         // La ficha y el asiento se guardan juntos o no se guarda ninguno: si falla la
         // actualización del invitado, no queremos un movimiento suelto apuntando a un dato viejo.
         return DB::transaction(function () use ($persona, $tipo, $usuarioId, $visita) {
+            // Doble pulsación del botón, o el lector de carnets leyendo dos veces el mismo
+            // carnet: se devuelve el asiento que ya existe en vez de crear otro igual.
+            // Como los movimientos no se borran, un duplicado se quedaría en el histórico
+            // para siempre y habría que corregirlo con un movimiento más.
+            if ($repetido = $this->movimientoRecienRegistrado($persona, $tipo)) {
+                return $repetido;
+            }
+
             $visita = $visita !== null ? trim($visita) : null;
 
             if ($persona->esInvitado() && $visita !== null && $visita !== '') {
@@ -128,6 +145,26 @@ class Marcaje
                 'visita' => $persona->esInvitado() ? $persona->visita : null,
             ]);
         });
+    }
+
+    /**
+     * El mismo movimiento, para la misma persona, registrado hace un instante.
+     *
+     * Solo mira si el ÚLTIMO asiento es del mismo tipo y está dentro de la ventana. Así no
+     * estorba a la regla de que un error se corrige con un movimiento nuevo: marcar una salida
+     * después de una entrada equivocada pasa siempre, porque el tipo es distinto.
+     */
+    protected function movimientoRecienRegistrado(Persona $persona, string $tipo): ?Movimiento
+    {
+        $ultimo = $persona->ultimoMovimiento();
+
+        if (! $ultimo || $ultimo->tipo !== $tipo) {
+            return null;
+        }
+
+        return $ultimo->ocurrio_en->diffInSeconds(now()) < self::SEGUNDOS_ANTIDUPLICADO
+            ? $ultimo
+            : null;
     }
 
     /** Cuántas personas están dentro en este momento: su último movimiento fue una entrada. */
