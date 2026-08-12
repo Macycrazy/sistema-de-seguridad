@@ -33,8 +33,15 @@ class EncabezadoTest extends TestCase
     {
         $this->get($url)
             ->assertOk()
-            ->assertSee('imagenes/logo-ciip.png')
+            // El BLANCO: el encabezado es azul, y el logo azul no se vería sobre su propio color.
+            ->assertSee('imagenes/logo-ciip-blanco.png')
             ->assertSee('Centro Internacional de Inversión Productiva', false);
+    }
+
+    #[DataProvider('paginas')]
+    public function test_el_encabezado_va_en_el_azul_del_ciip(string $url): void
+    {
+        $this->get($url)->assertOk()->assertSee('bg-marca');
     }
 
     #[DataProvider('paginas')]
@@ -43,9 +50,12 @@ class EncabezadoTest extends TestCase
         $this->get($url)->assertOk()->assertSee('· CIIP', false);
     }
 
-    public function test_el_archivo_del_logo_esta_en_el_proyecto(): void
+    public function test_los_dos_logos_estan_en_el_proyecto(): void
     {
-        // Si no viniera en el repositorio, en el servidor sin Internet no habría logo.
+        // Si no vinieran en el repositorio, en el servidor sin Internet no habría logo.
+        // El blanco es el del encabezado azul; el azul queda para fondos claros (informes,
+        // y la pantalla de ingreso que hará la parte 3).
+        $this->assertFileExists(public_path('imagenes/logo-ciip-blanco.png'));
         $this->assertFileExists(public_path('imagenes/logo-ciip.png'));
     }
 

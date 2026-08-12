@@ -127,6 +127,13 @@ tipo: trabajador · invitado · entrada · salida · inactivo</code></pre>
              en las vistas, así que una clase armada con variables no se genera. --}}
         <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div class="flex items-center gap-3 rounded border border-slate-200 bg-white p-3">
+                <span class="h-9 w-9 shrink-0 rounded bg-marca"></span>
+                <div class="min-w-0">
+                    <p class="font-mono text-xs font-bold text-slate-900">marca</p>
+                    <p class="truncate text-xs text-slate-500">Azul del CIIP · encabezado</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 rounded border border-slate-200 bg-white p-3">
                 <span class="h-9 w-9 shrink-0 rounded bg-parte1"></span>
                 <div class="min-w-0">
                     <p class="font-mono text-xs font-bold text-slate-900">parte1</p>
