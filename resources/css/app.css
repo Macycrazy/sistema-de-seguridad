@@ -8,4 +8,21 @@
 @theme {
     --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', 'Liberation Sans', sans-serif;
     --font-mono: ui-monospace, 'Cascadia Mono', 'Liberation Mono', monospace;
+
+    /* Un color por parte. Se usan para identificar el módulo, no para decorar. */
+    --color-parte1: #223d90;
+    --color-parte1-suave: #e6ebfa;
+    --color-parte2: #0a6d8c;
+    --color-parte2-suave: #daeff7;
+    --color-parte3: #166b52;
+    --color-parte3-suave: #dbf0e8;
+
+    /* Ámbar significa una sola cosa en todo el sistema: invitado. */
+    --color-invitado: #9a6410;
+    --color-invitado-suave: #f9ecd7;
+
+    --color-ok: #166b52;
+    --color-ok-suave: #dbf0e8;
+    --color-alto: #b32b3c;
+    --color-alto-suave: #fbe3e6;
 }

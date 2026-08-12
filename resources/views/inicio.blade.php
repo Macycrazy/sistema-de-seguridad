@@ -10,25 +10,29 @@
     </p>
 
     <div class="mt-10 grid gap-4 sm:grid-cols-3">
-        <div class="rounded border-t-4 border-indigo-800 bg-white p-5 shadow-sm">
-            <p class="font-mono text-xs font-bold uppercase tracking-widest text-indigo-800">Parte 1</p>
-            <p class="mt-2 text-lg font-semibold">Marcar e invitados</p>
+        <x-tarjeta parte="1" titulo="Parte 1">
+            <p class="text-lg font-semibold">Marcar e invitados</p>
             <p class="mt-1 text-sm text-slate-600">Pendiente</p>
-        </div>
-        <div class="rounded border-t-4 border-cyan-800 bg-white p-5 shadow-sm">
-            <p class="font-mono text-xs font-bold uppercase tracking-widest text-cyan-800">Parte 2</p>
-            <p class="mt-2 text-lg font-semibold">El registro</p>
+        </x-tarjeta>
+
+        <x-tarjeta parte="2" titulo="Parte 2">
+            <p class="text-lg font-semibold">El registro</p>
             <p class="mt-1 text-sm text-slate-600">Pendiente</p>
-        </div>
-        <div class="rounded border-t-4 border-emerald-800 bg-white p-5 shadow-sm">
-            <p class="font-mono text-xs font-bold uppercase tracking-widest text-emerald-800">Parte 3</p>
-            <p class="mt-2 text-lg font-semibold">Usuarios y roles</p>
+        </x-tarjeta>
+
+        <x-tarjeta parte="3" titulo="Parte 3">
+            <p class="text-lg font-semibold">Usuarios y roles</p>
             <p class="mt-1 text-sm text-slate-600">Pendiente</p>
-        </div>
+        </x-tarjeta>
     </div>
 
-    <p class="mt-10 text-sm text-slate-500">
-        Los pasos de instalación y el alcance de cada parte están en el
-        <span class="font-mono">README.md</span>.
-    </p>
+    <div class="mt-10 flex flex-wrap items-center gap-4">
+        <a href="{{ route('diseno') }}">
+            <x-boton variante="secundario">Ver la base visual</x-boton>
+        </a>
+        <p class="text-sm text-slate-500">
+            Los pasos de instalación y el alcance de cada parte están en el
+            <span class="font-mono">README.md</span>.
+        </p>
+    </div>
 @endsection
