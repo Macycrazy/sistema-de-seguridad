@@ -170,6 +170,22 @@ class RegistroInventadoTest extends TestCase
     }
 
     #[Test]
+    public function un_olvido_de_ayer_no_infla_el_contador_de_hoy(): void
+    {
+        // Si el recuento mirara todo el histórico, quien entró un día y se fue sin que le
+        // anotaran la salida seguiría contando como «dentro» todos los días siguientes,
+        // y el contador se separaría de la realidad sin manera de volver.
+        $fuente = $this->fuente();
+        $hoy = CarbonImmutable::today();
+
+        $personasQueSeMovieronHoy = $fuente->movimientosDelDia($hoy)
+            ->map(fn (Movimiento $m) => $m->persona->id)
+            ->unique();
+
+        $this->assertLessThanOrEqual($personasQueSeMovieronHoy->count(), $fuente->dentroEn($hoy));
+    }
+
+    #[Test]
     public function la_cifra_de_dentro_es_creible_para_un_puesto_de_vigilancia(): void
     {
         $dentro = $this->fuente()->dentroEn(CarbonImmutable::today());
@@ -237,6 +253,51 @@ class RegistroInventadoTest extends TestCase
             $this->assertNotNull($persona->piso);
             $this->assertNotNull($persona->dependencia);
         }
+    }
+
+    #[Test]
+    public function hay_fichas_con_los_apellidos_repetidos_en_los_nombres(): void
+    {
+        // Está así en el listado real (fila 30: «HERRERA MEDINA | HERRERA MEDINA»).
+        $malCargadas = $this->todasLasPersonas()->filter(fn (Persona $p) => $p->nombresRepitenApellidos());
+
+        $this->assertGreaterThan(0, $malCargadas->count());
+    }
+
+    #[Test]
+    public function una_ficha_mal_cargada_no_se_muestra_con_el_nombre_repetido(): void
+    {
+        $mala = new Persona(
+            id: 'p-1',
+            cedula: 'V-12.393.986',
+            apellidos: 'Herrera Medina',
+            nombres: 'Herrera Medina',
+            tipo: TipoDePersona::Trabajador,
+        );
+
+        $this->assertTrue($mala->nombresRepitenApellidos());
+        $this->assertSame('Herrera Medina', $mala->nombre());
+        $this->assertSame('Herrera Medina', $mala->nombreCompleto());
+
+        // Pero los campos crudos quedan intactos: el reporte tiene que reflejar la
+        // fuente para que el error se pueda ver y corregir.
+        $this->assertSame('Herrera Medina', $mala->apellidos);
+        $this->assertSame('Herrera Medina', $mala->nombres);
+    }
+
+    #[Test]
+    public function una_ficha_bien_cargada_no_se_marca_como_defectuosa(): void
+    {
+        $buena = new Persona(
+            id: 'p-2',
+            cedula: 'V-12.345.678',
+            apellidos: 'Pérez González',
+            nombres: 'José Rafael',
+            tipo: TipoDePersona::Trabajador,
+        );
+
+        $this->assertFalse($buena->nombresRepitenApellidos());
+        $this->assertSame('José Rafael Pérez González', $buena->nombre());
     }
 
     #[Test]

@@ -292,6 +292,26 @@ class RegistroDelDiaTest extends TestCase
     }
 
     #[Test]
+    public function el_reporte_conserva_los_campos_crudos_de_una_ficha_mal_cargada(): void
+    {
+        // La pantalla colapsa el nombre repetido para que se lea; el Excel no, porque es
+        // el documento con el que Gestión Humana detecta y corrige la ficha.
+        $movimiento = $this->fuente()
+            ->movimientosDelDia(CarbonImmutable::today())
+            ->first(fn (Movimiento $m) => $m->persona->nombresRepitenApellidos());
+
+        if (! $movimiento) {
+            $this->markTestSkipped('Hoy no se movió nadie con la ficha mal cargada.');
+        }
+
+        $filas = (new MovimientosDelDia(collect([$movimiento])))->collection();
+
+        $this->assertSame($movimiento->persona->apellidos, $filas->first()[3]);
+        $this->assertSame($movimiento->persona->nombres, $filas->first()[4]);
+        $this->assertSame($filas->first()[3], $filas->first()[4]);
+    }
+
+    #[Test]
     public function el_panel_se_cierra(): void
     {
         $persona = $this->primeraPersona();

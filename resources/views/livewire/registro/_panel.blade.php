@@ -52,6 +52,15 @@
             @endif
         </dl>
 
+        {{-- La ficha se muestra igual, pero se avisa: el registro no corrige datos de
+             origen, y callarlo dejaría el error ahí para siempre. --}}
+        @if ($persona->nombresRepitenApellidos())
+            <p class="mt-3 rounded border border-alto bg-alto-suave px-3 py-2 text-xs text-alto">
+                Esta ficha trae los apellidos repetidos en el campo de nombres.
+                Hay que corregirla en el listado de personal.
+            </p>
+        @endif
+
         <h3 class="mt-5 border-t border-slate-200 pt-4 font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
             Histórico
         </h3>

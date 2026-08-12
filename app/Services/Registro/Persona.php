@@ -29,13 +29,36 @@ final readonly class Persona
     /** «PÉREZ GONZÁLEZ, José Rafael» — como se lee en el listado. */
     public function nombreCompleto(): string
     {
+        if ($this->nombresRepitenApellidos()) {
+            return $this->apellidos;
+        }
+
         return trim($this->apellidos.', '.$this->nombres);
     }
 
     /** «José Rafael Pérez González» — como se lee en una pantalla. */
     public function nombre(): string
     {
+        if ($this->nombresRepitenApellidos()) {
+            return $this->apellidos;
+        }
+
         return trim($this->nombres.' '.$this->apellidos);
+    }
+
+    /**
+     * Hay fichas mal cargadas en origen, con los apellidos repetidos en el campo de
+     * nombres. Sin esto, el vigilante leería «Herrera Medina Herrera Medina».
+     *
+     * Se colapsa solo para mostrar. Los campos crudos no se tocan: el reporte a Excel
+     * tiene que reflejar lo que de verdad hay en la fuente, que es justamente el
+     * documento con el que Gestión Humana puede detectar y corregir la ficha.
+     */
+    public function nombresRepitenApellidos(): bool
+    {
+        $nombres = trim($this->nombres);
+
+        return $nombres !== '' && mb_strtolower($nombres) === mb_strtolower(trim($this->apellidos));
     }
 
     /**

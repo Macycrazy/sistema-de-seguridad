@@ -165,13 +165,15 @@ final class RegistroInventado implements FuenteDelRegistro
 
     public function dentroEn(CarbonImmutable $fecha): int
     {
-        $cierre = $fecha->endOfDay();
-
-        // Una persona está dentro si su movimiento más reciente hasta ese momento fue una
-        // entrada. Para hoy eso es «en este momento»; para un día pasado, quiénes quedaron
-        // dentro al cierre.
+        // Una persona está dentro si ese día entró y no registró salida.
+        //
+        // El recuento se limita al día a propósito. Mirando todo el histórico, quien
+        // entró un martes y se fue sin que le anotaran la salida seguiría contando como
+        // «dentro» el jueves, el viernes y para siempre: los olvidos se acumularían y el
+        // contador se separaría de la realidad sin manera de volver. Acotado al día, el
+        // error dura como mucho hasta la medianoche.
         return $this->movimientos
-            ->filter(fn (Movimiento $m) => $m->ocurrioEn->lessThanOrEqualTo($cierre))
+            ->filter(fn (Movimiento $m) => $m->ocurrioEn->isSameDay($fecha))
             ->groupBy(fn (Movimiento $m) => $m->persona->id)
             ->filter(function (Collection $delaPersona) {
                 $ultimo = $delaPersona->sortByDesc(fn (Movimiento $m) => $m->ocurrioEn->getTimestamp())->first();
@@ -232,12 +234,21 @@ final class RegistroInventado implements FuenteDelRegistro
                 $cargos = self::CARGOS[$claveEnte];
 
                 $id = 'p-'.(++$n);
+                $apellidos = $this->elegir(self::APELLIDOS).' '.$this->elegir(self::APELLIDOS);
+
+                // Una de cada cien fichas viene mal cargada, con los apellidos repetidos
+                // en el campo de nombres. Está así en el listado real (fila 30) y se
+                // reproduce a propósito: si los datos de prueba fueran todos correctos,
+                // nadie sabría cómo se ve eso en pantalla hasta verlo en producción.
+                $nombres = $this->dado->getInt(1, 100) === 1
+                    ? $apellidos
+                    : trim($this->elegir(self::NOMBRES).' '.$this->elegir(self::SEGUNDOS_NOMBRES));
 
                 $personas[$id] = new Persona(
                     id: $id,
                     cedula: $this->inventarDocumento($usados),
-                    apellidos: $this->elegir(self::APELLIDOS).' '.$this->elegir(self::APELLIDOS),
-                    nombres: trim($this->elegir(self::NOMBRES).' '.$this->elegir(self::SEGUNDOS_NOMBRES)),
+                    apellidos: $apellidos,
+                    nombres: $nombres,
                     tipo: TipoDePersona::Trabajador,
                     ente: $ente,
                     dependencia: $dependencia,
