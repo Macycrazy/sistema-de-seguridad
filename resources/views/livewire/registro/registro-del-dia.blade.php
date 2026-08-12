@@ -132,8 +132,11 @@
                      vista mientras se recorre la lista. --}}
                 <div
                     class="mt-3 max-h-[70vh] overflow-auto rounded border border-slate-200 bg-white shadow-sm transition-opacity"
-                    wire:loading.class="opacity-50"
-                    wire:loading.delay
+                    {{-- Los dos modificadores van en el MISMO atributo. Separados, el
+                         `wire:loading.delay` suelto es una directiva por su cuenta, y una
+                         wire:loading sin `.class` significa «muestra esto solo mientras
+                         carga»: Livewire le ponía display:none a la tabla en reposo. --}}
+                    wire:loading.delay.class="opacity-50"
                     wire:target="{{ $recalcula }}"
                 >
                     {{-- table-fixed: sin esto un nombre largo empuja la tabla al scroll

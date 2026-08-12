@@ -361,6 +361,25 @@ class RegistroDelDiaTest extends TestCase
     }
 
     #[Test]
+    public function el_estado_de_carga_no_esconde_la_tabla(): void
+    {
+        // Una `wire:loading` suelta, sin `.class`, significa «muestra esto solo mientras
+        // carga»: Livewire le pone display:none al elemento en reposo. Puesta en el
+        // contenedor de la tabla, desaparecía la tabla entera y la pantalla quedaba con
+        // los filtros y el paginador sobre un hueco vacío.
+        //
+        // Las pruebas de marcado no lo vieron porque el HTML estaba entero; solo se notaba
+        // renderizando en un navegador. De ahí esta comprobación.
+        $html = Livewire::test(RegistroDelDia::class)->html();
+
+        preg_match('/<div[^>]*max-h-\[70vh\][^>]*>/', $html, $contenedor);
+
+        $this->assertNotEmpty($contenedor, 'No se encontró el contenedor de la tabla.');
+        $this->assertStringContainsString('wire:loading.delay.class="opacity-50"', $contenedor[0]);
+        $this->assertDoesNotMatchRegularExpression('/wire:loading(?![.\w])/', $contenedor[0]);
+    }
+
+    #[Test]
     public function la_paginacion_sale_en_espanol(): void
     {
         $componente = Livewire::test(RegistroDelDia::class);
