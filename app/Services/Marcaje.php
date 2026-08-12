@@ -54,15 +54,15 @@ class Marcaje
 
     /**
      * Dos personas distintas nunca comparten cédula, así que un invitado nuevo se crea aquí
-     * con lo mínimo: nombre y a quién viene a ver.
+     * con lo mínimo: nombre y motivo de la visita.
      *
      * @throws ValidationException si la cédula ya pertenece a alguien
      */
-    public function registrarInvitado(string $cedula, string $nombre, string $visita): Persona
+    public function registrarInvitado(string $cedula, string $nombre, string $motivo): Persona
     {
         $cedula = Persona::normalizarCedula($cedula);
         $nombre = trim($nombre);
-        $visita = trim($visita);
+        $motivo = trim($motivo);
 
         $this->exigirCedulaValida($cedula);
 
@@ -72,9 +72,9 @@ class Marcaje
             ]);
         }
 
-        if ($visita === '') {
+        if ($motivo === '') {
             throw ValidationException::withMessages([
-                'visita' => 'Hace falta a quién viene a ver.',
+                'motivo' => 'Hace falta el motivo de la visita.',
             ]);
         }
 
@@ -88,7 +88,7 @@ class Marcaje
             'cedula' => $cedula,
             'tipo' => Persona::INVITADO,
             'nombre' => $nombre,
-            'visita' => $visita,
+            'motivo' => $motivo,
             'activo' => true,
         ]);
     }
@@ -96,8 +96,8 @@ class Marcaje
     /**
      * Deja constancia de una entrada o una salida.
      *
-     * @param  string|null  $visita  A quién viene a ver, si es un invitado que vuelve y lo
-     *                               actualiza. Si va nulo se conserva el dato que ya tenía.
+     * @param  string|null  $motivo  El motivo de la visita, si es un invitado que vuelve y lo
+     *                               actualiza. Si va nulo se conserva el que ya tenía.
      *
      * @throws ValidationException si el tipo no es entrada ni salida, o la persona está inactiva
      */
@@ -105,7 +105,7 @@ class Marcaje
         Persona $persona,
         string $tipo,
         ?int $usuarioId = null,
-        ?string $visita = null,
+        ?string $motivo = null,
     ): Movimiento {
         if (! in_array($tipo, [Movimiento::ENTRADA, Movimiento::SALIDA], true)) {
             throw ValidationException::withMessages([
@@ -121,7 +121,7 @@ class Marcaje
 
         // La ficha y el asiento se guardan juntos o no se guarda ninguno: si falla la
         // actualización del invitado, no queremos un movimiento suelto apuntando a un dato viejo.
-        return DB::transaction(function () use ($persona, $tipo, $usuarioId, $visita) {
+        return DB::transaction(function () use ($persona, $tipo, $usuarioId, $motivo) {
             // Doble pulsación del botón, o el lector de carnets leyendo dos veces el mismo
             // carnet: se devuelve el asiento que ya existe en vez de crear otro igual.
             // Como los movimientos no se borran, un duplicado se quedaría en el histórico
@@ -130,10 +130,10 @@ class Marcaje
                 return $repetido;
             }
 
-            $visita = $visita !== null ? trim($visita) : null;
+            $motivo = $motivo !== null ? trim($motivo) : null;
 
-            if ($persona->esInvitado() && $visita !== null && $visita !== '') {
-                $persona->update(['visita' => $visita]);
+            if ($persona->esInvitado() && $motivo !== null && $motivo !== '') {
+                $persona->update(['motivo' => $motivo]);
             }
 
             return Movimiento::create([
@@ -141,8 +141,8 @@ class Marcaje
                 'tipo' => $tipo,
                 'ocurrio_en' => now(),
                 'usuario_id' => $usuarioId,
-                // Del asiento de un trabajador no cuelga ninguna visita.
-                'visita' => $persona->esInvitado() ? $persona->visita : null,
+                // El asiento de un trabajador no lleva motivo: viene a trabajar.
+                'motivo' => $persona->esInvitado() ? $persona->motivo : null,
             ]);
         });
     }

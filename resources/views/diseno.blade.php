@@ -47,7 +47,7 @@ tamano:   chico · normal · grande</code></pre>
             <div class="max-w-md space-y-5">
                 <x-campo etiqueta="Cédula" nombre="cedula" tamano="grande" placeholder="0.000.000" />
                 <x-campo etiqueta="Nombre y apellido" nombre="nombre" ayuda="Como aparece en el documento." />
-                <x-campo etiqueta="A quién viene a ver" nombre="visita"
+                <x-campo etiqueta="Motivo de visita" nombre="motivo"
                          error="Este dato es obligatorio para un invitado." />
             </div>
 

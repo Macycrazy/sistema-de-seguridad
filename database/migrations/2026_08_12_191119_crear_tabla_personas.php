@@ -12,10 +12,14 @@ use Illuminate\Support\Facades\Schema;
  *
  * Las columnas que solo aplican a un tipo van nulas en el otro:
  *   trabajador -> dependencia, foto_ruta      (vienen del sistema de carnets)
- *   invitado   -> visita                      (a quién viene a ver)
+ *   invitado   -> visita                      (ver la nota de abajo)
  *
- * Del invitado se guarda lo mínimo: nombre y a quién visita. Nada de foto del documento,
+ * Del invitado se guarda lo mínimo: nombre y motivo de la visita. Nada de foto del documento,
  * teléfono ni dirección.
+ *
+ * OJO: la columna «visita» se llama «motivo» desde la migración
+ * 2026_08_12_211127_renombrar_visita_a_motivo. Aquí se deja el nombre viejo a propósito, porque
+ * esa otra migración es la que lo cambia; si se corrigiera aquí, el renombrado fallaría.
  */
 return new class extends Migration
 {

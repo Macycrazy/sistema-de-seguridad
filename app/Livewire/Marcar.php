@@ -15,7 +15,7 @@ use Livewire\Component;
  * El recorrido es siempre el mismo: se teclea una cédula, el sistema dice quién es y propone
  * entrada o salida, se pulsa el botón y la pantalla se limpia sola para el siguiente.
  *
- * Si la cédula no aparece, es un invitado: se pide nombre y a quién viene a ver, y de ahí sigue
+ * Si la cédula no aparece, es un invitado: se pide nombre y motivo de la visita, y de ahí sigue
  * igual. Si ese invitado vuelve otro día, con teclear la cédula ya salen sus datos.
  *
  * Esta clase no decide nada por su cuenta: todo se lo pregunta al servicio Marcaje, que es donde
@@ -43,7 +43,7 @@ class Marcar extends Component
     /** Los dos campos del formulario de invitado. */
     public string $nombre = '';
 
-    public string $visita = '';
+    public string $motivo = '';
 
     /** Lo que se le dice al vigilante después de marcar. */
     public string $confirmacion = '';
@@ -138,7 +138,7 @@ class Marcar extends Component
             // Si ya se estaba escribiendo su ficha no se borra lo escrito.
             if (! $this->invitadoNuevo) {
                 $this->nombre = '';
-                $this->visita = '';
+                $this->motivo = '';
             }
 
             $this->personaId = null;
@@ -154,7 +154,7 @@ class Marcar extends Component
 
         // Un invitado que vuelve ya trae sus datos: se muestran para poder confirmarlos o cambiarlos.
         if ($persona->esInvitado()) {
-            $this->visita = (string) $persona->visita;
+            $this->motivo = (string) $persona->motivo;
         }
     }
 
@@ -170,7 +170,7 @@ class Marcar extends Component
     public function guardarInvitado(): void
     {
         try {
-            $persona = $this->marcaje->registrarInvitado($this->cedula, $this->nombre, $this->visita);
+            $persona = $this->marcaje->registrarInvitado($this->cedula, $this->nombre, $this->motivo);
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
 
@@ -209,7 +209,7 @@ class Marcar extends Component
                 tipo: $tipo,
                 // La parte 3 pondrá aquí el usuario que tiene la sesión abierta.
                 usuarioId: auth()->id(),
-                visita: $persona->esInvitado() ? $this->visita : null,
+                motivo: $persona->esInvitado() ? $this->motivo : null,
             );
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
@@ -227,7 +227,7 @@ class Marcar extends Component
     /** Vuelve al estado inicial: campo vacío y listo para teclear. */
     public function limpiar(): void
     {
-        $this->reset(['cedula', 'personaId', 'invitadoNuevo', 'nombre', 'visita', 'confirmacion']);
+        $this->reset(['cedula', 'personaId', 'invitadoNuevo', 'nombre', 'motivo', 'confirmacion']);
         $this->resetValidation();
         unset($this->persona, $this->sugerido, $this->dentro);
     }

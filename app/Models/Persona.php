@@ -38,7 +38,7 @@ class Persona extends Model
         'nombre',
         'dependencia',
         'foto_ruta',
-        'visita',
+        'motivo',
         'activo',
     ];
 

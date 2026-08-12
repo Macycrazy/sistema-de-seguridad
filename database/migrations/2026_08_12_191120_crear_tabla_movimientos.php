@@ -34,9 +34,12 @@ return new class extends Migration
             // cuando esa parte esté lista, pasa a obligatorio.
             $tabla->foreignId('usuario_id')->nullable()->constrained('users')->nullOnDelete();
 
-            // Copia de a quién visitaba el invitado en ese momento. Se guarda aquí y no solo en
+            // Copia del motivo que traía el invitado en ese momento. Se guarda aquí y no solo en
             // «personas» porque el asiento tiene que seguir diciendo la verdad de ese día,
-            // aunque la próxima vez el invitado venga a ver a otra persona.
+            // aunque la próxima vez el invitado venga por otra cosa.
+            //
+            // Se llama «motivo» desde la migración 2026_08_12_211127_renombrar_visita_a_motivo;
+            // aquí se deja el nombre viejo porque es esa la que lo cambia.
             $tabla->string('visita', 120)->nullable();
 
             // Para «quién está dentro»: se busca el último movimiento de cada persona.

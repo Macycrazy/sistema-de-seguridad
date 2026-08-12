@@ -30,7 +30,7 @@ class Movimiento extends Model
         'tipo',
         'ocurrio_en',
         'usuario_id',
-        'visita',
+        'motivo',
     ];
 
     protected function casts(): array

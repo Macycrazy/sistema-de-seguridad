@@ -96,13 +96,14 @@
                     @if ($persona->esTrabajador())
                         <p class="mt-2 text-slate-600">{{ $persona->dependencia }}</p>
                     @else
-                        {{-- Del invitado que vuelve se puede corregir a quién viene a ver hoy. --}}
+                        {{-- Del invitado que vuelve se puede corregir el motivo de hoy: la vez
+                             anterior pudo venir a otra cosa. --}}
                         <div class="mt-3 max-w-sm">
                             <x-campo
-                                etiqueta="A quién viene a ver"
-                                nombre="visita"
-                                wire:model="visita"
-                                :error="$errors->first('visita')"
+                                etiqueta="Motivo de visita"
+                                nombre="motivo"
+                                wire:model="motivo"
+                                :error="$errors->first('motivo')"
                             />
                         </div>
                     @endif
@@ -193,11 +194,11 @@
                 />
 
                 <x-campo
-                    etiqueta="A quién viene a ver"
-                    nombre="visita"
-                    wire:model="visita"
+                    etiqueta="Motivo de visita"
+                    nombre="motivo"
+                    wire:model="motivo"
                     autocomplete="off"
-                    :error="$errors->first('visita')"
+                    :error="$errors->first('motivo')"
                 />
 
                 {{-- En el teléfono, uno debajo del otro y a todo el ancho: en fila, «Guardar y

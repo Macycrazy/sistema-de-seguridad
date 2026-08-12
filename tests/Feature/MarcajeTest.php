@@ -89,14 +89,14 @@ class MarcajeTest extends TestCase
         $this->assertNotNull($movimiento->ocurrio_en);
     }
 
-    public function test_un_invitado_nuevo_se_crea_con_solo_nombre_y_a_quien_visita(): void
+    public function test_un_invitado_nuevo_se_crea_con_solo_nombre_y_el_motivo(): void
     {
-        $invitado = $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Ana Rodríguez');
+        $invitado = $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia');
 
         $this->assertSame(Persona::INVITADO, $invitado->tipo);
         $this->assertSame('87654321', $invitado->cedula);
         $this->assertSame('Carlos Pérez', $invitado->nombre);
-        $this->assertSame('Ana Rodríguez', $invitado->visita);
+        $this->assertSame('Videoconferencia', $invitado->motivo);
 
         // Del invitado se guarda lo mínimo: ni dependencia ni foto.
         $this->assertNull($invitado->dependencia);
@@ -107,10 +107,10 @@ class MarcajeTest extends TestCase
     {
         $this->expectException(ValidationException::class);
 
-        $this->marcaje->registrarInvitado('87654321', '   ', 'Ana Rodríguez');
+        $this->marcaje->registrarInvitado('87654321', '   ', 'Videoconferencia');
     }
 
-    public function test_un_invitado_sin_decir_a_quien_visita_no_se_guarda(): void
+    public function test_un_invitado_sin_decir_el_motivo_no_se_guarda(): void
     {
         $this->expectException(ValidationException::class);
 
@@ -123,12 +123,12 @@ class MarcajeTest extends TestCase
 
         $this->expectException(ValidationException::class);
 
-        $this->marcaje->registrarInvitado('12.345.678', 'Carlos Pérez', 'Ana Rodríguez');
+        $this->marcaje->registrarInvitado('12.345.678', 'Carlos Pérez', 'Videoconferencia');
     }
 
     public function test_el_invitado_que_vuelve_se_encuentra_solo_con_la_cedula(): void
     {
-        $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Ana Rodríguez');
+        $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia');
 
         $encontrado = $this->marcaje->buscarPorCedula('87654321');
 
@@ -137,29 +137,29 @@ class MarcajeTest extends TestCase
         $this->assertTrue($encontrado->esInvitado());
     }
 
-    public function test_el_movimiento_de_un_invitado_guarda_a_quien_visitaba_ese_dia(): void
+    public function test_el_movimiento_de_un_invitado_guarda_el_motivo_de_ese_dia(): void
     {
-        $invitado = $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Ana Rodríguez');
+        $invitado = $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia');
 
         $primero = $this->marcaje->registrar($invitado, Movimiento::ENTRADA);
-        $this->assertSame('Ana Rodríguez', $primero->visita);
+        $this->assertSame('Videoconferencia', $primero->motivo);
         $this->marcaje->registrar($invitado->fresh(), Movimiento::SALIDA);
 
-        // Vuelve otro día a ver a otra persona: el asiento viejo no se toca.
+        // Vuelve otro día por otro motivo: el asiento viejo tiene que seguir diciendo el de aquel día.
         $this->travel(1)->day();
-        $segundo = $this->marcaje->registrar($invitado->fresh(), Movimiento::ENTRADA, visita: 'Luis Hernández');
+        $segundo = $this->marcaje->registrar($invitado->fresh(), Movimiento::ENTRADA, motivo: 'Entrega de material');
 
-        $this->assertSame('Luis Hernández', $segundo->visita);
-        $this->assertSame('Ana Rodríguez', $primero->fresh()->visita);
+        $this->assertSame('Entrega de material', $segundo->motivo);
+        $this->assertSame('Videoconferencia', $primero->fresh()->motivo);
     }
 
-    public function test_el_movimiento_de_un_trabajador_no_lleva_visita(): void
+    public function test_el_movimiento_de_un_trabajador_no_lleva_motivo(): void
     {
         $persona = $this->trabajador();
 
-        $movimiento = $this->marcaje->registrar($persona, Movimiento::ENTRADA, visita: 'algo que se ignora');
+        $movimiento = $this->marcaje->registrar($persona, Movimiento::ENTRADA, motivo: 'algo que se ignora');
 
-        $this->assertNull($movimiento->visita);
+        $this->assertNull($movimiento->motivo);
     }
 
     public function test_a_una_persona_desactivada_no_se_le_puede_marcar(): void

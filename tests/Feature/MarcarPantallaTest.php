@@ -65,7 +65,7 @@ class MarcarPantallaTest extends TestCase
             ->call('buscar')
             ->assertSet('invitadoNuevo', true)
             ->assertSee('es un invitado')
-            ->assertSee('A quién viene a ver');
+            ->assertSee('Motivo de visita');
     }
 
     public function test_los_datos_salen_solos_sin_pulsar_enter(): void
@@ -135,12 +135,12 @@ class MarcarPantallaTest extends TestCase
         $componente = Livewire::test(Marcar::class)
             ->set('cedula', '87654321')
             ->set('nombre', 'Carlos Pérez')
-            ->set('visita', 'Ana Rodríguez');
+            ->set('motivo', 'Videoconferencia');
 
         // Otra búsqueda de la misma cédula desconocida no debe vaciar lo ya escrito.
         $componente->set('cedula', '87654321')
             ->assertSet('nombre', 'Carlos Pérez')
-            ->assertSet('visita', 'Ana Rodríguez');
+            ->assertset('motivo', 'Videoconferencia');
     }
 
     public function test_pulsar_enter_sigue_funcionando_para_el_lector_de_carnets(): void
@@ -205,7 +205,7 @@ class MarcarPantallaTest extends TestCase
             ->set('cedula', '87654321')
             ->call('buscar')
             ->set('nombre', 'Carlos Pérez')
-            ->set('visita', 'Ana Rodríguez')
+            ->set('motivo', 'Videoconferencia')
             ->call('guardarInvitado')
             ->assertSet('invitadoNuevo', false)
             ->assertSee('Carlos Pérez')
@@ -217,7 +217,7 @@ class MarcarPantallaTest extends TestCase
             'cedula' => '87654321',
             'tipo' => Persona::INVITADO,
             'nombre' => 'Carlos Pérez',
-            'visita' => 'Ana Rodríguez',
+            'motivo' => 'Videoconferencia',
         ]);
     }
 
@@ -227,9 +227,9 @@ class MarcarPantallaTest extends TestCase
             ->set('cedula', '87654321')
             ->call('buscar')
             ->set('nombre', 'Carlos Pérez')
-            ->set('visita', '')
+            ->set('motivo', '')
             ->call('guardarInvitado')
-            ->assertHasErrors('visita')
+            ->assertHasErrors('motivo')
             ->assertSet('invitadoNuevo', true);
 
         $this->assertDatabaseMissing('personas', ['cedula' => '87654321']);
@@ -242,7 +242,7 @@ class MarcarPantallaTest extends TestCase
             'cedula' => '87654321',
             'tipo' => Persona::INVITADO,
             'nombre' => 'Carlos Pérez',
-            'visita' => 'Ana Rodríguez',
+            'motivo' => 'Videoconferencia',
             'activo' => true,
         ]);
 
@@ -252,7 +252,7 @@ class MarcarPantallaTest extends TestCase
             // No vuelve a pedir el formulario: ya sabe quién es.
             ->assertSet('invitadoNuevo', false)
             ->assertSee('Carlos Pérez')
-            ->assertSet('visita', 'Ana Rodríguez')
+            ->assertset('motivo', 'Videoconferencia')
             ->call('marcarEntrada')
             ->assertSee('Entrada registrada');
 

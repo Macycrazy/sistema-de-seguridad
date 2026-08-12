@@ -23,12 +23,17 @@ nadie es trabajador e invitado a la vez.
 | `nombre` | varchar(120) | |
 | `dependencia` | varchar(120), nula | Solo trabajador. Viene del sistema de carnets. |
 | `foto_ruta` | varchar(255), nula | Solo trabajador. Ruta relativa dentro del disco privado: `fotos/12345678.jpg`. Ver «las fotos». |
-| `visita` | varchar(120), nula | Solo invitado: a quién viene a ver **la última vez**. |
+| `motivo` | varchar(120), nula | Solo invitado: el motivo de la visita **de la última vez**. |
 | `activo` | boolean, por omisión `true` | |
 | `created_at`, `updated_at` | timestamps | |
 
-Las columnas que solo aplican a un tipo van **nulas** en el otro. Del invitado se guarda lo mínimo
-que manda el README: nombre y a quién visita. Nada de foto del documento, teléfono ni dirección.
+Las columnas que solo aplican a un tipo van **nulas** en el otro. Del invitado se guarda lo mínimo:
+nombre y **motivo de la visita**. Nada de foto del documento, teléfono ni dirección.
+
+> El README dice «a quién viene a ver». Al usar la pantalla quedó claro que lo que se anota es el
+> **motivo** —«videoconferencia», «consultor», «entrega de material»—, no el nombre de un
+> anfitrión, así que la columna se llama `motivo`. Si el equipo prefiere volver a la letra del
+> README, se habla y se cambia en las dos tablas.
 
 Un trabajador que ya no labora aquí **no se borra**: se pone `activo = false` y su histórico queda.
 
@@ -45,7 +50,7 @@ Una entrada o una salida: el asiento que deja el botón de la puerta.
 | `tipo` | varchar(20) | `entrada` o `salida` |
 | `ocurrio_en` | timestamp, indexada | **La hora del movimiento.** Es la que hay que usar para listar y filtrar. |
 | `usuario_id` | FK → `users`, nula | Quién lo registró. Ver «lo que falta» abajo. |
-| `visita` | varchar(120), nula | Copia de a quién visitaba el invitado **ese día**. |
+| `motivo` | varchar(120), nula | Copia del motivo que traía el invitado **ese día**. |
 
 Índice compuesto `(persona_id, ocurrio_en)` para resolver «quién está dentro».
 
@@ -56,11 +61,12 @@ un `updated_at` sería mentir, y además invitaría a actualizarlos. El modelo `
 `public $timestamps = false;` por eso. Si escribes `$movimiento->created_at` **no existe** — usa
 `ocurrio_en`.
 
-### Por qué `visita` está repetida en las dos tablas
+### Por qué `motivo` está repetido en las dos tablas
 
 En `personas` es el dato **actual** (para que al invitado que vuelve no haya que preguntárselo otra
-vez). En `movimientos` es una **copia congelada** del día del asiento. Si Carlos vino el lunes a ver
-a Ana y el jueves a ver a Luis, el asiento del lunes tiene que seguir diciendo «Ana».
+vez). En `movimientos` es una **copia congelada** del día del asiento. Si Carlos vino el lunes a una
+videoconferencia y el jueves a entregar material, el asiento del lunes tiene que seguir diciendo
+«videoconferencia».
 
 ---
 
@@ -135,7 +141,7 @@ todo a este servicio:
 |---|---|
 | `buscarPorCedula(string): ?Persona` | El **único** sitio por donde se consulta una cédula. |
 | `movimientoSugerido(Persona): string` | `entrada` o `salida`, según dónde esté la persona. |
-| `registrar(Persona, string $tipo, ?int $usuarioId, ?string $visita): Movimiento` | El **único** sitio por donde se escribe un movimiento. |
+| `registrar(Persona, string $tipo, ?int $usuarioId, ?string $motivo): Movimiento` | El **único** sitio por donde se escribe un movimiento. |
 | `registrarInvitado(string, string, string): Persona` | Da de alta un invitado con lo mínimo. |
 | `cuantosDentro(): int` | **Le sirve a la parte 2** para su contador de quién está dentro. |
 
