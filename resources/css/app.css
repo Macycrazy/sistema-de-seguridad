@@ -9,6 +9,11 @@
     --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', 'Liberation Sans', sans-serif;
     --font-mono: ui-monospace, 'Cascadia Mono', 'Liberation Mono', monospace;
 
+    /* El azul del CIIP, sacado del propio logo. Es el color de la institución, no una
+       decoración: se usa en el encabezado y en nada más por ahora. Sobre él va el logo
+       blanco (public/imagenes/logo-ciip-blanco.png), no el azul. */
+    --color-marca: #004090;
+
     /* Un color por parte. Se usan para identificar el módulo, no para decorar. */
     --color-parte1: #223d90;
     --color-parte1-suave: #e6ebfa;

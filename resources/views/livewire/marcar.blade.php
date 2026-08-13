@@ -1,0 +1,231 @@
+{{--
+    La pantalla de la puerta. Todo lo que se ve aquí sale de los componentes de /diseno:
+    x-campo, x-boton, x-etiqueta y x-tarjeta. Nada de clases sueltas inventadas.
+
+    El foco vive en el campo de la cédula: se teclea, Enter, y el botón que corresponde ya
+    está resaltado. El vigilante no debería necesitar el ratón.
+--}}
+<div class="mx-auto max-w-3xl">
+
+    {{-- Cuántos están dentro. Es el dato que el vigilante mira de reojo. --}}
+    <div class="mb-6 flex items-baseline justify-between">
+        <h1 class="text-3xl font-bold tracking-tight">Marcar</h1>
+        <p class="font-mono text-xs uppercase tracking-widest text-slate-500">
+            Dentro ahora:
+            <span class="text-base font-bold text-slate-900">{{ $this->dentro }}</span>
+        </p>
+    </div>
+
+    {{-- Confirmación del último marcaje. Se va sola en cuanto se teclea la siguiente cédula. --}}
+    @if ($confirmacion !== '')
+        <div class="mb-5 rounded border border-ok/30 bg-ok-suave px-4 py-3 text-sm font-semibold text-ok"
+             wire:key="confirmacion">
+            {{ $confirmacion }}
+        </div>
+    @endif
+
+    {{-- EL CAMPO DE LA CÉDULA --}}
+    <x-tarjeta parte="1">
+        <form wire:submit="buscar">
+            {{--
+                «live.debounce» busca sola en cuanto se deja de teclear, sin pulsar nada. Los
+                400 ms son el rato que se espera: bastante para no consultar en cada tecla, y
+                poco para que no se note la espera.
+
+                El formulario se queda igualmente: el lector de carnets termina con un Enter, y
+                quien tenga la costumbre de pulsarlo no tiene por qué perderla.
+            --}}
+            {{--
+                El campo solo admite dígitos, y como máximo los de una cédula.
+
+                «inputmode» solo elige el teclado del teléfono: no impide teclear nada. Lo que de
+                verdad lo limita son «maxlength» y el «oninput», que borra al instante cualquier
+                cosa que no sea un dígito — también lo que se intente pegar.
+
+                Esto es comodidad para quien teclea, NO seguridad: el servidor vuelve a revisarlo
+                en Marcaje::exigirCedulaValida(), porque cualquiera puede enviar lo que quiera sin
+                pasar por esta pantalla.
+            --}}
+            <x-campo
+                etiqueta="Cédula"
+                nombre="cedula"
+                tamano="grande"
+                placeholder="Solo números"
+                autofocus
+                autocomplete="off"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                maxlength="{{ $this->maximoDigitos() }}"
+                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, {{ $this->maximoDigitos() }})"
+                wire:model.live.debounce.400ms="cedula"
+                :error="$errors->first('cedula')"
+                ayuda="Teclea la cédula o pasa el carnet: los datos salen solos."
+            />
+            <button type="submit" class="sr-only">Buscar</button>
+
+            {{-- Señal de que el sistema está mirando. Sin esto, el rato entre dejar de teclear
+                 y ver la ficha parece que no pasa nada. --}}
+            <p wire:loading.delay.shortest wire:target="cedula"
+               class="mt-2 font-mono text-xs uppercase tracking-widest text-slate-400">
+                Buscando…
+            </p>
+        </form>
+    </x-tarjeta>
+
+    {{-- QUIÉN ES --}}
+    @if ($this->persona)
+        {{-- Siempre en bloque: la forma en línea de esta directiva no cierra su etiqueta. --}}
+        @php
+            $persona = $this->persona;
+        @endphp
+
+        <x-tarjeta class="mt-5" wire:key="persona-{{ $persona->id }}">
+            <div class="flex items-start gap-5">
+
+                {{-- La foto sale por su ruta, no de una carpeta pública. Si no hay, las
+                     iniciales: no se piden imágenes a Internet. --}}
+                <div class="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-slate-100">
+                    @if ($persona->tieneFoto())
+                        <img src="{{ route('persona.foto', $persona) }}"
+                             alt="Foto de {{ $persona->nombre }}"
+                             class="h-full w-full object-cover">
+                    @else
+                        <span class="font-mono text-2xl font-bold text-slate-400">
+                            {{ $persona->iniciales() }}
+                        </span>
+                    @endif
+                </div>
+
+                <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <p class="text-2xl font-bold tracking-tight">{{ $persona->nombre }}</p>
+                        <x-etiqueta :tipo="$persona->tipo" />
+                        @unless ($persona->activo)
+                            <x-etiqueta tipo="inactivo" />
+                        @endunless
+                    </div>
+
+                    <p class="mt-1 font-mono text-sm text-slate-500">{{ $persona->cedulaConPuntos() }}</p>
+
+                    @if ($persona->esTrabajador())
+                        <p class="mt-2 text-slate-600">{{ $persona->dependencia }}</p>
+                    @else
+                        {{-- Del invitado que vuelve se puede corregir el motivo de hoy: la vez
+                             anterior pudo venir a otra cosa. --}}
+                        <div class="mt-3 max-w-sm">
+                            <x-campo
+                                etiqueta="Motivo de visita"
+                                nombre="motivo"
+                                wire:model="motivo"
+                                :error="$errors->first('motivo')"
+                            />
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            {{-- LOS DOS BOTONES --}}
+            @if ($persona->activo)
+                @php
+                    // Cada botón conserva SIEMPRE su color: el verde significa entrada en todo el
+                    // sistema y no se le presta al otro botón. Lo que cambia es el realce del que
+                    // corresponde, y que los botones nunca se mueven de sitio: el vigilante los
+                    // busca por posición, no por color.
+                    $realce = 'ring-2 ring-slate-900 ring-offset-2';
+                    $apagado = 'opacity-50';
+
+                    // Se calculan aquí y se pasan con «:class», que es la forma de dar una
+                    // expresión PHP a un componente sin meterla dentro del atributo.
+                    //
+                    // En el teléfono los dos botones ocupan todo el ancho y van uno debajo del
+                    // otro: a 320 px, dos botones en fila quedan tan estrechos que el texto se
+                    // parte y el dedo falla. Desde tableta en adelante van en fila.
+                    $ancho = 'w-full sm:w-auto';
+                    $claseEntrada = $ancho.' '.($this->sugerido === 'entrada' ? $realce : $apagado);
+                    $claseSalida = $ancho.' '.($this->sugerido === 'salida' ? $realce : $apagado);
+                @endphp
+
+                <div class="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:flex-wrap sm:items-center">
+                    <x-boton
+                        variante="entrada"
+                        tamano="grande"
+                        :class="$claseEntrada"
+                        wire:click="marcarEntrada"
+                        wire:loading.attr="disabled"
+                    >ENTRADA</x-boton>
+
+                    <x-boton
+                        variante="salida"
+                        tamano="grande"
+                        :class="$claseSalida"
+                        wire:click="marcarSalida"
+                        wire:loading.attr="disabled"
+                    >SALIDA</x-boton>
+
+                    <p class="text-sm text-slate-500 sm:ml-auto sm:max-w-[16rem] sm:text-right">
+                        @if ($this->sugerido === 'salida')
+                            Está dentro: lo que toca es la salida.
+                        @else
+                            No está dentro: lo que toca es la entrada.
+                        @endif
+                    </p>
+                </div>
+            @else
+                <p class="mt-6 border-t border-slate-100 pt-5 text-sm font-semibold text-alto">
+                    Esta persona está desactivada y no se le puede marcar. Avisa al supervisor.
+                </p>
+            @endif
+
+            <div class="mt-4">
+                <x-boton variante="secundario" tamano="chico" wire:click="limpiar">
+                    Cancelar y empezar de nuevo
+                </x-boton>
+            </div>
+        </x-tarjeta>
+    @endif
+
+    {{-- INVITADO NUEVO: la cédula no está en el sistema --}}
+    @if ($invitadoNuevo)
+        <x-tarjeta class="mt-5" wire:key="invitado-nuevo">
+            <div class="mb-4 rounded bg-invitado-suave px-4 py-3">
+                <p class="flex flex-wrap items-center gap-2 font-semibold text-invitado">
+                    <x-etiqueta tipo="invitado" />
+                    Esta cédula no está en el sistema: es un invitado.
+                </p>
+                <p class="mt-1 text-sm text-slate-600">
+                    Solo hacen falta dos datos. La próxima vez que venga, con la cédula bastará.
+                </p>
+            </div>
+
+            <form wire:submit="guardarInvitado" class="max-w-md space-y-5">
+                <x-campo
+                    etiqueta="Nombre y apellido"
+                    nombre="nombre"
+                    wire:model="nombre"
+                    autocomplete="off"
+                    ayuda="Como aparece en el documento."
+                    :error="$errors->first('nombre')"
+                />
+
+                <x-campo
+                    etiqueta="Motivo de visita"
+                    nombre="motivo"
+                    wire:model="motivo"
+                    autocomplete="off"
+                    :error="$errors->first('motivo')"
+                />
+
+                {{-- En el teléfono, uno debajo del otro y a todo el ancho: en fila, «Guardar y
+                     continuar» se parte en dos líneas. --}}
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <x-boton type="submit" class="w-full sm:w-auto" wire:loading.attr="disabled">
+                        Guardar y continuar
+                    </x-boton>
+                    <x-boton variante="secundario" class="w-full sm:w-auto" wire:click="limpiar" type="button">
+                        Cancelar
+                    </x-boton>
+                </div>
+            </form>
+        </x-tarjeta>
+    @endif
+</div>
