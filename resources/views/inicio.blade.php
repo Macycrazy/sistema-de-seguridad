@@ -17,10 +17,12 @@
             </a>
         </x-tarjeta>
 
-        <x-tarjeta parte="2" titulo="Parte 2">
-            <p class="text-lg font-semibold">El registro</p>
-            <p class="mt-1 text-sm text-slate-600">Pendiente</p>
-        </x-tarjeta>
+        <a href="{{ route('registro') }}" class="block transition hover:shadow-md">
+            <x-tarjeta parte="2" titulo="Parte 2" class="h-full">
+                <p class="text-lg font-semibold">El registro</p>
+                <p class="mt-1 text-sm text-parte2">Ver la pantalla &rarr;</p>
+            </x-tarjeta>
+        </a>
 
         <x-tarjeta parte="3" titulo="Parte 3">
             <p class="text-lg font-semibold">Usuarios y roles</p>
