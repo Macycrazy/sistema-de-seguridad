@@ -9,27 +9,16 @@
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
 
-    <header class="border-b border-slate-200 bg-white">
-        <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-            {{-- El logo vive en el propio proyecto, no en un CDN: el servidor donde esto
-                 va a correr no tiene salida a Internet. --}}
-            <a href="{{ route('inicio') }}" class="flex items-center gap-3">
-                <img
-                    src="{{ asset('img/logo-ciip.jpg') }}"
-                    alt="Centro Internacional de Inversión Productiva"
-                    width="322"
-                    height="65"
-                    class="h-8 w-auto"
-                >
-                <span class="border-l border-slate-200 pl-3 text-sm font-semibold tracking-tight">
-                    {{ config('app.name') }}
-
     {{--
         Encabezado del sistema, en el azul del CIIP (--color-marca en app.css).
 
         Sobre el azul va el logo BLANCO: el azul no se leería sobre su propio color. Los dos
         archivos viven en el proyecto porque el servidor donde esto va a correr no tiene salida
         a Internet — nada de imágenes ni tipografías traídas de fuera.
+
+        OJO al tocar este archivo: al integrar las partes 1 y 2, git fusionó sin dar conflicto
+        dos encabezados distintos y dejó uno dentro del otro, con etiquetas sin cerrar. Aquí va
+        una sola etiqueta de encabezado. Si aparecen dos, se repitió aquel merge mal resuelto.
     --}}
     <header class="bg-marca">
         <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3">
@@ -45,7 +34,6 @@
                      completo se quedaría sin sitio y saldría recortado. --}}
                 <span class="hidden min-w-0 truncate text-lg font-semibold tracking-tight text-white sm:block lg:text-xl">
                     Registro de Entradas y Salidas
-
                 </span>
             </a>
 
