@@ -15,3 +15,7 @@ Route::view('/marcar', 'marcar')->name('marcar');
 // Las fotos no están en una carpeta pública: salen solo por aquí, para que haya un único
 // sitio donde la parte 3 revise el permiso y deje el rastro.
 Route::get('/personas/{persona}/foto', FotoPersonaController::class)->name('persona.foto');
+
+// MAQUETA · escanear la cédula con la cámara del teléfono. Es para enseñar la idea y
+// discutirla; no registra movimientos. No forma parte de lo que hay que entregar.
+Route::view('/maqueta/escaneo', 'maqueta-escaneo')->name('maqueta.escaneo');
