@@ -1,0 +1,297 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Movimiento;
+use App\Models\Persona;
+use App\Services\Marcaje;
+use Illuminate\Database\QueryException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
+use Tests\TestCase;
+
+/**
+ * Las reglas de la puerta. Se prueban contra el servicio, no contra la pantalla, porque es el
+ * servidor quien decide: la pantalla solo muestra lo que este servicio le diga.
+ */
+class MarcajeTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private Marcaje $marcaje;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->marcaje = app(Marcaje::class);
+    }
+
+    private function trabajador(array $atributos = []): Persona
+    {
+        return Persona::create(array_merge([
+            'cedula' => '12345678',
+            'tipo' => Persona::TRABAJADOR,
+            'nombre' => 'Ana Rodríguez Peña',
+            'dependencia' => 'Recursos Humanos',
+            'activo' => true,
+        ], $atributos));
+    }
+
+    public function test_la_cedula_se_encuentra_aunque_se_teclee_con_puntos_o_con_la_letra(): void
+    {
+        $this->trabajador(['cedula' => '12345678']);
+
+        foreach (['12345678', '12.345.678', 'V-12.345.678', ' 12345678 '] as $tecleada) {
+            $this->assertNotNull(
+                $this->marcaje->buscarPorCedula($tecleada),
+                "No encontró a la persona tecleando «{$tecleada}»",
+            );
+        }
+    }
+
+    public function test_una_cedula_que_no_esta_en_el_sistema_no_devuelve_a_nadie(): void
+    {
+        $this->assertNull($this->marcaje->buscarPorCedula('55555555'));
+    }
+
+    public function test_a_quien_no_ha_entrado_se_le_propone_la_entrada(): void
+    {
+        $persona = $this->trabajador();
+
+        $this->assertSame(Movimiento::ENTRADA, $this->marcaje->movimientoSugerido($persona));
+    }
+
+    public function test_a_quien_ya_entro_y_no_ha_salido_se_le_propone_la_salida(): void
+    {
+        $persona = $this->trabajador();
+        $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+
+        $this->assertSame(Movimiento::SALIDA, $this->marcaje->movimientoSugerido($persona->fresh()));
+    }
+
+    public function test_despues_de_salir_se_vuelve_a_proponer_la_entrada(): void
+    {
+        $persona = $this->trabajador();
+        $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+        $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
+
+        $this->assertSame(Movimiento::ENTRADA, $this->marcaje->movimientoSugerido($persona->fresh()));
+    }
+
+    public function test_un_movimiento_guarda_la_hora_y_queda_asociado_a_la_persona(): void
+    {
+        $persona = $this->trabajador();
+
+        $movimiento = $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+
+        $this->assertSame($persona->id, $movimiento->persona_id);
+        $this->assertSame(Movimiento::ENTRADA, $movimiento->tipo);
+        $this->assertNotNull($movimiento->ocurrio_en);
+    }
+
+    public function test_un_invitado_nuevo_se_crea_con_solo_nombre_y_el_motivo(): void
+    {
+        $invitado = $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia');
+
+        $this->assertSame(Persona::INVITADO, $invitado->tipo);
+        $this->assertSame('87654321', $invitado->cedula);
+        $this->assertSame('Carlos Pérez', $invitado->nombre);
+        $this->assertSame('Videoconferencia', $invitado->motivo);
+
+        // Del invitado se guarda lo mínimo: ni dependencia ni foto.
+        $this->assertNull($invitado->dependencia);
+        $this->assertNull($invitado->foto_ruta);
+    }
+
+    public function test_un_invitado_sin_nombre_no_se_guarda(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        $this->marcaje->registrarInvitado('87654321', '   ', 'Videoconferencia');
+    }
+
+    public function test_un_invitado_sin_decir_el_motivo_no_se_guarda(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', '  ');
+    }
+
+    public function test_no_se_puede_dar_de_alta_un_invitado_con_una_cedula_que_ya_existe(): void
+    {
+        $this->trabajador(['cedula' => '12345678']);
+
+        $this->expectException(ValidationException::class);
+
+        $this->marcaje->registrarInvitado('12.345.678', 'Carlos Pérez', 'Videoconferencia');
+    }
+
+    public function test_el_invitado_que_vuelve_se_encuentra_solo_con_la_cedula(): void
+    {
+        $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia');
+
+        $encontrado = $this->marcaje->buscarPorCedula('87654321');
+
+        $this->assertNotNull($encontrado);
+        $this->assertSame('Carlos Pérez', $encontrado->nombre);
+        $this->assertTrue($encontrado->esInvitado());
+    }
+
+    public function test_el_movimiento_de_un_invitado_guarda_el_motivo_de_ese_dia(): void
+    {
+        $invitado = $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia');
+
+        $primero = $this->marcaje->registrar($invitado, Movimiento::ENTRADA);
+        $this->assertSame('Videoconferencia', $primero->motivo);
+        $this->marcaje->registrar($invitado->fresh(), Movimiento::SALIDA);
+
+        // Vuelve otro día por otro motivo: el asiento viejo tiene que seguir diciendo el de aquel día.
+        $this->travel(1)->day();
+        $segundo = $this->marcaje->registrar($invitado->fresh(), Movimiento::ENTRADA, motivo: 'Entrega de material');
+
+        $this->assertSame('Entrega de material', $segundo->motivo);
+        $this->assertSame('Videoconferencia', $primero->fresh()->motivo);
+    }
+
+    public function test_el_movimiento_de_un_trabajador_no_lleva_motivo(): void
+    {
+        $persona = $this->trabajador();
+
+        $movimiento = $this->marcaje->registrar($persona, Movimiento::ENTRADA, motivo: 'algo que se ignora');
+
+        $this->assertNull($movimiento->motivo);
+    }
+
+    public function test_a_una_persona_desactivada_no_se_le_puede_marcar(): void
+    {
+        $persona = $this->trabajador(['activo' => false]);
+
+        $this->expectException(ValidationException::class);
+
+        $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+    }
+
+    public function test_un_movimiento_que_no_sea_entrada_ni_salida_se_rechaza(): void
+    {
+        $persona = $this->trabajador();
+
+        $this->expectException(ValidationException::class);
+
+        $this->marcaje->registrar($persona, 'cualquier_cosa');
+    }
+
+    public function test_una_cedula_demasiado_corta_o_larga_se_rechaza(): void
+    {
+        foreach (['', '123', '12345', '1234567890', '12345678901234'] as $invalida) {
+            try {
+                $this->marcaje->exigirCedulaValida($invalida);
+                $this->fail("Aceptó la cédula inválida «{$invalida}»");
+            } catch (ValidationException) {
+                $this->assertTrue(true);
+            }
+        }
+    }
+
+    public function test_una_cedula_de_puras_letras_se_rechaza(): void
+    {
+        // La pantalla ya no deja teclear letras, pero eso es comodidad, no seguridad: quien
+        // envie una peticion a mano se topa igual con el servidor.
+        foreach (['abcdefgh', 'V-ABCDEFG', '????????'] as $invalida) {
+            try {
+                $this->marcaje->exigirCedulaValida($invalida);
+                $this->fail("Aceptó «{$invalida}» como cédula");
+            } catch (ValidationException) {
+                $this->assertTrue(true);
+            }
+        }
+    }
+
+    public function test_las_letras_mezcladas_no_cuentan_como_digitos(): void
+    {
+        // «12a34b56» tiene ocho caracteres pero solo seis dígitos: es la cédula 123456.
+        $this->assertSame('123456', $this->marcaje->exigirCedulaValida('12a34b56'));
+    }
+
+    public function test_el_contador_de_quien_esta_dentro_cuenta_solo_a_los_que_no_han_salido(): void
+    {
+        $ana = $this->trabajador(['cedula' => '11111111', 'nombre' => 'Ana']);
+        $luis = $this->trabajador(['cedula' => '22222222', 'nombre' => 'Luis']);
+        $rosa = $this->trabajador(['cedula' => '33333333', 'nombre' => 'Rosa']);
+
+        $this->assertSame(0, $this->marcaje->cuantosDentro());
+
+        $this->marcaje->registrar($ana, Movimiento::ENTRADA);
+        $this->marcaje->registrar($luis, Movimiento::ENTRADA);
+        $this->marcaje->registrar($rosa, Movimiento::ENTRADA);
+        $this->assertSame(3, $this->marcaje->cuantosDentro());
+
+        $this->marcaje->registrar($luis->fresh(), Movimiento::SALIDA);
+        $this->assertSame(2, $this->marcaje->cuantosDentro());
+
+        // Vuelve a entrar: cuenta otra vez.
+        $this->marcaje->registrar($luis->fresh(), Movimiento::ENTRADA);
+        $this->assertSame(3, $this->marcaje->cuantosDentro());
+    }
+
+    public function test_una_doble_pulsacion_no_deja_dos_movimientos(): void
+    {
+        $persona = $this->trabajador();
+
+        $primero = $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+        $segundo = $this->marcaje->registrar($persona->fresh(), Movimiento::ENTRADA);
+
+        // Es el mismo asiento devuelto otra vez, no uno nuevo.
+        $this->assertSame($primero->id, $segundo->id);
+        $this->assertDatabaseCount('movimientos', 1);
+    }
+
+    public function test_el_antiduplicado_no_estorba_a_una_correccion(): void
+    {
+        $persona = $this->trabajador();
+
+        // Se marcó una entrada por error y se corrige en el acto con una salida.
+        $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+        $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
+
+        // Los dos quedan: el tipo es distinto, así que no es una repetición.
+        $this->assertDatabaseCount('movimientos', 2);
+    }
+
+    public function test_pasada_la_ventana_el_mismo_movimiento_si_se_registra(): void
+    {
+        $persona = $this->trabajador();
+
+        $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+
+        // Un rato después, sin haber salido, se le vuelve a marcar entrada: es un asiento nuevo,
+        // aunque sea del mismo tipo. Corregirlo es asunto del supervisor, no de este servicio.
+        $this->travel(Marcaje::SEGUNDOS_ANTIDUPLICADO + 5)->seconds();
+        $this->marcaje->registrar($persona->fresh(), Movimiento::ENTRADA);
+
+        $this->assertDatabaseCount('movimientos', 2);
+    }
+
+    public function test_la_doble_pulsacion_de_dos_personas_distintas_no_se_confunde(): void
+    {
+        $ana = $this->trabajador(['cedula' => '11111111', 'nombre' => 'Ana']);
+        $luis = $this->trabajador(['cedula' => '22222222', 'nombre' => 'Luis']);
+
+        // Dos personas seguidas, la misma acción y en el mismo segundo: son dos asientos.
+        $this->marcaje->registrar($ana, Movimiento::ENTRADA);
+        $this->marcaje->registrar($luis, Movimiento::ENTRADA);
+
+        $this->assertDatabaseCount('movimientos', 2);
+        $this->assertSame(2, $this->marcaje->cuantosDentro());
+    }
+
+    public function test_un_movimiento_no_se_puede_borrar_si_arrastra_a_la_persona(): void
+    {
+        $persona = $this->trabajador();
+        $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+
+        // La ficha de alguien con movimientos no se borra: el histórico de la puerta manda.
+        $this->expectException(QueryException::class);
+
+        $persona->delete();
+    }
+}

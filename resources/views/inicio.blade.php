@@ -12,7 +12,9 @@
     <div class="mt-10 grid gap-4 sm:grid-cols-3">
         <x-tarjeta parte="1" titulo="Parte 1">
             <p class="text-lg font-semibold">Marcar e invitados</p>
-            <p class="mt-1 text-sm text-slate-600">Pendiente</p>
+            <a href="{{ route('marcar') }}" class="mt-1 inline-block text-sm font-semibold text-parte1 underline">
+                Abrir la pantalla de marcar
+            </a>
         </x-tarjeta>
 
         <a href="{{ route('registro') }}" class="block transition hover:shadow-md">
