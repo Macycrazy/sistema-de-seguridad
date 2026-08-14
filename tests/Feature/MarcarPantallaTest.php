@@ -31,6 +31,17 @@ class MarcarPantallaTest extends TestCase
         ], $atributos));
     }
 
+    /** Le anota los dos vehículos: es el caso que la casilla de «qué trae hoy» viene a resolver. */
+    private function conCarroYMoto(Persona $persona): Persona
+    {
+        $persona->vehiculos()->createMany([
+            ['tipo' => 'carro', 'marca' => 'Toyota', 'modelo' => 'Corolla', 'color' => 'Gris', 'placa' => 'AB123CD'],
+            ['tipo' => 'moto', 'marca' => 'Bera', 'modelo' => 'BR-150', 'color' => 'Negro', 'placa' => 'AC456DF'],
+        ]);
+
+        return $persona->fresh();
+    }
+
     public function test_la_pantalla_carga(): void
     {
         $this->get('/marcar')->assertStatus(200)->assertSeeLivewire(Marcar::class);
@@ -62,13 +73,15 @@ class MarcarPantallaTest extends TestCase
 
     public function test_al_trabajador_tambien_se_le_puede_anotar_el_vehiculo(): void
     {
-        // El personal estaciona aquí igual que los invitados.
-        $this->trabajador();
+        // El personal estaciona aquí igual que los invitados. Sin nada anotado todavía, se
+        // teclea; y al marcar se le suma a su ficha.
+        $persona = $this->trabajador();
 
         Livewire::test(Marcar::class)
             ->set('cedula', '12345678')
             ->call('buscar')
             ->assertSee('Vehículo')
+            ->set('traeHoy', Marcar::OTRO)
             ->set('tipoVehiculo', 'moto')
             ->set('marca', 'Bera')
             ->set('modelo', 'BR-150')
@@ -81,75 +94,133 @@ class MarcarPantallaTest extends TestCase
             'tipo_vehiculo' => 'moto',
             'placa' => 'AC456DF',
         ]);
+
+        // Y la próxima vez ya sale en su lista.
+        $this->assertSame('AC456DF', $persona->fresh()->vehiculos()->sole()->placa);
     }
 
-    public function test_al_trabajador_le_sale_escrito_el_vehiculo_de_la_ultima_vez(): void
+    public function test_quien_tiene_dos_vehiculos_puede_marcar_cual_trae_hoy(): void
     {
-        $this->trabajador([
-            'tipo_vehiculo' => 'moto',
-            'marca' => 'Bera',
-            'modelo' => 'BR-150',
-            'color' => 'Negro',
-            'placa' => 'AC456DF',
-        ]);
+        // El caso que motivó todo: Luis tiene carro y moto, y hoy vino en la moto.
+        $persona = $this->conCarroYMoto($this->trabajador());
 
         Livewire::test(Marcar::class)
             ->set('cedula', '12345678')
             ->call('buscar')
-            ->assertSet('tipoVehiculo', 'moto')
-            ->assertSet('marca', 'Bera')
-            ->assertSet('placa', 'AC456DF');
-    }
-
-    public function test_a_quien_tiene_moto_la_pantalla_le_fija_la_clase(): void
-    {
-        $this->trabajador([
-            'tipo_vehiculo' => 'moto',
-            'marca' => 'Bera',
-            'placa' => 'AC456DF',
-        ]);
-
-        Livewire::test(Marcar::class)
-            ->set('cedula', '12345678')
-            ->call('buscar')
-            // La pantalla apaga el botón de «Carro»…
-            ->assertSet('tipoVehiculo', 'moto')
-            ->assertSee('Ya tiene este vehículo anotado')
-            // …y el servidor lo rechaza igual, aunque se salte la pantalla.
-            ->set('tipoVehiculo', 'carro')
+            // Los dos salen en la casilla, con su placa.
+            ->assertSee('AB123CD')
+            ->assertSee('AC456DF')
+            ->assertSee('¿Qué trae hoy?')
+            ->set('traeHoy', 'AC456DF')
             ->call('marcarEntrada')
-            ->assertHasErrors('tipoVehiculo');
+            ->assertSee('Entrada registrada');
 
-        $this->assertDatabaseMissing('movimientos', ['tipo_vehiculo' => 'carro']);
+        $this->assertDatabaseHas('movimientos', [
+            'tipo_vehiculo' => 'moto',
+            'placa' => 'AC456DF',
+            'marca' => 'Bera',
+        ]);
+
+        // Señalar uno no se lleva por delante el otro: sigue teniendo los dos.
+        $this->assertCount(2, $persona->fresh()->vehiculos);
     }
 
-    public function test_otro_vehiculo_devuelve_la_eleccion_de_la_clase(): void
+    public function test_a_quien_tiene_vehiculos_se_le_propone_el_de_la_ultima_entrada(): void
     {
-        // La salida para cuando de verdad llegó en otra cosa.
-        $this->trabajador([
-            'tipo_vehiculo' => 'moto',
-            'marca' => 'Bera',
-            'placa' => 'AC456DF',
-        ]);
+        // Casi siempre viene en el mismo, así que se propone ese y basta con confirmar.
+        $this->conCarroYMoto($this->trabajador());
 
         Livewire::test(Marcar::class)
             ->set('cedula', '12345678')
             ->call('buscar')
-            ->call('cambiarVehiculo')
-            // Las casillas quedan vacías y la clase se puede volver a elegir.
-            ->assertSet('placa', '')
-            ->assertSet('marca', '')
+            ->set('traeHoy', 'AC456DF')
+            ->call('marcarEntrada');
+
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS)->minutes();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('marcarSalida');
+
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS)->minutes();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSet('traeHoy', 'AC456DF');
+    }
+
+    public function test_de_quien_no_tiene_vehiculos_se_da_por_hecho_que_viene_a_pie(): void
+    {
+        $this->trabajador();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSet('traeHoy', Marcar::A_PIE)
+            ->call('marcarEntrada')
+            ->assertSee('Entrada registrada');
+
+        $this->assertDatabaseHas('movimientos', ['placa' => null, 'tipo_vehiculo' => null]);
+    }
+
+    public function test_quien_tiene_vehiculo_pero_hoy_vino_a_pie_se_marca_a_pie(): void
+    {
+        $this->conCarroYMoto($this->trabajador());
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSee('Vino a pie')
+            ->set('traeHoy', Marcar::A_PIE)
+            ->call('marcarEntrada')
+            ->assertSee('Entrada registrada');
+
+        $this->assertDatabaseHas('movimientos', ['placa' => null]);
+    }
+
+    public function test_otro_vehiculo_deja_teclear_uno_que_no_estaba_en_la_lista(): void
+    {
+        $persona = $this->conCarroYMoto($this->trabajador());
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSee('Otro vehículo')
+            ->set('traeHoy', Marcar::OTRO)
             ->set('tipoVehiculo', 'carro')
-            ->set('marca', 'Toyota')
-            ->set('placa', 'AB123CD')
+            ->set('marca', 'Ford')
+            ->set('placa', 'AF555LM')
             ->call('marcarEntrada')
             ->assertHasNoErrors()
             ->assertSee('Entrada registrada');
 
         $this->assertDatabaseHas('movimientos', [
             'tipo_vehiculo' => 'carro',
-            'placa' => 'AB123CD',
+            'placa' => 'AF555LM',
         ]);
+
+        // Pasa a tener tres: el nuevo se le suma sin tocar los otros dos.
+        $this->assertCount(3, $persona->fresh()->vehiculos);
+    }
+
+    public function test_al_teclear_una_placa_suya_con_otra_clase_el_servidor_lo_rechaza(): void
+    {
+        // La casilla evita el error, pero la pantalla no es el único camino hasta el servicio.
+        $this->conCarroYMoto($this->trabajador());
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->set('traeHoy', Marcar::OTRO)
+            ->set('tipoVehiculo', 'carro')
+            ->set('marca', 'Bera')
+            ->set('placa', 'AC456DF')
+            ->call('marcarEntrada')
+            ->assertHasErrors('tipoVehiculo');
+
+        $this->assertDatabaseCount('movimientos', 0);
     }
 
     public function test_los_ejemplos_del_vehiculo_se_distinguen_de_un_dato_escrito(): void
@@ -166,9 +237,9 @@ class MarcarPantallaTest extends TestCase
             ->assertSee('ej. AB123CD');
     }
 
-    public function test_a_un_invitado_nuevo_no_se_le_fija_ninguna_clase(): void
+    public function test_a_un_invitado_nuevo_se_le_teclea_el_vehiculo_sin_casilla(): void
     {
-        // No tiene nada anotado todavía: la elección es libre.
+        // No tiene ninguno anotado todavía, así que no hay lista que señalar: se teclea.
         Livewire::test(Marcar::class)
             ->set('cedula', '31415926')
             ->call('buscar')
@@ -181,10 +252,9 @@ class MarcarPantallaTest extends TestCase
             ->call('guardarInvitado')
             ->assertHasNoErrors();
 
-        $this->assertDatabaseHas('personas', [
-            'cedula' => '31415926',
-            'tipo_vehiculo' => 'moto',
-        ]);
+        $invitado = Persona::where('cedula', '31415926')->sole();
+
+        $this->assertSame('moto', $invitado->vehiculos()->sole()->tipo);
     }
 
     public function test_quien_entra_caminando_no_queda_con_vehiculo_anotado(): void
@@ -548,13 +618,12 @@ class MarcarPantallaTest extends TestCase
             ->assertSee('Entrada registrada');
 
         // La placa se guarda normalizada aunque se teclee con guiones y en minúsculas.
-        $this->assertDatabaseHas('personas', [
-            'cedula' => '87654321',
-            'marca' => 'Toyota',
-            'modelo' => 'Corolla',
-            'color' => 'Gris',
-            'placa' => 'AB123CD',
-        ]);
+        $vehiculo = Persona::where('cedula', '87654321')->sole()->vehiculos()->sole();
+
+        $this->assertSame('Toyota', $vehiculo->marca);
+        $this->assertSame('Corolla', $vehiculo->modelo);
+        $this->assertSame('Gris', $vehiculo->color);
+        $this->assertSame('AB123CD', $vehiculo->placa);
 
         // Y el asiento se lleva su copia del día.
         $this->assertDatabaseHas('movimientos', ['placa' => 'AB123CD']);
@@ -572,7 +641,7 @@ class MarcarPantallaTest extends TestCase
             ->assertHasNoErrors()
             ->assertSet('invitadoNuevo', false);
 
-        $this->assertDatabaseHas('personas', ['cedula' => '87654321', 'placa' => null]);
+        $this->assertFalse(Persona::where('cedula', '87654321')->sole()->tieneVehiculos());
     }
 
     public function test_un_vehiculo_a_medias_avisa_de_que_falta_la_placa(): void
@@ -591,28 +660,35 @@ class MarcarPantallaTest extends TestCase
         $this->assertDatabaseMissing('personas', ['cedula' => '87654321']);
     }
 
-    public function test_al_invitado_que_vuelve_le_sale_escrito_el_carro_de_la_ultima_vez(): void
+    public function test_al_invitado_que_vuelve_le_sale_su_carro_en_la_casilla(): void
     {
-        Persona::create([
+        $invitado = Persona::create([
             'cedula' => '87654321',
             'tipo' => Persona::INVITADO,
             'nombre' => 'Carlos Pérez',
             'motivo' => 'Videoconferencia',
+            'activo' => true,
+        ]);
+
+        $invitado->vehiculos()->create([
+            'tipo' => 'carro',
             'marca' => 'Toyota',
             'modelo' => 'Corolla',
             'color' => 'Gris',
             'placa' => 'AB123CD',
-            'activo' => true,
         ]);
 
-        // No hay que volver a preguntárselo: sale escrito y solo se confirma.
+        // No hay que volver a preguntárselo: su carro sale en la casilla y solo se señala.
         Livewire::test(Marcar::class)
             ->set('cedula', '87654321')
             ->call('buscar')
-            ->assertSet('marca', 'Toyota')
-            ->assertSet('modelo', 'Corolla')
-            ->assertSet('color', 'Gris')
-            ->assertSet('placa', 'AB123CD');
+            ->assertSee('AB123CD')
+            ->assertSee('Toyota Corolla')
+            ->set('traeHoy', 'AB123CD')
+            ->call('marcarEntrada')
+            ->assertSee('Entrada registrada');
+
+        $this->assertDatabaseHas('movimientos', ['placa' => 'AB123CD', 'marca' => 'Toyota']);
     }
 
     public function test_un_invitado_sin_los_dos_datos_no_se_guarda(): void

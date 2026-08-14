@@ -149,7 +149,8 @@
                 <x-vehiculo
                     :error="$errors->first('placa')"
                     :error-tipo="$errors->first('tipoVehiculo')"
-                    :tipo-fijado="$this->tipoFijado"
+                    :vehiculos="$this->vehiculos"
+                    :trae-hoy="$traeHoy"
                 />
             </div>
 

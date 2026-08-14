@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Services\Vehiculo;
+use App\Services\DatosVehiculo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -64,9 +64,9 @@ class Movimiento extends Model
     }
 
     /** El vehículo con el que se registró este asiento, tal y como estaba ese día. */
-    public function vehiculo(): Vehiculo
+    public function vehiculo(): DatosVehiculo
     {
-        return Vehiculo::desdeModelo($this);
+        return DatosVehiculo::desdeModelo($this);
     }
 
     public function tieneVehiculo(): bool

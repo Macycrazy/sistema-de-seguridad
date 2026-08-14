@@ -24,17 +24,37 @@ nadie es trabajador e invitado a la vez.
 | `dependencia` | varchar(120), nula | Solo trabajador. Viene del sistema de carnets. |
 | `foto_ruta` | varchar(255), nula | Solo trabajador. Ruta relativa dentro del disco privado: `fotos/12345678.jpg`. Ver «las fotos». |
 | `motivo` | varchar(120), nula | Solo invitado: el motivo de la visita **de la última vez**. |
-| `tipo_vehiculo` | varchar(10), nula | `carro` o `moto`. Ver «el vehículo». |
-| `marca` | varchar(40), nula | El vehículo **de la última vez**. |
-| `modelo` | varchar(40), nula | |
-| `color` | varchar(30), nula | |
-| `placa` | varchar(15), nula, indexada | **Normalizada**: ver «el vehículo». |
 | `activo` | boolean, por omisión `true` | |
 | `created_at`, `updated_at` | timestamps | |
 
 Las columnas que solo aplican a un tipo van **nulas** en el otro. Del invitado se guarda lo mínimo:
-nombre, **motivo de la visita** y, si llegó en uno, el **vehículo**. Nada de foto del documento,
-teléfono ni dirección.
+nombre y **motivo de la visita**. Nada de foto del documento, teléfono ni dirección.
+
+> **El vehículo ya NO está aquí.** Estuvo en cinco columnas de esta tabla, y eso daba por sentado
+> que cada quien tiene uno solo. No es cierto —hay quien viene en carro unos días y en moto
+> otros—, así que ahora es la tabla `vehiculos`, una fila por vehículo. La migración
+> `crear_tabla_vehiculos` mudó lo que había y quitó las columnas.
+
+---
+
+## `vehiculos`
+
+Los vehículos de una persona. **Puede tener más de uno**, y en la puerta se marca cuál trae ese día.
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `id` | bigint | |
+| `persona_id` | FK → `personas`, `CASCADE` al borrar | Se van con ella: no le sirven a nadie más. El histórico no se toca, porque los movimientos llevan su copia. |
+| `tipo` | varchar(10) | `carro` o `moto`. **Obligatorio.** |
+| `marca` | varchar(40), nula | Para reconocerlo de un vistazo. |
+| `modelo` | varchar(40), nula | |
+| `color` | varchar(30), nula | |
+| `placa` | varchar(15), indexada | **Obligatoria y normalizada.** Es lo único que lo identifica de verdad. |
+| `created_at`, `updated_at` | timestamps | |
+
+Índice único `(persona_id, placa)`: la misma persona no puede tener dos veces la misma placa. **Dos
+personas sí pueden compartirla** —un carro familiar que hoy trae uno y mañana otro—, así que no es
+única a secas.
 
 > El README dice «a quién viene a ver». Al usar la pantalla quedó claro que lo que se anota es el
 > **motivo** —«videoconferencia», «consultor», «entrega de material»—, no el nombre de un
@@ -86,14 +106,37 @@ lunes llegó en su carro y el jueves en otro, cada asiento tiene que decir el de
 
 ## El vehículo
 
-Cinco columnas —`tipo_vehiculo`, `marca`, `modelo`, `color`, `placa`— en las dos tablas. Es lo que
-pide la planilla de papel que este sistema viene a sustituir.
+Vive en **dos sitios y con dos formas distintas**, y conviene no confundirlas:
+
+| Dónde | Qué es | Forma |
+|---|---|---|
+| `vehiculos` | Los que la persona **tiene**. Puede tener varios. | Una fila por vehículo, con `tipo` |
+| `movimientos` | En cuál llegó **ese día**. Copia congelada. | Cinco columnas planas, con `tipo_vehiculo` |
+
+**El asiento guarda una copia, no un enlace a `vehiculos`.** Es a propósito: un enlace diría lo que
+el vehículo es HOY, y el asiento tiene que decir lo que era el día que se registró, aunque después
+se corrija la ficha o se borre el vehículo.
 
 **Es de cualquiera, invitado o trabajador.** El personal también estaciona aquí. (En la primera
 versión era solo del invitado; se amplió después.)
 
-**Todas son opcionales de verdad.** La mayoría de la gente entra caminando, y obligar a
-inventarse un vehículo llenaría la base de basura. Quien llega a pie las deja todas en `NULL`.
+**Nadie está obligado a tener uno.** La mayoría de la gente entra caminando, y obligar a inventarse
+un vehículo llenaría la base de basura. Quien llega a pie deja el asiento con las cinco columnas en
+`NULL`.
+
+### Qué trae hoy
+
+Como una persona puede tener varios, en la puerta se **señala** cuál trae, en vez de teclearlo cada
+vez. La pantalla resuelve tres casos:
+
+| Situación | Qué se ve |
+|---|---|
+| Tiene vehículos | La lista con los suyos, más «Vino a pie» y «Otro vehículo…». Sale marcado el de su última entrada. |
+| No tiene ninguno | Las casillas para teclear uno. Es el caso del invitado nuevo. |
+| Marcó «Otro vehículo…» | Las casillas para teclear, y al marcar **se le suma a su ficha** — la próxima vez ya sale en la lista. |
+
+Que se marque uno **no borra los otros**: son suyos igual, y venir a pie un día tampoco se
+deshace de ninguno. Lo único que cambia de un día para otro es lo que dice el asiento.
 
 ### `carro` o `moto`
 
@@ -133,43 +176,48 @@ ahí no serviría de nada.
 ### La placa se guarda normalizada
 
 Igual que la cédula: **solo letras y dígitos, en mayúsculas**, con
-`App\Services\Vehiculo::normalizarPlaca()`. Así `AB123CD`, `ab-123-cd` y `AB 123 CD` son la misma
-placa. **Si escribes una consulta por placa, normaliza antes o no encontrarás nada.**
+`App\Services\DatosVehiculo::normalizarPlaca()`. Así `AB123CD`, `ab-123-cd` y `AB 123 CD` son la
+misma placa. **Si escribes una consulta por placa, normaliza antes o no encontrarás nada.**
 
-### `App\Services\Vehiculo`
+### Dos clases con nombre parecido, y no son lo mismo
 
-Los cuatro datos viajan juntos en este objeto y no como cuatro cadenas sueltas, porque se limpian,
-se validan y se guardan en tres sitios (la ficha, el asiento y la pantalla) y así la regla vive en
-uno solo.
-
-| Método | Para qué |
+| Clase | Qué es |
 |---|---|
-| `Vehiculo::desde($tipo, $marca, $modelo, $color, $placa)` | Lo construye ya limpio. **El tipo va primero.** Lo vacío queda en `null`. |
-| `Vehiculo::desdeModelo($fila)` | El vehículo de una `Persona` o un `Movimiento` ya guardado. |
-| `Vehiculo::normalizarPlaca($placa)` | La placa como se guarda y como hay que buscarla. |
-| `Vehiculo::normalizarTipo($tipo)` | `carro` o `moto`; cualquier otra cosa, `carro`. |
+| `App\Models\Vehiculo` | Una **fila** de `vehiculos`: el vehículo guardado, con su dueño. |
+| `App\Services\DatosVehiculo` | Los **cinco datos sueltos**, limpios y validados. Ni tiene dueño ni está guardado. |
+
+`DatosVehiculo` existe porque esos mismos datos entran por la pantalla, se guardan en `vehiculos` y
+se congelan en el asiento: así la regla de cómo se limpian vive en un sitio y no en tres.
+
+| Método de `DatosVehiculo` | Para qué |
+|---|---|
+| `desde($tipo, $marca, $modelo, $color, $placa)` | Lo construye ya limpio. **El tipo va primero.** Lo vacío queda en `null`. |
+| `desdeModelo($fila)` | Los datos de un `Vehiculo` o de un `Movimiento` ya guardado. |
+| `normalizarPlaca($placa)` | La placa como se guarda y como hay que buscarla. |
+| `normalizarTipo($tipo)` | `carro` o `moto`; cualquier otra cosa, `carro`. |
 | `vacio(): bool` | No trajo vehículo. **No mira el tipo.** |
 | `esMoto(): bool` | Para contar motos o separarlas en un listado. |
 | `exigirValido(): void` | Lanza `ValidationException` si hay datos pero falta la placa. |
-| `paraGuardar(): array` | Las columnas, listas para un `create()` o un `update()`. |
+| `paraGuardar(): array` | Las columnas **del asiento** (`tipo_vehiculo`). |
+| `paraGuardarEnLaTabla(): array` | Las columnas de **`vehiculos`** (`tipo`). |
 | `etiquetaTipo(): string` | `Carro` o `Moto`, para mostrar. Vacío si no hay vehículo. |
 | `descripcion(): string` | Cómo se lee de un vistazo: `Carro · Toyota Corolla · Gris · AB123CD`. |
 
-En los modelos: `$persona->vehiculo()`, `$persona->tieneVehiculo()` y los mismos dos en
-`Movimiento`. **A la parte 2 le sirven** para su listado: `$movimiento->tieneVehiculo()` dice si
-hay algo que mostrar, `$movimiento->vehiculo()->descripcion()` lo deja en una línea y
-`->esMoto()` permite separar motos de carros.
+En los modelos: `$persona->vehiculos` (los que tiene), `$persona->tieneVehiculos()`,
+`$persona->vehiculoConPlaca($placa)` y `$persona->placaDeLaUltimaEntrada()`. En `Vehiculo`:
+`descripcion()`, `esMoto()` y `datos()`.
 
-### Un vehículo vacío NO es lo mismo que no pasar ninguno
+**A la parte 2 le sirve** para su listado, y sobre el MOVIMIENTO, que es lo que ella lista:
+`$movimiento->tieneVehiculo()` dice si hay algo que mostrar,
+`$movimiento->vehiculo()->descripcion()` lo deja en una línea y `->esMoto()` separa motos de carros.
 
-En `Marcaje::registrar()` el parámetro `$vehiculo` distingue dos cosas:
+### El asiento anota lo de ESE día, y nada más
 
-| Se pasa | Qué significa |
-|---|---|
-| `null` | «No me lo preguntes»: se conserva el que ya tenía la ficha. Es el caso de marcar la salida. |
-| `Vehiculo::desde()` (vacío) | «Hoy vino caminando»: **borra** el que tuviera anotado. |
+En `Marcaje::registrar()`, el parámetro `$vehiculo` es **en qué llegó hoy**. Nulo y vacío
+significan lo mismo —que no trajo ninguno—: el asiento no arrastra nada del día anterior.
 
-Sin esa diferencia, a quien un día llegó en carro se le quedaría la placa pegada para siempre.
+Si el vehículo **no está entre los suyos**, se le suma a la ficha. Así, la próxima vez el vigilante
+solo lo señala en la lista en vez de teclearlo entero.
 
 El **motivo** sí sigue siendo solo del invitado: un trabajador viene a trabajar, y su asiento no
 lo lleva.
@@ -348,9 +396,14 @@ Los nombres y las cédulas son inventados, pero las **gerencias sí son las del 
 Planificación y Presupuesto, Gestión Humana y Consultoría Jurídica—, porque son las que hay que
 ver en pantalla al probar. Están declaradas como constantes en el propio seeder.
 
-**Tres de los once llegan en vehículo**: dos carros (`22222222` y `12345678`) y una moto
-(`44444444`). El resto entra caminando, que es la proporción real: el vehículo tiene que verse
-como la excepción, no como lo normal.
+**Tres de los once tienen vehículo**, y el resto entra caminando: es la proporción real, el
+vehículo tiene que verse como la excepción y no como lo normal.
+
+| Cédula | Quién | Qué tiene |
+|---|---|---|
+| `22222222` | Luis Hernández | **Carro Y moto** — es el caso con el que se prueba la casilla de «qué trae hoy» |
+| `44444444` | José Martínez | Solo moto |
+| `12345678` | Daniela Paredes | Solo carro |
 
 > En la base la columna se llama **`dependencia`**; en pantalla se rotula **«Gerencia»**, que es
 > como se dice aquí. Renombrar la columna sería un cambio de esquema y hay que hablarlo entre las

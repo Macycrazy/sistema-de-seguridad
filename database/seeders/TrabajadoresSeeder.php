@@ -3,7 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Persona;
-use App\Services\Vehiculo;
+use App\Services\DatosVehiculo;
 use Illuminate\Database\Seeder;
 
 /**
@@ -36,24 +36,32 @@ class TrabajadoresSeeder extends Seeder
     {
         // Tres llegan en vehículo y el resto caminando, que es la proporción con la que hay que
         // probar: lo normal es entrar a pie, y el vehículo tiene que verse como la excepción.
-        // Dos carros y una moto, para que se vean los dos tipos en pantalla.
+        //
+        // Luis tiene DOS —carro y moto—, que es el caso que hay que poder probar: en la puerta
+        // se le marca cuál de los dos trae ese día. Los otros dos tienen uno solo, y entre los
+        // tres se ven las dos clases.
         $trabajadores = [
             ['cedula' => '11111111', 'nombre' => 'Ana Rodríguez Peña', 'gerencia' => self::GESTION_HUMANA],
-            ['cedula' => '22222222', 'nombre' => 'Luis Hernández Mora', 'gerencia' => self::TECNOLOGIA, 'vehiculo' => [Vehiculo::CARRO, 'Toyota', 'Corolla', 'Gris', 'AB123CD']],
+            ['cedula' => '22222222', 'nombre' => 'Luis Hernández Mora', 'gerencia' => self::TECNOLOGIA, 'vehiculos' => [
+                [DatosVehiculo::CARRO, 'Toyota', 'Corolla', 'Gris', 'AB123CD'],
+                [DatosVehiculo::MOTO, 'Empire', 'Horse', 'Rojo', 'AE321JK'],
+            ]],
             ['cedula' => '33333333', 'nombre' => 'Carmen Díaz Silva', 'gerencia' => self::PLANIFICACION],
-            ['cedula' => '44444444', 'nombre' => 'José Martínez Rojas', 'gerencia' => self::JURIDICA, 'vehiculo' => [Vehiculo::MOTO, 'Bera', 'BR-150', 'Negro', 'AC456DF']],
+            ['cedula' => '44444444', 'nombre' => 'José Martínez Rojas', 'gerencia' => self::JURIDICA, 'vehiculos' => [
+                [DatosVehiculo::MOTO, 'Bera', 'BR-150', 'Negro', 'AC456DF'],
+            ]],
             ['cedula' => '55555555', 'nombre' => 'María Fernández Ruiz', 'gerencia' => self::PLANIFICACION],
             ['cedula' => '66666666', 'nombre' => 'Pedro Gómez Alvarado', 'gerencia' => self::TECNOLOGIA],
             ['cedula' => '77777777', 'nombre' => 'Rosa Blanco Ceballos', 'gerencia' => self::GESTION_HUMANA],
             ['cedula' => '88888888', 'nombre' => 'Miguel Suárez Lugo', 'gerencia' => self::TECNOLOGIA],
-            ['cedula' => '12345678', 'nombre' => 'Daniela Paredes Ortiz', 'gerencia' => self::JURIDICA, 'vehiculo' => [Vehiculo::CARRO, 'Chevrolet', 'Aveo', 'Azul', 'AD789GH']],
+            ['cedula' => '12345678', 'nombre' => 'Daniela Paredes Ortiz', 'gerencia' => self::JURIDICA, 'vehiculos' => [
+                [DatosVehiculo::CARRO, 'Chevrolet', 'Aveo', 'Azul', 'AD789GH'],
+            ]],
             ['cedula' => '87654321', 'nombre' => 'Rafael Montero Vega', 'gerencia' => self::PLANIFICACION],
         ];
 
         foreach ($trabajadores as $trabajador) {
-            $vehiculo = Vehiculo::desde(...($trabajador['vehiculo'] ?? []));
-
-            Persona::updateOrCreate(
+            $persona = Persona::updateOrCreate(
                 ['cedula' => $trabajador['cedula']],
                 [
                     'tipo' => Persona::TRABAJADOR,
@@ -63,9 +71,18 @@ class TrabajadoresSeeder extends Seeder
                     // se lee «Gerencia», que es como se dice aquí.
                     'dependencia' => $trabajador['gerencia'],
                     'activo' => true,
-                    ...$vehiculo->paraGuardar(),
                 ],
             );
+
+            // updateOrCreate por la placa, para que sembrar dos veces no duplique nada.
+            foreach ($trabajador['vehiculos'] ?? [] as $datos) {
+                $vehiculo = DatosVehiculo::desde(...$datos);
+
+                $persona->vehiculos()->updateOrCreate(
+                    ['placa' => $vehiculo->placa],
+                    $vehiculo->paraGuardarEnLaTabla(),
+                );
+            }
         }
 
         // Uno desactivado, para comprobar que el sistema no lo deja marcar.

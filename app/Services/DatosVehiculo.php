@@ -5,19 +5,19 @@ namespace App\Services;
 use Illuminate\Validation\ValidationException;
 
 /**
- * El vehículo en el que llega una persona: si es carro o moto, marca, modelo, color y placa.
+ * Los datos de un vehículo: si es carro o moto, marca, modelo, color y placa.
  *
- * Existe como clase, y no como cinco cadenas sueltas, porque los mismos datos se limpian, se
- * validan y se guardan en tres sitios distintos —la ficha de la persona, el asiento del
- * movimiento y la pantalla— y así la regla vive en uno solo.
+ * OJO con el nombre. Esto NO es el vehículo guardado de alguien —ese es App\Models\Vehiculo, una
+ * fila de la tabla «vehiculos»—, sino los cinco datos sueltos, limpios y validados. Existe porque
+ * esos mismos datos entran por la pantalla, se guardan en la tabla y se congelan en el asiento del
+ * movimiento, y así la regla de cómo se limpian vive en un solo sitio.
  *
  * Vale igual para un invitado que para un trabajador: el personal también estaciona aquí.
  *
- * Alguien SIN vehículo es lo normal: mucha gente entra caminando. Por eso el objeto vacío es
- * válido y guarda las columnas en nulo. Lo que no se admite es un vehículo a medias sin placa:
- * ver exigirValido().
+ * Que no haya vehículo es lo normal: mucha gente entra caminando. Por eso el objeto vacío es
+ * válido. Lo que no se admite es un vehículo a medias sin placa: ver exigirValido().
  */
-final class Vehiculo
+final class DatosVehiculo
 {
     /** Carro y moto no estacionan en el mismo sitio, y «cuántas motos hay dentro» se pregunta. */
     public const CARRO = 'carro';
@@ -42,8 +42,8 @@ final class Vehiculo
     ) {}
 
     /**
-     * Construye el vehículo dejando los datos ya limpios. Lo que llegue vacío queda en nulo,
-     * que es como se guarda «no trajo vehículo».
+     * Construye los datos ya limpios. Lo que llegue vacío queda en nulo, que es como se anota
+     * «no trajo vehículo».
      *
      * El tipo solo tiene sentido si hay vehículo: sin él queda nulo, aunque venga puesto. Y si
      * hay vehículo pero no se eligió tipo, se asume carro, que es lo más común.
@@ -55,7 +55,7 @@ final class Vehiculo
         ?string $color = null,
         ?string $placa = null,
     ): self {
-        $vehiculo = new self(
+        $datos = new self(
             null,
             self::limpiar($marca, self::LARGO_MARCA),
             self::limpiar($modelo, self::LARGO_MODELO),
@@ -63,23 +63,34 @@ final class Vehiculo
             self::normalizarPlaca($placa),
         );
 
-        if ($vehiculo->vacio()) {
-            return $vehiculo;
+        if ($datos->vacio()) {
+            return $datos;
         }
 
         return new self(
             self::normalizarTipo($tipo),
-            $vehiculo->marca,
-            $vehiculo->modelo,
-            $vehiculo->color,
-            $vehiculo->placa,
+            $datos->marca,
+            $datos->modelo,
+            $datos->color,
+            $datos->placa,
         );
     }
 
-    /** El vehículo tal y como está guardado en una ficha o en un asiento. */
+    /**
+     * Los datos tal y como están guardados en una fila.
+     *
+     * Sirve para un App\Models\Vehiculo (columna «tipo») y para un Movimiento, que guarda su
+     * copia congelada en «tipo_vehiculo» — de ahí que se miren las dos.
+     */
     public static function desdeModelo(object $fila): self
     {
-        return self::desde($fila->tipo_vehiculo, $fila->marca, $fila->modelo, $fila->color, $fila->placa);
+        return self::desde(
+            $fila->tipo_vehiculo ?? $fila->tipo ?? null,
+            $fila->marca,
+            $fila->modelo,
+            $fila->color,
+            $fila->placa,
+        );
     }
 
     /** Solo «carro» o «moto»; cualquier otra cosa se trata como carro. */
@@ -130,16 +141,28 @@ final class Vehiculo
     {
         if (! $this->vacio() && $this->placa === null) {
             throw ValidationException::withMessages([
-                'placa' => 'Si el invitado viene en un vehículo, hace falta la placa.',
+                'placa' => 'Si viene en un vehículo, hace falta la placa.',
             ]);
         }
     }
 
-    /** Las columnas, listas para un create() o un update(). */
+    /** Las columnas del ASIENTO, que guarda su copia congelada. Ver docs/esquema.md. */
     public function paraGuardar(): array
     {
         return [
             'tipo_vehiculo' => $this->tipo,
+            'marca' => $this->marca,
+            'modelo' => $this->modelo,
+            'color' => $this->color,
+            'placa' => $this->placa,
+        ];
+    }
+
+    /** Las columnas de la tabla «vehiculos», donde el tipo se llama «tipo» a secas. */
+    public function paraGuardarEnLaTabla(): array
+    {
+        return [
+            'tipo' => $this->tipo,
             'marca' => $this->marca,
             'modelo' => $this->modelo,
             'color' => $this->color,

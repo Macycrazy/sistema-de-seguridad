@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Services\Vehiculo;
+use App\Services\DatosVehiculo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -40,12 +40,6 @@ class Persona extends Model
         'dependencia',
         'foto_ruta',
         'motivo',
-        // El vehículo, sea invitado o trabajador. Todas nulas si vino caminando.
-        'tipo_vehiculo',
-        'marca',
-        'modelo',
-        'color',
-        'placa',
         'activo',
     ];
 
@@ -158,14 +152,38 @@ class Persona extends Model
         return number_format((int) $this->cedula, 0, ',', '.');
     }
 
-    /** El vehículo que trae anotado, si trae alguno. */
-    public function vehiculo(): Vehiculo
+    /**
+     * Los vehículos que tiene anotados. Pueden ser varios: carro y moto, por ejemplo.
+     *
+     * Se ordenan por placa para que la lista de la puerta salga siempre igual. Si cambiara de
+     * orden entre una visita y otra, el vigilante acabaría marcando el equivocado.
+     */
+    public function vehiculos(): HasMany
     {
-        return Vehiculo::desdeModelo($this);
+        return $this->hasMany(Vehiculo::class)->orderBy('placa');
     }
 
-    public function tieneVehiculo(): bool
+    public function tieneVehiculos(): bool
     {
-        return ! $this->vehiculo()->vacio();
+        return $this->vehiculos()->exists();
+    }
+
+    /** El vehículo de esta persona con esa placa, si lo tiene. */
+    public function vehiculoConPlaca(?string $placa): ?Vehiculo
+    {
+        $placa = DatosVehiculo::normalizarPlaca($placa);
+
+        return $placa ? $this->vehiculos()->where('placa', $placa)->first() : null;
+    }
+
+    /**
+     * En qué llegó la última vez que entró, si en algo.
+     *
+     * Se saca del asiento y no de la ficha: el asiento dice lo que trajo ESE día. Sirve para que
+     * la pantalla proponga lo mismo cuando vuelve, que casi siempre acierta.
+     */
+    public function placaDeLaUltimaEntrada(): ?string
+    {
+        return $this->ultimaEntrada()?->placa;
     }
 }

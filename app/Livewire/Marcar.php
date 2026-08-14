@@ -4,8 +4,9 @@ namespace App\Livewire;
 
 use App\Models\Movimiento;
 use App\Models\Persona;
+use App\Services\DatosVehiculo;
 use App\Services\Marcaje;
-use App\Services\Vehiculo;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -38,16 +39,31 @@ class Marcar extends Component
 
     public string $motivo = '';
 
+    /** Se marcó «a pie»: hoy no trajo ningún vehículo. Es lo más común. */
+    public const A_PIE = '';
+
+    /** Se marcó «otro vehículo»: hay que teclearlo, y se le suma a su ficha al marcar. */
+    public const OTRO = 'otro';
+
     /**
-     * El vehículo en el que llega, si llega en uno. Vale igual para un invitado que para un
-     * trabajador: el personal también estaciona aquí. Van vacíos cuando entra caminando, que es
-     * lo más común: no son obligatorios. Van sueltos y no como un objeto porque cada uno es una
-     * casilla de la pantalla y Livewire ata cada casilla a una propiedad.
+     * Qué trae HOY: la placa de uno de sus vehículos, «a pie», u «otro».
+     *
+     * Una persona puede tener varios —carro y moto, por ejemplo— y en la puerta se señala cuál
+     * de ellos trae ese día. Por eso es una casilla y no unos campos que se rellenan cada vez.
+     */
+    public string $traeHoy = self::A_PIE;
+
+    /**
+     * Las casillas para teclear un vehículo que no está en su lista. Solo se usan cuando se
+     * marcó «otro», y en el alta de un invitado, que todavía no tiene ninguno.
+     *
+     * Van sueltas y no como un objeto porque cada una es una casilla y Livewire ata cada casilla
+     * a una propiedad.
      *
      * El tipo empieza en «carro» porque siempre hay uno de los dos botones marcado. No significa
      * que haya vehículo: mientras las demás casillas estén vacías, no se guarda nada.
      */
-    public string $tipoVehiculo = Vehiculo::CARRO;
+    public string $tipoVehiculo = DatosVehiculo::CARRO;
 
     public string $marca = '';
 
@@ -56,12 +72,6 @@ class Marcar extends Component
     public string $color = '';
 
     public string $placa = '';
-
-    /**
-     * Se enciende al pulsar «Otro vehículo». Mientras esté apagada, a quien ya tiene un vehículo
-     * anotado no se le deja cambiar carro por moto: sería un error de tecleo, no un dato nuevo.
-     */
-    public bool $cambiandoVehiculo = false;
 
     /** Lo que se le dice al vigilante después de marcar. */
     public string $confirmacion = '';
@@ -192,73 +202,67 @@ class Marcar extends Component
 
             $this->personaId = null;
             $this->invitadoNuevo = true;
-            unset($this->persona, $this->sugerido, $this->esperaHasta);
+            unset($this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta);
 
             return;
         }
 
         $this->personaId = $persona->id;
         $this->invitadoNuevo = false;
-        unset($this->persona, $this->sugerido, $this->esperaHasta);
+        unset($this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta);
 
         // Un invitado que vuelve ya trae su motivo: se muestra para confirmarlo o cambiarlo.
         if ($persona->esInvitado()) {
             $this->motivo = (string) $persona->motivo;
         }
 
-        // El vehículo de la última vez, sea invitado o trabajador. Casi siempre es el mismo —
-        // pero si hoy viene caminando, el vigilante vacía las casillas y así queda anotado.
-        $this->cambiandoVehiculo = false;
-        $this->tipoVehiculo = Vehiculo::normalizarTipo($persona->tipo_vehiculo);
-        $this->marca = (string) $persona->marca;
-        $this->modelo = (string) $persona->modelo;
-        $this->color = (string) $persona->color;
-        $this->placa = (string) $persona->placa;
+        // Se propone lo mismo que trajo la última vez que entró, que casi siempre acierta. Si
+        // ese vehículo ya no está en su ficha, o si vino a pie, queda marcado «a pie».
+        $this->olvidarVehiculo();
+        $ultima = $persona->placaDeLaUltimaEntrada();
+        $this->traeHoy = $persona->vehiculoConPlaca($ultima) ? $ultima : self::A_PIE;
 
-        unset($this->tipoFijado);
+        unset($this->vehiculos);
     }
 
-    /** El vehículo tal y como está escrito ahora mismo en la pantalla. */
-    protected function vehiculo(): Vehiculo
+    /** Los vehículos que la persona en pantalla tiene anotados. */
+    #[Computed]
+    public function vehiculos(): Collection
     {
-        return Vehiculo::desde($this->tipoVehiculo, $this->marca, $this->modelo, $this->color, $this->placa);
+        return $this->persona()?->vehiculos ?? collect();
     }
 
     /**
-     * El tipo que la persona en pantalla ya tiene anotado, cuando no se puede cambiar.
+     * Qué trae hoy, ya limpio y listo para guardar.
      *
-     * Un vehículo no cambia de clase: la moto de José es una moto todos los días. Si un día
-     * llega en otra cosa, eso es OTRO vehículo y para eso está «Otro vehículo», que vacía las
-     * casillas y devuelve la elección.
-     *
-     * Devuelve null cuando el tipo sí se puede elegir: nadie en pantalla, sin vehículo anotado,
-     * o el vigilante ya pulsó «Otro vehículo».
+     * Tres casos: no trajo nada, trajo uno de los suyos, o trajo uno que hay que teclear. Los
+     * tres salen de la misma casilla, así que aquí se decide una sola vez y no en cada sitio
+     * que necesite el dato.
      */
-    #[Computed]
-    public function tipoFijado(): ?string
+    protected function vehiculo(): DatosVehiculo
     {
-        if ($this->cambiandoVehiculo) {
-            return null;
+        // En el alta de un invitado no hay lista todavía: lo que valga es lo tecleado.
+        if ($this->invitadoNuevo || $this->traeHoy === self::OTRO) {
+            return DatosVehiculo::desde($this->tipoVehiculo, $this->marca, $this->modelo, $this->color, $this->placa);
         }
 
-        $persona = $this->persona();
+        if ($this->traeHoy === self::A_PIE) {
+            return DatosVehiculo::desde();
+        }
 
-        return $persona?->tieneVehiculo() ? $persona->vehiculo()->tipo : null;
+        return $this->vehiculos()
+            ->firstWhere('placa', $this->traeHoy)
+            ?->datos()
+            // La placa marcada ya no está entre las suyas: se trata como que vino a pie, que es
+            // lo prudente. No se inventa un vehículo que no consta.
+            ?? DatosVehiculo::desde();
     }
 
-    /** Vacía el vehículo anotado para poder poner otro, de la clase que sea. */
-    public function cambiarVehiculo(): void
-    {
-        $this->olvidarVehiculo();
-        $this->cambiandoVehiculo = true;
-        $this->resetValidation();
-        unset($this->tipoFijado);
-    }
-
-    /** Vacía las casillas del vehículo y deja el tipo como empieza. */
+    /** Vuelve a «a pie» y vacía las casillas de teclear. */
     protected function olvidarVehiculo(): void
     {
-        $this->tipoVehiculo = Vehiculo::CARRO;
+        $this->traeHoy = self::A_PIE;
+        $this->tipoVehiculo = DatosVehiculo::CARRO;
         $this->marca = '';
         $this->modelo = '';
         $this->color = '';
@@ -270,18 +274,20 @@ class Marcar extends Component
     {
         $this->personaId = null;
         $this->invitadoNuevo = false;
-        unset($this->persona, $this->sugerido, $this->tipoFijado, $this->esperaHasta);
+        unset($this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta);
     }
 
     /** Da de alta al invitado nuevo y lo deja listo para marcar, sin teclear la cédula otra vez. */
     public function guardarInvitado(): void
     {
+        $vehiculo = $this->vehiculo();
+
         try {
             $persona = $this->marcaje->registrarInvitado(
                 $this->cedula,
                 $this->nombre,
                 $this->motivo,
-                $this->vehiculo(),
+                $vehiculo,
             );
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
@@ -291,6 +297,13 @@ class Marcar extends Component
 
         $this->personaId = $persona->id;
         $this->invitadoNuevo = false;
+
+        // Ya tiene ficha, así que a partir de aquí manda la casilla y no lo tecleado. Se deja
+        // marcado el vehículo que se acaba de anotar: si no, el invitado que llegó en carro
+        // quedaría con la entrada registrada a pie, y el vigilante ni se enteraría.
+        $this->traeHoy = $vehiculo->placa ?? self::A_PIE;
+
+        unset($this->vehiculos);
     }
 
     public function marcarEntrada(): void
@@ -343,10 +356,10 @@ class Marcar extends Component
     {
         $this->reset([
             'cedula', 'personaId', 'invitadoNuevo', 'nombre', 'motivo', 'confirmacion',
-            'tipoVehiculo', 'marca', 'modelo', 'color', 'placa', 'cambiandoVehiculo',
+            'traeHoy', 'tipoVehiculo', 'marca', 'modelo', 'color', 'placa',
         ]);
         $this->resetValidation();
-        unset($this->persona, $this->sugerido, $this->dentro, $this->tipoFijado, $this->esperaHasta);
+        unset($this->persona, $this->sugerido, $this->dentro, $this->vehiculos, $this->esperaHasta);
     }
 
     public function render()

@@ -77,9 +77,9 @@ class Marcaje
      * Dos personas distintas nunca comparten cédula, así que un invitado nuevo se crea aquí
      * con lo mínimo: nombre y motivo de la visita.
      *
-     * @param  Vehiculo|null  $vehiculo  El carro en el que llegó, si llegó en uno. Va aparte de
-     *                                   los otros datos porque es opcional de verdad: quien
-     *                                   entra caminando lo deja vacío y no pasa nada.
+     * @param  DatosVehiculo|null  $vehiculo  El vehículo en el que llegó, si llegó en uno. Va
+     *                                        aparte de los otros datos porque es opcional de
+     *                                        verdad: quien entra caminando lo deja vacío.
      *
      * @throws ValidationException si la cédula ya pertenece a alguien
      */
@@ -87,12 +87,12 @@ class Marcaje
         string $cedula,
         string $nombre,
         string $motivo,
-        ?Vehiculo $vehiculo = null,
+        ?DatosVehiculo $vehiculo = null,
     ): Persona {
         $cedula = Persona::normalizarCedula($cedula);
         $nombre = trim($nombre);
         $motivo = trim($motivo);
-        $vehiculo ??= Vehiculo::desde();
+        $vehiculo ??= DatosVehiculo::desde();
 
         $this->exigirCedulaValida($cedula);
 
@@ -117,14 +117,22 @@ class Marcaje
             ]);
         }
 
-        return Persona::create([
-            'cedula' => $cedula,
-            'tipo' => Persona::INVITADO,
-            'nombre' => $nombre,
-            'motivo' => $motivo,
-            'activo' => true,
-            ...$vehiculo->paraGuardar(),
-        ]);
+        // La ficha y su vehículo se crean juntos o no se crea ninguno.
+        return DB::transaction(function () use ($cedula, $nombre, $motivo, $vehiculo) {
+            $persona = Persona::create([
+                'cedula' => $cedula,
+                'tipo' => Persona::INVITADO,
+                'nombre' => $nombre,
+                'motivo' => $motivo,
+                'activo' => true,
+            ]);
+
+            if (! $vehiculo->vacio()) {
+                $persona->vehiculos()->create($vehiculo->paraGuardarEnLaTabla());
+            }
+
+            return $persona;
+        });
     }
 
     /**
@@ -132,12 +140,14 @@ class Marcaje
      *
      * @param  string|null  $motivo  El motivo de la visita, si es un invitado que vuelve y lo
      *                               actualiza. Si va nulo se conserva el que ya tenía.
-     * @param  Vehiculo|null  $vehiculo  El vehículo de HOY, sea invitado o trabajador. Nulo
-     *                                   significa «no me lo preguntes, deja el que ya tenía la
-     *                                   ficha». Un Vehiculo vacío es distinto: significa «hoy
-     *                                   vino caminando», y borra el que tuviera anotado. Sin esa
-     *                                   diferencia, quien un día vino en carro arrastraría esa
-     *                                   placa para siempre.
+     * @param  DatosVehiculo|null  $vehiculo  En qué llegó HOY, sea invitado o trabajador. Nulo y
+     *                                        vacío significan lo mismo aquí —que no trajo
+     *                                        ninguno—, porque el asiento anota lo de ESTE día y
+     *                                        no arrastra nada del anterior.
+     *
+     *                                        Si el vehículo no está entre los suyos, se le suma
+     *                                        a la ficha para que la próxima vez ya salga en la
+     *                                        lista y no haya que teclearlo otra vez.
      *
      * @throws ValidationException si el tipo no es entrada ni salida, o la persona está inactiva
      */
@@ -146,7 +156,7 @@ class Marcaje
         string $tipo,
         ?int $usuarioId = null,
         ?string $motivo = null,
-        ?Vehiculo $vehiculo = null,
+        ?DatosVehiculo $vehiculo = null,
     ): Movimiento {
         if (! in_array($tipo, [Movimiento::ENTRADA, Movimiento::SALIDA], true)) {
             throw ValidationException::withMessages([
@@ -160,7 +170,8 @@ class Marcaje
             ]);
         }
 
-        $vehiculo?->exigirValido();
+        $vehiculo ??= DatosVehiculo::desde();
+        $vehiculo->exigirValido();
         $this->exigirQueElVehiculoNoCambieDeClase($persona, $vehiculo);
 
         // La ficha y el asiento se guardan juntos o no se guarda ninguno: si falla la
@@ -184,10 +195,10 @@ class Marcaje
                 $persona->update(['motivo' => $motivo]);
             }
 
-            // El vehículo es de cualquiera: el personal también estaciona aquí. Y aquí sí se
-            // guarda el vacío, que es como se anota que hoy vino caminando.
-            if ($vehiculo !== null) {
-                $persona->update($vehiculo->paraGuardar());
+            // Si trajo uno que no tenía anotado, se le suma a la ficha: la próxima vez ya sale
+            // en la lista y el vigilante solo lo señala en vez de teclearlo entero.
+            if (! $vehiculo->vacio() && ! $persona->vehiculoConPlaca($vehiculo->placa)) {
+                $persona->vehiculos()->create($vehiculo->paraGuardarEnLaTabla());
             }
 
             return Movimiento::create([
@@ -197,7 +208,10 @@ class Marcaje
                 'usuario_id' => $usuarioId,
                 // El asiento de un trabajador no lleva motivo: viene a trabajar.
                 'motivo' => $persona->esInvitado() ? $persona->motivo : null,
-                ...$persona->vehiculo()->paraGuardar(),
+                // Copia congelada de lo que trajo HOY, no un enlace a la tabla: el asiento tiene
+                // que seguir diciendo la verdad de ese día aunque el vehículo se corrija o se
+                // borre después.
+                ...$vehiculo->paraGuardar(),
             ]);
         });
     }
@@ -259,15 +273,15 @@ class Marcaje
      *
      * @throws ValidationException
      */
-    protected function exigirQueElVehiculoNoCambieDeClase(Persona $persona, ?Vehiculo $vehiculo): void
+    protected function exigirQueElVehiculoNoCambieDeClase(Persona $persona, DatosVehiculo $vehiculo): void
     {
-        if ($vehiculo === null || $vehiculo->vacio() || ! $persona->tieneVehiculo()) {
+        if ($vehiculo->vacio()) {
             return;
         }
 
-        $anotado = $persona->vehiculo();
+        $anotado = $persona->vehiculoConPlaca($vehiculo->placa);
 
-        if ($vehiculo->placa !== $anotado->placa || $vehiculo->tipo === $anotado->tipo) {
+        if (! $anotado || $anotado->tipo === $vehiculo->tipo) {
             return;
         }
 
@@ -275,7 +289,7 @@ class Marcaje
             'tipoVehiculo' => sprintf(
                 'La placa %s ya está anotada como %s. Si hoy llegó en otro vehículo, cambia la placa.',
                 $anotado->placa,
-                mb_strtolower($anotado->etiquetaTipo()),
+                mb_strtolower($anotado->datos()->etiquetaTipo()),
             ),
         ]);
     }
