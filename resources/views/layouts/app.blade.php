@@ -9,12 +9,20 @@
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
 
+    {{-- Va antes del encabezado: si hay cambios de otra parte sin aplicar, es lo primero que hay
+         que ver. Solo sale en desarrollo, y solo si de verdad falta correr algo. --}}
+    <x-aviso-actualizar />
+
     {{--
         Encabezado del sistema, en el azul del CIIP (--color-marca en app.css).
 
         Sobre el azul va el logo BLANCO: el azul no se leería sobre su propio color. Los dos
         archivos viven en el proyecto porque el servidor donde esto va a correr no tiene salida
         a Internet — nada de imágenes ni tipografías traídas de fuera.
+
+        OJO al tocar este archivo: al integrar las partes 1 y 2, git fusionó sin dar conflicto
+        dos encabezados distintos y dejó uno dentro del otro, con etiquetas sin cerrar. Aquí va
+        una sola etiqueta de encabezado. Si aparecen dos, se repitió aquel merge mal resuelto.
     --}}
     <header class="bg-marca">
         <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3">

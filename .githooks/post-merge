@@ -1,0 +1,23 @@
+#!/bin/sh
+#
+# Se ejecuta después de un «git pull» o un «git merge».
+#
+# Las tres partes del proyecto tocan las mismas tablas. Quien se baja los cambios de otro y se
+# olvida de correr las migraciones se topa con errores de columna que no dicen nada de lo que
+# pasa de verdad. Esto lo avisa en el momento, con la lista de lo que falta.
+#
+# NO interrumpe nada: solo avisa. Si algo aquí falla, el pull ya terminó igual.
+#
+# Para activarlo, una sola vez por máquina:
+#
+#     git config core.hooksPath .githooks
+#
+# (Los hooks viven en .git/hooks, que no se versiona; por eso se guardan aquí y se apunta git
+# a esta carpeta. Así el equipo entero comparte los mismos.)
+
+command -v php >/dev/null 2>&1 || exit 0
+[ -f artisan ] || exit 0
+
+php artisan migraciones:pendientes 2>/dev/null
+
+exit 0

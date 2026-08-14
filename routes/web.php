@@ -27,6 +27,10 @@ Route::middleware('auth')->group(function () {
     // Parte 1 · la pantalla que el vigilante tiene abierta todo el turno.
     Route::view('/marcar', 'marcar')->name('marcar');
 
+    // MAQUETA · escanear la cédula con la cámara del teléfono. Es para enseñar la idea y
+    // discutirla; no registra movimientos. No forma parte de lo que hay que entregar.
+    Route::view('/maqueta/escaneo', 'maqueta-escaneo')->name('maqueta.escaneo');
+
     // Las fotos no están en una carpeta pública: salen solo por aquí. El permiso lo revisa el
     // propio controlador —con el gate «ver-foto»—, porque también hay que mirar de QUIÉN es la
     // foto, y eso una ruta no lo sabe.

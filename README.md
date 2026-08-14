@@ -130,7 +130,18 @@ php artisan migrate
 npm run build
 ```
 
-**8 · Levantar el sistema** — dos terminales abiertas:
+**8 · Activar los avisos de git** (una sola vez por máquina):
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Con eso, después de cada `git pull` o de cambiar de rama, el proyecto te avisa **si alguien
+cambió las tablas y a ti te falta correr las migraciones**. Sin ese aviso te encuentras con
+errores de columna que no explican nada, y pierdes un rato buscando dónde se rompió algo que no
+está roto. Ver «Cuando otra parte cambia las tablas».
+
+**9 · Levantar el sistema** — dos terminales abiertas:
 
 ```bash
 php artisan serve     # terminal 1 · el servidor, en http://localhost:8000
@@ -156,7 +167,37 @@ php artisan migrate:fresh                       # borrar todo y volver a crear (
 
 php artisan test                   # correr las pruebas
 ./vendor/bin/pint                  # formatear el código antes de hacer commit
+
+php artisan migraciones:pendientes # ¿me falta correr alguna migración?
 ```
+
+---
+
+## Cuando otra parte cambia las tablas
+
+Las tres partes tocan las mismas tablas. Quien se baja los cambios de otro y **se olvida de correr
+las migraciones** se topa con errores de columna que no dicen nada de lo que pasa de verdad —un
+`Unknown column` cualquiera— y pierde un rato buscando dónde se rompió algo que no está roto.
+
+El proyecto avisa por dos caminos, y los dos dicen lo mismo:
+
+| Cuándo | Dónde sale |
+|---|---|
+| Al hacer `git pull` o cambiar de rama | En la terminal, con la lista de lo que falta |
+| Al abrir cualquier pantalla | Una franja roja arriba del todo, **solo en desarrollo** |
+
+En los dos casos la solución es la misma:
+
+```bash
+php artisan migrate
+```
+
+El aviso de la terminal necesita que hayas activado los hooks (paso 8 de «Cómo montarlo»). El de
+la pantalla no necesita nada: viene en el código.
+
+**Qué cambia cada migración y por qué está en [`docs/esquema.md`](docs/esquema.md)**, que es donde
+se acuerdan las tablas entre las tres partes. Si cambias una columna, se habla y se anota ahí — no
+se mete suelta en una rama.
 
 ---
 
