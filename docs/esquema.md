@@ -24,11 +24,16 @@ nadie es trabajador e invitado a la vez.
 | `dependencia` | varchar(120), nula | Solo trabajador. Viene del sistema de carnets. |
 | `foto_ruta` | varchar(255), nula | Solo trabajador. Ruta relativa dentro del disco privado: `fotos/12345678.jpg`. Ver «las fotos». |
 | `motivo` | varchar(120), nula | Solo invitado: el motivo de la visita **de la última vez**. |
+| `marca` | varchar(40), nula | Solo invitado: el vehículo **de la última vez**. Ver «el vehículo». |
+| `modelo` | varchar(40), nula | Solo invitado. |
+| `color` | varchar(30), nula | Solo invitado. |
+| `placa` | varchar(15), nula, indexada | Solo invitado. **Normalizada**: ver «el vehículo». |
 | `activo` | boolean, por omisión `true` | |
 | `created_at`, `updated_at` | timestamps | |
 
 Las columnas que solo aplican a un tipo van **nulas** en el otro. Del invitado se guarda lo mínimo:
-nombre y **motivo de la visita**. Nada de foto del documento, teléfono ni dirección.
+nombre, **motivo de la visita** y, si llegó en uno, el **vehículo**. Nada de foto del documento,
+teléfono ni dirección.
 
 > El README dice «a quién viene a ver». Al usar la pantalla quedó claro que lo que se anota es el
 > **motivo** —«videoconferencia», «consultor», «entrega de material»—, no el nombre de un
@@ -51,6 +56,10 @@ Una entrada o una salida: el asiento que deja el botón de la puerta.
 | `ocurrio_en` | timestamp, indexada | **La hora del movimiento.** Es la que hay que usar para listar y filtrar. |
 | `usuario_id` | FK → `users`, nula | Quién lo registró. Ver «lo que falta» abajo. |
 | `motivo` | varchar(120), nula | Copia del motivo que traía el invitado **ese día**. |
+| `marca` | varchar(40), nula | Copia del vehículo en el que llegó **ese día**. |
+| `modelo` | varchar(40), nula | |
+| `color` | varchar(30), nula | |
+| `placa` | varchar(15), nula, indexada | **Normalizada**: ver «el vehículo». |
 
 Índice compuesto `(persona_id, ocurrio_en)` para resolver «quién está dentro».
 
@@ -61,12 +70,69 @@ un `updated_at` sería mentir, y además invitaría a actualizarlos. El modelo `
 `public $timestamps = false;` por eso. Si escribes `$movimiento->created_at` **no existe** — usa
 `ocurrio_en`.
 
-### Por qué `motivo` está repetido en las dos tablas
+### Por qué `motivo` y el vehículo están repetidos en las dos tablas
 
 En `personas` es el dato **actual** (para que al invitado que vuelve no haya que preguntárselo otra
 vez). En `movimientos` es una **copia congelada** del día del asiento. Si Carlos vino el lunes a una
 videoconferencia y el jueves a entregar material, el asiento del lunes tiene que seguir diciendo
 «videoconferencia».
+
+Las cuatro columnas del vehículo siguen exactamente la misma regla, y por el mismo motivo: si el
+lunes llegó en su carro y el jueves en otro, cada asiento tiene que decir el de su día.
+
+---
+
+## El vehículo
+
+Cuatro columnas —`marca`, `modelo`, `color`, `placa`— en las dos tablas. Es lo que pide la planilla
+de papel que este sistema viene a sustituir.
+
+**Las cuatro son opcionales de verdad.** La mayoría de la gente entra caminando, y obligar a
+inventarse un vehículo llenaría la base de basura. Un invitado a pie las deja las cuatro en `NULL`.
+
+La única regla, y la pone el servidor: **si se llena alguna, tiene que estar la placa.** «Toyota
+gris» no identifica ningún carro —hay miles— y el día que haya que averiguar quién dejó ese carro
+ahí no serviría de nada.
+
+### La placa se guarda normalizada
+
+Igual que la cédula: **solo letras y dígitos, en mayúsculas**, con
+`App\Services\Vehiculo::normalizarPlaca()`. Así `AB123CD`, `ab-123-cd` y `AB 123 CD` son la misma
+placa. **Si escribes una consulta por placa, normaliza antes o no encontrarás nada.**
+
+### `App\Services\Vehiculo`
+
+Los cuatro datos viajan juntos en este objeto y no como cuatro cadenas sueltas, porque se limpian,
+se validan y se guardan en tres sitios (la ficha, el asiento y la pantalla) y así la regla vive en
+uno solo.
+
+| Método | Para qué |
+|---|---|
+| `Vehiculo::desde($marca, $modelo, $color, $placa)` | Lo construye ya limpio. Lo vacío queda en `null`. |
+| `Vehiculo::desdeModelo($fila)` | El vehículo de una `Persona` o un `Movimiento` ya guardado. |
+| `Vehiculo::normalizarPlaca($placa)` | La placa como se guarda y como hay que buscarla. |
+| `vacio(): bool` | No trajo carro. |
+| `exigirValido(): void` | Lanza `ValidationException` si hay datos pero falta la placa. |
+| `paraGuardar(): array` | Las cuatro columnas, listas para un `create()` o un `update()`. |
+| `descripcion(): string` | Cómo se lee de un vistazo: `Toyota Corolla · Gris · AB123CD`. |
+
+En los modelos: `$persona->vehiculo()`, `$persona->tieneVehiculo()` y los mismos dos en
+`Movimiento`. **A la parte 2 le sirven** para su listado: `$movimiento->tieneVehiculo()` dice si
+hay algo que mostrar, y `$movimiento->vehiculo()->descripcion()` lo deja en una línea.
+
+### Un vehículo vacío NO es lo mismo que no pasar ninguno
+
+En `Marcaje::registrar()` el parámetro `$vehiculo` distingue dos cosas:
+
+| Se pasa | Qué significa |
+|---|---|
+| `null` | «No me lo preguntes»: se conserva el que ya tenía la ficha. Es el caso de marcar la salida. |
+| `Vehiculo::desde()` (vacío) | «Hoy vino sin carro»: **borra** el que tuviera anotado. |
+
+Sin esa diferencia, a quien un día llegó en carro se le quedaría la placa pegada para siempre.
+
+**El vehículo es solo del invitado.** Si se le pasa uno a un trabajador, se ignora: su carro no es
+asunto de la puerta, igual que su asiento no lleva motivo.
 
 ---
 
@@ -151,8 +217,8 @@ todo a este servicio:
 |---|---|
 | `buscarPorCedula(string): ?Persona` | El **único** sitio por donde se consulta una cédula. |
 | `movimientoSugerido(Persona): string` | `entrada` o `salida`, según dónde esté la persona. |
-| `registrar(Persona, string $tipo, ?int $usuarioId, ?string $motivo): Movimiento` | El **único** sitio por donde se escribe un movimiento. |
-| `registrarInvitado(string, string, string): Persona` | Da de alta un invitado con lo mínimo. |
+| `registrar(Persona, string $tipo, ?int $usuarioId, ?string $motivo, ?Vehiculo $vehiculo): Movimiento` | El **único** sitio por donde se escribe un movimiento. |
+| `registrarInvitado(string $cedula, string $nombre, string $motivo, ?Vehiculo $vehiculo): Persona` | Da de alta un invitado con lo mínimo, y su vehículo si trajo uno. |
 | `cuantosDentro(): int` | **Le sirve a la parte 2** para su contador de quién está dentro. |
 
 En el modelo `Persona`: `estaDentro()`, `ultimoMovimiento()`, `esInvitado()`, `esTrabajador()`,

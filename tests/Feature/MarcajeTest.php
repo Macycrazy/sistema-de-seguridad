@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Movimiento;
 use App\Models\Persona;
 use App\Services\Marcaje;
+use App\Services\Vehiculo;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -103,6 +104,61 @@ class MarcajeTest extends TestCase
         $this->assertNull($invitado->foto_ruta);
     }
 
+    public function test_un_invitado_que_llega_en_carro_lo_deja_anotado(): void
+    {
+        $invitado = $this->marcaje->registrarInvitado(
+            '87654321',
+            'Carlos Pérez',
+            'Videoconferencia',
+            Vehiculo::desde('Toyota', 'Corolla', 'Gris', 'AB123CD'),
+        );
+
+        $this->assertSame('Toyota', $invitado->marca);
+        $this->assertSame('Corolla', $invitado->modelo);
+        $this->assertSame('Gris', $invitado->color);
+        $this->assertSame('AB123CD', $invitado->placa);
+    }
+
+    public function test_un_invitado_que_llega_caminando_no_lleva_vehiculo(): void
+    {
+        // Es el caso normal, y por eso el vehículo ni siquiera se pasa.
+        $invitado = $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia');
+
+        $this->assertNull($invitado->marca);
+        $this->assertNull($invitado->modelo);
+        $this->assertNull($invitado->color);
+        $this->assertNull($invitado->placa);
+        $this->assertFalse($invitado->tieneVehiculo());
+    }
+
+    public function test_un_vehiculo_sin_la_placa_no_se_guarda(): void
+    {
+        // «Toyota gris» no identifica ningún carro: hay miles.
+        $this->expectException(ValidationException::class);
+
+        $this->marcaje->registrarInvitado(
+            '87654321',
+            'Carlos Pérez',
+            'Videoconferencia',
+            Vehiculo::desde(marca: 'Toyota', color: 'Gris'),
+        );
+    }
+
+    public function test_la_placa_se_guarda_siempre_igual_aunque_se_teclee_de_varias_formas(): void
+    {
+        // Misma idea que la cédula: si se guarda tal cual se teclea, buscarla luego es una lotería.
+        foreach (['AB123CD', 'ab-123-cd', 'AB 123 CD', 'ab123cd'] as $i => $tecleada) {
+            $invitado = $this->marcaje->registrarInvitado(
+                (string) (87654320 + $i),
+                'Carlos Pérez',
+                'Videoconferencia',
+                Vehiculo::desde('Toyota', 'Corolla', 'Gris', $tecleada),
+            );
+
+            $this->assertSame('AB123CD', $invitado->placa, "Falló tecleando «{$tecleada}»");
+        }
+    }
+
     public function test_un_invitado_sin_nombre_no_se_guarda(): void
     {
         $this->expectException(ValidationException::class);
@@ -151,6 +207,92 @@ class MarcajeTest extends TestCase
 
         $this->assertSame('Entrega de material', $segundo->motivo);
         $this->assertSame('Videoconferencia', $primero->fresh()->motivo);
+    }
+
+    public function test_el_movimiento_de_un_invitado_guarda_el_vehiculo_de_ese_dia(): void
+    {
+        $invitado = $this->marcaje->registrarInvitado(
+            '87654321',
+            'Carlos Pérez',
+            'Videoconferencia',
+            Vehiculo::desde('Toyota', 'Corolla', 'Gris', 'AB123CD'),
+        );
+
+        $lunes = $this->marcaje->registrar($invitado, Movimiento::ENTRADA);
+        $this->assertSame('AB123CD', $lunes->placa);
+        $this->assertSame('Toyota', $lunes->marca);
+        $this->marcaje->registrar($invitado->fresh(), Movimiento::SALIDA);
+
+        // El jueves viene en otro carro: el asiento del lunes tiene que seguir diciendo el suyo.
+        $this->travel(1)->day();
+        $jueves = $this->marcaje->registrar(
+            $invitado->fresh(),
+            Movimiento::ENTRADA,
+            vehiculo: Vehiculo::desde('Chevrolet', 'Aveo', 'Azul', 'XY987ZW'),
+        );
+
+        $this->assertSame('XY987ZW', $jueves->placa);
+        $this->assertSame('AB123CD', $lunes->fresh()->placa);
+    }
+
+    public function test_el_invitado_que_hoy_viene_caminando_deja_de_tener_carro(): void
+    {
+        $invitado = $this->marcaje->registrarInvitado(
+            '87654321',
+            'Carlos Pérez',
+            'Videoconferencia',
+            Vehiculo::desde('Toyota', 'Corolla', 'Gris', 'AB123CD'),
+        );
+
+        $enCarro = $this->marcaje->registrar($invitado, Movimiento::ENTRADA);
+        $this->marcaje->registrar($invitado->fresh(), Movimiento::SALIDA);
+
+        // Un vehículo VACÍO no es lo mismo que no pasar ninguno: dice «hoy vino sin carro».
+        // Sin esta diferencia, la placa del lunes se le quedaría pegada para siempre.
+        $this->travel(1)->day();
+        $aPie = $this->marcaje->registrar(
+            $invitado->fresh(),
+            Movimiento::ENTRADA,
+            vehiculo: Vehiculo::desde(),
+        );
+
+        $this->assertNull($aPie->placa);
+        $this->assertFalse($aPie->tieneVehiculo());
+        $this->assertFalse($invitado->fresh()->tieneVehiculo());
+
+        // Y el asiento del día que sí trajo carro no se toca.
+        $this->assertSame('AB123CD', $enCarro->fresh()->placa);
+    }
+
+    public function test_no_pasar_vehiculo_conserva_el_que_ya_tenia_la_ficha(): void
+    {
+        $invitado = $this->marcaje->registrarInvitado(
+            '87654321',
+            'Carlos Pérez',
+            'Videoconferencia',
+            Vehiculo::desde('Toyota', 'Corolla', 'Gris', 'AB123CD'),
+        );
+
+        // Nulo significa «no me lo preguntes»: es como marca la salida quien ya entró.
+        $salida = $this->marcaje->registrar($invitado, Movimiento::SALIDA);
+
+        $this->assertSame('AB123CD', $salida->placa);
+        $this->assertSame('AB123CD', $invitado->fresh()->placa);
+    }
+
+    public function test_el_movimiento_de_un_trabajador_nunca_lleva_vehiculo(): void
+    {
+        // El carro se le pregunta al invitado, no al personal: el suyo no es asunto de la puerta.
+        $persona = $this->trabajador();
+
+        $movimiento = $this->marcaje->registrar(
+            $persona,
+            Movimiento::ENTRADA,
+            vehiculo: Vehiculo::desde('Toyota', 'Corolla', 'Gris', 'AB123CD'),
+        );
+
+        $this->assertNull($movimiento->placa);
+        $this->assertNull($persona->fresh()->placa);
     }
 
     public function test_el_movimiento_de_un_trabajador_no_lleva_motivo(): void

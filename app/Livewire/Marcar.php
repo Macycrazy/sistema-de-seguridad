@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\Movimiento;
 use App\Models\Persona;
 use App\Services\Marcaje;
+use App\Services\Vehiculo;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -32,10 +33,23 @@ class Marcar extends Component
     /** Se enciende cuando la cédula no está en el sistema: hay que dar de alta un invitado. */
     public bool $invitadoNuevo = false;
 
-    /** Los dos campos del formulario de invitado. */
+    /** Los dos campos obligatorios del formulario de invitado. */
     public string $nombre = '';
 
     public string $motivo = '';
+
+    /**
+     * El vehículo en el que llega, si llega en uno. Los cuatro van vacíos cuando entra caminando,
+     * que es lo más común: no son obligatorios. Van sueltos y no como un objeto porque cada uno
+     * es una casilla de la pantalla y Livewire ata cada casilla a una propiedad.
+     */
+    public string $marca = '';
+
+    public string $modelo = '';
+
+    public string $color = '';
+
+    public string $placa = '';
 
     /** Lo que se le dice al vigilante después de marcar. */
     public string $confirmacion = '';
@@ -139,6 +153,7 @@ class Marcar extends Component
             if (! $this->invitadoNuevo) {
                 $this->nombre = '';
                 $this->motivo = '';
+                $this->olvidarVehiculo();
             }
 
             $this->personaId = null;
@@ -153,9 +168,30 @@ class Marcar extends Component
         unset($this->persona, $this->sugerido);
 
         // Un invitado que vuelve ya trae sus datos: se muestran para poder confirmarlos o cambiarlos.
+        // También el carro de la última vez, que casi siempre es el mismo — pero si hoy viene
+        // caminando, el vigilante vacía las casillas y así queda anotado.
         if ($persona->esInvitado()) {
             $this->motivo = (string) $persona->motivo;
+            $this->marca = (string) $persona->marca;
+            $this->modelo = (string) $persona->modelo;
+            $this->color = (string) $persona->color;
+            $this->placa = (string) $persona->placa;
         }
+    }
+
+    /** El vehículo tal y como está escrito ahora mismo en la pantalla. */
+    protected function vehiculo(): Vehiculo
+    {
+        return Vehiculo::desde($this->marca, $this->modelo, $this->color, $this->placa);
+    }
+
+    /** Vacía las cuatro casillas del vehículo. */
+    protected function olvidarVehiculo(): void
+    {
+        $this->marca = '';
+        $this->modelo = '';
+        $this->color = '';
+        $this->placa = '';
     }
 
     /** Deja de mostrar a nadie, sin tocar la cédula que se está teclando. */
@@ -170,7 +206,12 @@ class Marcar extends Component
     public function guardarInvitado(): void
     {
         try {
-            $persona = $this->marcaje->registrarInvitado($this->cedula, $this->nombre, $this->motivo);
+            $persona = $this->marcaje->registrarInvitado(
+                $this->cedula,
+                $this->nombre,
+                $this->motivo,
+                $this->vehiculo(),
+            );
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
 
@@ -210,6 +251,7 @@ class Marcar extends Component
                 // La parte 3 pondrá aquí el usuario que tiene la sesión abierta.
                 usuarioId: auth()->id(),
                 motivo: $persona->esInvitado() ? $this->motivo : null,
+                vehiculo: $persona->esInvitado() ? $this->vehiculo() : null,
             );
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
@@ -227,7 +269,10 @@ class Marcar extends Component
     /** Vuelve al estado inicial: campo vacío y listo para teclear. */
     public function limpiar(): void
     {
-        $this->reset(['cedula', 'personaId', 'invitadoNuevo', 'nombre', 'motivo', 'confirmacion']);
+        $this->reset([
+            'cedula', 'personaId', 'invitadoNuevo', 'nombre', 'motivo', 'confirmacion',
+            'marca', 'modelo', 'color', 'placa',
+        ]);
         $this->resetValidation();
         unset($this->persona, $this->sugerido, $this->dentro);
     }

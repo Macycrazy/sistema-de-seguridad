@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Vehiculo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -39,6 +40,11 @@ class Persona extends Model
         'dependencia',
         'foto_ruta',
         'motivo',
+        // El vehículo del invitado. Las cuatro van nulas si vino caminando.
+        'marca',
+        'modelo',
+        'color',
+        'placa',
         'activo',
     ];
 
@@ -134,5 +140,16 @@ class Persona extends Model
     public function cedulaConPuntos(): string
     {
         return number_format((int) $this->cedula, 0, ',', '.');
+    }
+
+    /** El vehículo que trae anotado, si trae alguno. */
+    public function vehiculo(): Vehiculo
+    {
+        return Vehiculo::desdeModelo($this);
+    }
+
+    public function tieneVehiculo(): bool
+    {
+        return ! $this->vehiculo()->vacio();
     }
 }

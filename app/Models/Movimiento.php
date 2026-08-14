@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Vehiculo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -31,6 +32,11 @@ class Movimiento extends Model
         'ocurrio_en',
         'usuario_id',
         'motivo',
+        // Copia congelada del vehículo de ese día. Ver docs/esquema.md.
+        'marca',
+        'modelo',
+        'color',
+        'placa',
     ];
 
     protected function casts(): array
@@ -54,5 +60,16 @@ class Movimiento extends Model
     public function esEntrada(): bool
     {
         return $this->tipo === self::ENTRADA;
+    }
+
+    /** El vehículo con el que se registró este asiento, tal y como estaba ese día. */
+    public function vehiculo(): Vehiculo
+    {
+        return Vehiculo::desdeModelo($this);
+    }
+
+    public function tieneVehiculo(): bool
+    {
+        return ! $this->vehiculo()->vacio();
     }
 }

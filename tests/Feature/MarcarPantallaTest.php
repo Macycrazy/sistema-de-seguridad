@@ -254,6 +254,90 @@ class MarcarPantallaTest extends TestCase
         ]);
     }
 
+    public function test_el_alta_de_un_invitado_guarda_el_vehiculo_en_el_que_llego(): void
+    {
+        Livewire::test(Marcar::class)
+            ->set('cedula', '87654321')
+            ->call('buscar')
+            ->set('nombre', 'Carlos Pérez')
+            ->set('motivo', 'Videoconferencia')
+            ->set('marca', 'Toyota')
+            ->set('modelo', 'Corolla')
+            ->set('color', 'Gris')
+            ->set('placa', 'ab-123-cd')
+            ->call('guardarInvitado')
+            ->assertSet('invitadoNuevo', false)
+            ->call('marcarEntrada')
+            ->assertSee('Entrada registrada');
+
+        // La placa se guarda normalizada aunque se teclee con guiones y en minúsculas.
+        $this->assertDatabaseHas('personas', [
+            'cedula' => '87654321',
+            'marca' => 'Toyota',
+            'modelo' => 'Corolla',
+            'color' => 'Gris',
+            'placa' => 'AB123CD',
+        ]);
+
+        // Y el asiento se lleva su copia del día.
+        $this->assertDatabaseHas('movimientos', ['placa' => 'AB123CD']);
+    }
+
+    public function test_un_invitado_a_pie_se_guarda_sin_vehiculo(): void
+    {
+        // El vehículo no es obligatorio: la mayoría de la gente entra caminando.
+        Livewire::test(Marcar::class)
+            ->set('cedula', '87654321')
+            ->call('buscar')
+            ->set('nombre', 'Carlos Pérez')
+            ->set('motivo', 'Videoconferencia')
+            ->call('guardarInvitado')
+            ->assertHasNoErrors()
+            ->assertSet('invitadoNuevo', false);
+
+        $this->assertDatabaseHas('personas', ['cedula' => '87654321', 'placa' => null]);
+    }
+
+    public function test_un_vehiculo_a_medias_avisa_de_que_falta_la_placa(): void
+    {
+        Livewire::test(Marcar::class)
+            ->set('cedula', '87654321')
+            ->call('buscar')
+            ->set('nombre', 'Carlos Pérez')
+            ->set('motivo', 'Videoconferencia')
+            ->set('marca', 'Toyota')
+            ->set('color', 'Gris')
+            ->call('guardarInvitado')
+            ->assertHasErrors('placa')
+            ->assertSet('invitadoNuevo', true);
+
+        $this->assertDatabaseMissing('personas', ['cedula' => '87654321']);
+    }
+
+    public function test_al_invitado_que_vuelve_le_sale_escrito_el_carro_de_la_ultima_vez(): void
+    {
+        Persona::create([
+            'cedula' => '87654321',
+            'tipo' => Persona::INVITADO,
+            'nombre' => 'Carlos Pérez',
+            'motivo' => 'Videoconferencia',
+            'marca' => 'Toyota',
+            'modelo' => 'Corolla',
+            'color' => 'Gris',
+            'placa' => 'AB123CD',
+            'activo' => true,
+        ]);
+
+        // No hay que volver a preguntárselo: sale escrito y solo se confirma.
+        Livewire::test(Marcar::class)
+            ->set('cedula', '87654321')
+            ->call('buscar')
+            ->assertSet('marca', 'Toyota')
+            ->assertSet('modelo', 'Corolla')
+            ->assertSet('color', 'Gris')
+            ->assertSet('placa', 'AB123CD');
+    }
+
     public function test_un_invitado_sin_los_dos_datos_no_se_guarda(): void
     {
         Livewire::test(Marcar::class)

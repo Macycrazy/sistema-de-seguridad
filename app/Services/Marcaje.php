@@ -64,13 +64,22 @@ class Marcaje
      * Dos personas distintas nunca comparten cédula, así que un invitado nuevo se crea aquí
      * con lo mínimo: nombre y motivo de la visita.
      *
+     * @param  Vehiculo|null  $vehiculo  El carro en el que llegó, si llegó en uno. Va aparte de
+     *                                   los otros datos porque es opcional de verdad: quien
+     *                                   entra caminando lo deja vacío y no pasa nada.
+     *
      * @throws ValidationException si la cédula ya pertenece a alguien
      */
-    public function registrarInvitado(string $cedula, string $nombre, string $motivo): Persona
-    {
+    public function registrarInvitado(
+        string $cedula,
+        string $nombre,
+        string $motivo,
+        ?Vehiculo $vehiculo = null,
+    ): Persona {
         $cedula = Persona::normalizarCedula($cedula);
         $nombre = trim($nombre);
         $motivo = trim($motivo);
+        $vehiculo ??= Vehiculo::desde();
 
         $this->exigirCedulaValida($cedula);
 
@@ -86,6 +95,9 @@ class Marcaje
             ]);
         }
 
+        // Un vehículo a medias no se guarda: o no hay carro, o al menos se sabe la placa.
+        $vehiculo->exigirValido();
+
         if (Persona::where('cedula', $cedula)->exists()) {
             throw ValidationException::withMessages([
                 'cedula' => 'Esa cédula ya está registrada en el sistema.',
@@ -98,6 +110,7 @@ class Marcaje
             'nombre' => $nombre,
             'motivo' => $motivo,
             'activo' => true,
+            ...$vehiculo->paraGuardar(),
         ]);
     }
 
@@ -106,6 +119,11 @@ class Marcaje
      *
      * @param  string|null  $motivo  El motivo de la visita, si es un invitado que vuelve y lo
      *                               actualiza. Si va nulo se conserva el que ya tenía.
+     * @param  Vehiculo|null  $vehiculo  El vehículo de HOY. Nulo significa «no me lo preguntes,
+     *                                   deja el que ya tenía la ficha». Un Vehiculo vacío es
+     *                                   distinto: significa «hoy vino sin carro», y borra el que
+     *                                   tuviera anotado. Sin esa diferencia, quien un día vino
+     *                                   en carro arrastraría esa placa para siempre.
      *
      * @throws ValidationException si el tipo no es entrada ni salida, o la persona está inactiva
      */
@@ -114,6 +132,7 @@ class Marcaje
         string $tipo,
         ?int $usuarioId = null,
         ?string $motivo = null,
+        ?Vehiculo $vehiculo = null,
     ): Movimiento {
         if (! in_array($tipo, [Movimiento::ENTRADA, Movimiento::SALIDA], true)) {
             throw ValidationException::withMessages([
@@ -127,9 +146,11 @@ class Marcaje
             ]);
         }
 
+        $vehiculo?->exigirValido();
+
         // La ficha y el asiento se guardan juntos o no se guarda ninguno: si falla la
         // actualización del invitado, no queremos un movimiento suelto apuntando a un dato viejo.
-        return DB::transaction(function () use ($persona, $tipo, $usuarioId, $motivo) {
+        return DB::transaction(function () use ($persona, $tipo, $usuarioId, $motivo, $vehiculo) {
             // Doble pulsación del botón, o el lector de carnets leyendo dos veces el mismo
             // carnet: se devuelve el asiento que ya existe en vez de crear otro igual.
             // Como los movimientos no se borran, un duplicado se quedaría en el histórico
@@ -144,6 +165,11 @@ class Marcaje
                 $persona->update(['motivo' => $motivo]);
             }
 
+            // Aquí sí se guarda el vacío: es como se anota que hoy vino sin carro.
+            if ($persona->esInvitado() && $vehiculo !== null) {
+                $persona->update($vehiculo->paraGuardar());
+            }
+
             return Movimiento::create([
                 'persona_id' => $persona->id,
                 'tipo' => $tipo,
@@ -151,6 +177,8 @@ class Marcaje
                 'usuario_id' => $usuarioId,
                 // El asiento de un trabajador no lleva motivo: viene a trabajar.
                 'motivo' => $persona->esInvitado() ? $persona->motivo : null,
+                // Ni vehículo: el carro se le pregunta al invitado, no al personal.
+                ...($persona->esInvitado() ? $persona->vehiculo() : Vehiculo::desde())->paraGuardar(),
             ]);
         });
     }

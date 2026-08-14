@@ -124,6 +124,18 @@
                 </div>
             </div>
 
+            {{-- El carro del invitado que vuelve. Sale ya escrito el de la última vez, que casi
+                 siempre es el mismo; si hoy vino caminando, se vacían las casillas y el asiento
+                 de hoy queda sin vehículo sin tocar los de los días anteriores.
+
+                 Va fuera de la fila de la foto para que las cuatro casillas tengan el ancho
+                 entero de la tarjeta, igual que en el alta. --}}
+            @if ($persona->esInvitado())
+                <div class="mt-5">
+                    <x-vehiculo :error="$errors->first('placa')" />
+                </div>
+            @endif
+
             {{-- LOS DOS BOTONES --}}
             @if ($persona->activo)
                 @php
@@ -193,27 +205,32 @@
                     Esta cédula no está en el sistema: es un invitado.
                 </p>
                 <p class="mt-1 text-sm text-slate-600">
-                    Solo hacen falta dos datos. La próxima vez que venga, con la cédula bastará.
+                    Solo hacen falta dos datos: nombre y motivo. La próxima vez que venga, con la
+                    cédula bastará.
                 </p>
             </div>
 
-            <form wire:submit="guardarInvitado" class="max-w-md space-y-5">
-                <x-campo
-                    etiqueta="Nombre y apellido"
-                    nombre="nombre"
-                    wire:model="nombre"
-                    autocomplete="off"
-                    ayuda="Como aparece en el documento."
-                    :error="$errors->first('nombre')"
-                />
+            <form wire:submit="guardarInvitado" class="space-y-5">
+                <div class="max-w-md space-y-5">
+                    <x-campo
+                        etiqueta="Nombre y apellido"
+                        nombre="nombre"
+                        wire:model="nombre"
+                        autocomplete="off"
+                        ayuda="Como aparece en el documento."
+                        :error="$errors->first('nombre')"
+                    />
 
-                <x-campo
-                    etiqueta="Motivo de visita"
-                    nombre="motivo"
-                    wire:model="motivo"
-                    autocomplete="off"
-                    :error="$errors->first('motivo')"
-                />
+                    <x-campo
+                        etiqueta="Motivo de visita"
+                        nombre="motivo"
+                        wire:model="motivo"
+                        autocomplete="off"
+                        :error="$errors->first('motivo')"
+                    />
+                </div>
+
+                <x-vehiculo :error="$errors->first('placa')" />
 
                 {{-- En el teléfono, uno debajo del otro y a todo el ancho: en fila, «Guardar y
                      continuar» se parte en dos líneas. --}}
