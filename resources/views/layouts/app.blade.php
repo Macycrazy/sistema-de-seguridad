@@ -9,6 +9,10 @@
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
 
+    {{-- Va antes del encabezado: si hay cambios de otra parte sin aplicar, es lo primero que hay
+         que ver. Solo sale en desarrollo, y solo si de verdad falta correr algo. --}}
+    <x-aviso-actualizar />
+
     {{--
         Encabezado del sistema, en el azul del CIIP (--color-marca en app.css).
 
