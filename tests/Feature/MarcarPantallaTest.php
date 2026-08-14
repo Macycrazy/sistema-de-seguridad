@@ -20,6 +20,15 @@ class MarcarPantallaTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Desde la parte 3, la pantalla de marcar está detrás del ingreso: el vigilante entra
+        // con su usuario al empezar el turno. Aquí se prueba el recorrido, no el permiso.
+        $this->entrandoComo();
+    }
+
     private function trabajador(array $atributos = []): Persona
     {
         return Persona::create(array_merge([
