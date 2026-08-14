@@ -39,10 +39,16 @@ class Marcar extends Component
     public string $motivo = '';
 
     /**
-     * El vehículo en el que llega, si llega en uno. Los cuatro van vacíos cuando entra caminando,
-     * que es lo más común: no son obligatorios. Van sueltos y no como un objeto porque cada uno
-     * es una casilla de la pantalla y Livewire ata cada casilla a una propiedad.
+     * El vehículo en el que llega, si llega en uno. Vale igual para un invitado que para un
+     * trabajador: el personal también estaciona aquí. Van vacíos cuando entra caminando, que es
+     * lo más común: no son obligatorios. Van sueltos y no como un objeto porque cada uno es una
+     * casilla de la pantalla y Livewire ata cada casilla a una propiedad.
+     *
+     * El tipo empieza en «carro» porque siempre hay uno de los dos botones marcado. No significa
+     * que haya vehículo: mientras las demás casillas estén vacías, no se guarda nada.
      */
+    public string $tipoVehiculo = Vehiculo::CARRO;
+
     public string $marca = '';
 
     public string $modelo = '';
@@ -50,6 +56,12 @@ class Marcar extends Component
     public string $color = '';
 
     public string $placa = '';
+
+    /**
+     * Se enciende al pulsar «Otro vehículo». Mientras esté apagada, a quien ya tiene un vehículo
+     * anotado no se le deja cambiar carro por moto: sería un error de tecleo, no un dato nuevo.
+     */
+    public bool $cambiandoVehiculo = false;
 
     /** Lo que se le dice al vigilante después de marcar. */
     public string $confirmacion = '';
@@ -167,27 +179,64 @@ class Marcar extends Component
         $this->invitadoNuevo = false;
         unset($this->persona, $this->sugerido);
 
-        // Un invitado que vuelve ya trae sus datos: se muestran para poder confirmarlos o cambiarlos.
-        // También el carro de la última vez, que casi siempre es el mismo — pero si hoy viene
-        // caminando, el vigilante vacía las casillas y así queda anotado.
+        // Un invitado que vuelve ya trae su motivo: se muestra para confirmarlo o cambiarlo.
         if ($persona->esInvitado()) {
             $this->motivo = (string) $persona->motivo;
-            $this->marca = (string) $persona->marca;
-            $this->modelo = (string) $persona->modelo;
-            $this->color = (string) $persona->color;
-            $this->placa = (string) $persona->placa;
         }
+
+        // El vehículo de la última vez, sea invitado o trabajador. Casi siempre es el mismo —
+        // pero si hoy viene caminando, el vigilante vacía las casillas y así queda anotado.
+        $this->cambiandoVehiculo = false;
+        $this->tipoVehiculo = Vehiculo::normalizarTipo($persona->tipo_vehiculo);
+        $this->marca = (string) $persona->marca;
+        $this->modelo = (string) $persona->modelo;
+        $this->color = (string) $persona->color;
+        $this->placa = (string) $persona->placa;
+
+        unset($this->tipoFijado);
     }
 
     /** El vehículo tal y como está escrito ahora mismo en la pantalla. */
     protected function vehiculo(): Vehiculo
     {
-        return Vehiculo::desde($this->marca, $this->modelo, $this->color, $this->placa);
+        return Vehiculo::desde($this->tipoVehiculo, $this->marca, $this->modelo, $this->color, $this->placa);
     }
 
-    /** Vacía las cuatro casillas del vehículo. */
+    /**
+     * El tipo que la persona en pantalla ya tiene anotado, cuando no se puede cambiar.
+     *
+     * Un vehículo no cambia de clase: la moto de José es una moto todos los días. Si un día
+     * llega en otra cosa, eso es OTRO vehículo y para eso está «Otro vehículo», que vacía las
+     * casillas y devuelve la elección.
+     *
+     * Devuelve null cuando el tipo sí se puede elegir: nadie en pantalla, sin vehículo anotado,
+     * o el vigilante ya pulsó «Otro vehículo».
+     */
+    #[Computed]
+    public function tipoFijado(): ?string
+    {
+        if ($this->cambiandoVehiculo) {
+            return null;
+        }
+
+        $persona = $this->persona();
+
+        return $persona?->tieneVehiculo() ? $persona->vehiculo()->tipo : null;
+    }
+
+    /** Vacía el vehículo anotado para poder poner otro, de la clase que sea. */
+    public function cambiarVehiculo(): void
+    {
+        $this->olvidarVehiculo();
+        $this->cambiandoVehiculo = true;
+        $this->resetValidation();
+        unset($this->tipoFijado);
+    }
+
+    /** Vacía las casillas del vehículo y deja el tipo como empieza. */
     protected function olvidarVehiculo(): void
     {
+        $this->tipoVehiculo = Vehiculo::CARRO;
         $this->marca = '';
         $this->modelo = '';
         $this->color = '';
@@ -199,7 +248,7 @@ class Marcar extends Component
     {
         $this->personaId = null;
         $this->invitadoNuevo = false;
-        unset($this->persona, $this->sugerido);
+        unset($this->persona, $this->sugerido, $this->tipoFijado);
     }
 
     /** Da de alta al invitado nuevo y lo deja listo para marcar, sin teclear la cédula otra vez. */
@@ -251,7 +300,8 @@ class Marcar extends Component
                 // La parte 3 pondrá aquí el usuario que tiene la sesión abierta.
                 usuarioId: auth()->id(),
                 motivo: $persona->esInvitado() ? $this->motivo : null,
-                vehiculo: $persona->esInvitado() ? $this->vehiculo() : null,
+                // El vehículo se le pregunta a todos: el personal también estaciona aquí.
+                vehiculo: $this->vehiculo(),
             );
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
@@ -271,10 +321,10 @@ class Marcar extends Component
     {
         $this->reset([
             'cedula', 'personaId', 'invitadoNuevo', 'nombre', 'motivo', 'confirmacion',
-            'marca', 'modelo', 'color', 'placa',
+            'tipoVehiculo', 'marca', 'modelo', 'color', 'placa', 'cambiandoVehiculo',
         ]);
         $this->resetValidation();
-        unset($this->persona, $this->sugerido, $this->dentro);
+        unset($this->persona, $this->sugerido, $this->dentro, $this->tipoFijado);
     }
 
     public function render()

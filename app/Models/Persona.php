@@ -40,7 +40,8 @@ class Persona extends Model
         'dependencia',
         'foto_ruta',
         'motivo',
-        // El vehículo del invitado. Las cuatro van nulas si vino caminando.
+        // El vehículo, sea invitado o trabajador. Todas nulas si vino caminando.
+        'tipo_vehiculo',
         'marca',
         'modelo',
         'color',

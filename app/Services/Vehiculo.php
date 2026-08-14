@@ -5,18 +5,25 @@ namespace App\Services;
 use Illuminate\Validation\ValidationException;
 
 /**
- * El vehículo en el que llega un invitado: marca, modelo, color y placa.
+ * El vehículo en el que llega una persona: si es carro o moto, marca, modelo, color y placa.
  *
- * Existe como clase, y no como cuatro cadenas sueltas, porque los mismos cuatro datos se limpian,
- * se validan y se guardan en tres sitios distintos —la ficha del invitado, el asiento del
+ * Existe como clase, y no como cinco cadenas sueltas, porque los mismos datos se limpian, se
+ * validan y se guardan en tres sitios distintos —la ficha de la persona, el asiento del
  * movimiento y la pantalla— y así la regla vive en uno solo.
  *
- * Un invitado SIN vehículo es lo normal: mucha gente entra caminando. Por eso el objeto vacío es
- * válido y guarda las cuatro columnas en nulo. Lo que no se admite es un vehículo a medias sin
- * placa: ver exigirValido().
+ * Vale igual para un invitado que para un trabajador: el personal también estaciona aquí.
+ *
+ * Alguien SIN vehículo es lo normal: mucha gente entra caminando. Por eso el objeto vacío es
+ * válido y guarda las columnas en nulo. Lo que no se admite es un vehículo a medias sin placa:
+ * ver exigirValido().
  */
 final class Vehiculo
 {
+    /** Carro y moto no estacionan en el mismo sitio, y «cuántas motos hay dentro» se pregunta. */
+    public const CARRO = 'carro';
+
+    public const MOTO = 'moto';
+
     /** Los límites de las columnas, para no guardar más de lo que cabe. Ver la migración. */
     public const LARGO_MARCA = 40;
 
@@ -27,6 +34,7 @@ final class Vehiculo
     public const LARGO_PLACA = 15;
 
     private function __construct(
+        public readonly ?string $tipo,
         public readonly ?string $marca,
         public readonly ?string $modelo,
         public readonly ?string $color,
@@ -35,26 +43,54 @@ final class Vehiculo
 
     /**
      * Construye el vehículo dejando los datos ya limpios. Lo que llegue vacío queda en nulo,
-     * que es como se guarda «no trajo carro».
+     * que es como se guarda «no trajo vehículo».
+     *
+     * El tipo solo tiene sentido si hay vehículo: sin él queda nulo, aunque venga puesto. Y si
+     * hay vehículo pero no se eligió tipo, se asume carro, que es lo más común.
      */
     public static function desde(
+        ?string $tipo = null,
         ?string $marca = null,
         ?string $modelo = null,
         ?string $color = null,
         ?string $placa = null,
     ): self {
-        return new self(
+        $vehiculo = new self(
+            null,
             self::limpiar($marca, self::LARGO_MARCA),
             self::limpiar($modelo, self::LARGO_MODELO),
             self::limpiar($color, self::LARGO_COLOR),
             self::normalizarPlaca($placa),
+        );
+
+        if ($vehiculo->vacio()) {
+            return $vehiculo;
+        }
+
+        return new self(
+            self::normalizarTipo($tipo),
+            $vehiculo->marca,
+            $vehiculo->modelo,
+            $vehiculo->color,
+            $vehiculo->placa,
         );
     }
 
     /** El vehículo tal y como está guardado en una ficha o en un asiento. */
     public static function desdeModelo(object $fila): self
     {
-        return self::desde($fila->marca, $fila->modelo, $fila->color, $fila->placa);
+        return self::desde($fila->tipo_vehiculo, $fila->marca, $fila->modelo, $fila->color, $fila->placa);
+    }
+
+    /** Solo «carro» o «moto»; cualquier otra cosa se trata como carro. */
+    public static function normalizarTipo(?string $tipo): string
+    {
+        return mb_strtolower(trim((string) $tipo)) === self::MOTO ? self::MOTO : self::CARRO;
+    }
+
+    public function esMoto(): bool
+    {
+        return $this->tipo === self::MOTO;
     }
 
     /**
@@ -69,7 +105,10 @@ final class Vehiculo
         return $placa === '' ? null : mb_substr($placa, 0, self::LARGO_PLACA);
     }
 
-    /** No trajo vehículo: los cuatro datos están vacíos. */
+    /**
+     * No trajo vehículo. El tipo NO cuenta aquí a propósito: en la pantalla siempre hay uno de
+     * los dos botones marcado, así que si contara, nadie podría entrar caminando.
+     */
     public function vacio(): bool
     {
         return $this->marca === null
@@ -96,10 +135,11 @@ final class Vehiculo
         }
     }
 
-    /** Las cuatro columnas, listas para un create() o un update(). */
+    /** Las columnas, listas para un create() o un update(). */
     public function paraGuardar(): array
     {
         return [
+            'tipo_vehiculo' => $this->tipo,
             'marca' => $this->marca,
             'modelo' => $this->modelo,
             'color' => $this->color,
@@ -107,12 +147,22 @@ final class Vehiculo
         ];
     }
 
-    /** Cómo se lee de un vistazo: «Toyota Corolla · Gris · AB123CD». */
+    /** Cómo se llama: «Carro» o «Moto». Vacío si no trajo ninguno. */
+    public function etiquetaTipo(): string
+    {
+        return match ($this->tipo) {
+            self::MOTO => 'Moto',
+            self::CARRO => 'Carro',
+            default => '',
+        };
+    }
+
+    /** Cómo se lee de un vistazo: «Carro · Toyota Corolla · Gris · AB123CD». */
     public function descripcion(): string
     {
         $modelo = trim(($this->marca ?? '').' '.($this->modelo ?? ''));
 
-        return implode(' · ', array_filter([$modelo, $this->color, $this->placa]));
+        return implode(' · ', array_filter([$this->etiquetaTipo(), $modelo, $this->color, $this->placa]));
     }
 
     /** Recorta y deja un solo espacio entre palabras. Vacío se convierte en nulo. */

@@ -33,6 +33,7 @@ class Movimiento extends Model
         'usuario_id',
         'motivo',
         // Copia congelada del vehículo de ese día. Ver docs/esquema.md.
+        'tipo_vehiculo',
         'marca',
         'modelo',
         'color',

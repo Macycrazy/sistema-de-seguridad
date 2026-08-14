@@ -110,7 +110,7 @@ class MarcajeTest extends TestCase
             '87654321',
             'Carlos Pérez',
             'Videoconferencia',
-            Vehiculo::desde('Toyota', 'Corolla', 'Gris', 'AB123CD'),
+            Vehiculo::desde(Vehiculo::CARRO, 'Toyota', 'Corolla', 'Gris', 'AB123CD'),
         );
 
         $this->assertSame('Toyota', $invitado->marca);
@@ -152,7 +152,7 @@ class MarcajeTest extends TestCase
                 (string) (87654320 + $i),
                 'Carlos Pérez',
                 'Videoconferencia',
-                Vehiculo::desde('Toyota', 'Corolla', 'Gris', $tecleada),
+                Vehiculo::desde(Vehiculo::CARRO, 'Toyota', 'Corolla', 'Gris', $tecleada),
             );
 
             $this->assertSame('AB123CD', $invitado->placa, "Falló tecleando «{$tecleada}»");
@@ -215,7 +215,7 @@ class MarcajeTest extends TestCase
             '87654321',
             'Carlos Pérez',
             'Videoconferencia',
-            Vehiculo::desde('Toyota', 'Corolla', 'Gris', 'AB123CD'),
+            Vehiculo::desde(Vehiculo::CARRO, 'Toyota', 'Corolla', 'Gris', 'AB123CD'),
         );
 
         $lunes = $this->marcaje->registrar($invitado, Movimiento::ENTRADA);
@@ -228,7 +228,7 @@ class MarcajeTest extends TestCase
         $jueves = $this->marcaje->registrar(
             $invitado->fresh(),
             Movimiento::ENTRADA,
-            vehiculo: Vehiculo::desde('Chevrolet', 'Aveo', 'Azul', 'XY987ZW'),
+            vehiculo: Vehiculo::desde(Vehiculo::CARRO, 'Chevrolet', 'Aveo', 'Azul', 'XY987ZW'),
         );
 
         $this->assertSame('XY987ZW', $jueves->placa);
@@ -241,7 +241,7 @@ class MarcajeTest extends TestCase
             '87654321',
             'Carlos Pérez',
             'Videoconferencia',
-            Vehiculo::desde('Toyota', 'Corolla', 'Gris', 'AB123CD'),
+            Vehiculo::desde(Vehiculo::CARRO, 'Toyota', 'Corolla', 'Gris', 'AB123CD'),
         );
 
         $enCarro = $this->marcaje->registrar($invitado, Movimiento::ENTRADA);
@@ -270,7 +270,7 @@ class MarcajeTest extends TestCase
             '87654321',
             'Carlos Pérez',
             'Videoconferencia',
-            Vehiculo::desde('Toyota', 'Corolla', 'Gris', 'AB123CD'),
+            Vehiculo::desde(Vehiculo::CARRO, 'Toyota', 'Corolla', 'Gris', 'AB123CD'),
         );
 
         // Nulo significa «no me lo preguntes»: es como marca la salida quien ya entró.
@@ -280,19 +280,145 @@ class MarcajeTest extends TestCase
         $this->assertSame('AB123CD', $invitado->fresh()->placa);
     }
 
-    public function test_el_movimiento_de_un_trabajador_nunca_lleva_vehiculo(): void
+    public function test_el_trabajador_tambien_puede_llegar_en_vehiculo(): void
     {
-        // El carro se le pregunta al invitado, no al personal: el suyo no es asunto de la puerta.
+        // El personal también estaciona aquí, así que su vehículo se anota igual que el del
+        // invitado: en su ficha y congelado en el asiento del día.
         $persona = $this->trabajador();
 
         $movimiento = $this->marcaje->registrar(
             $persona,
             Movimiento::ENTRADA,
-            vehiculo: Vehiculo::desde('Toyota', 'Corolla', 'Gris', 'AB123CD'),
+            vehiculo: Vehiculo::desde(Vehiculo::CARRO, 'Toyota', 'Corolla', 'Gris', 'AB123CD'),
         );
 
+        $this->assertSame('AB123CD', $movimiento->placa);
+        $this->assertSame(Vehiculo::CARRO, $movimiento->tipo_vehiculo);
+        $this->assertSame('AB123CD', $persona->fresh()->placa);
+    }
+
+    public function test_el_trabajador_que_llega_en_moto_queda_anotado_como_moto(): void
+    {
+        $persona = $this->trabajador();
+
+        $movimiento = $this->marcaje->registrar(
+            $persona,
+            Movimiento::ENTRADA,
+            vehiculo: Vehiculo::desde(Vehiculo::MOTO, 'Bera', 'BR-150', 'Negro', 'AC456DF'),
+        );
+
+        $this->assertSame(Vehiculo::MOTO, $movimiento->tipo_vehiculo);
+        $this->assertTrue($movimiento->vehiculo()->esMoto());
+        $this->assertSame('Moto · Bera BR-150 · Negro · AC456DF', $movimiento->vehiculo()->descripcion());
+    }
+
+    public function test_una_moto_ya_anotada_no_se_puede_marcar_como_carro(): void
+    {
+        // Un vehículo no cambia de clase: marcar «carro» sobre la moto de siempre solo puede
+        // ser un error de tecleo, y ensuciaría el histórico sin que nadie se entere.
+        $persona = $this->trabajador([
+            'tipo_vehiculo' => Vehiculo::MOTO,
+            'marca' => 'Bera',
+            'placa' => 'AC456DF',
+        ]);
+
+        $this->expectException(ValidationException::class);
+
+        $this->marcaje->registrar(
+            $persona,
+            Movimiento::ENTRADA,
+            vehiculo: Vehiculo::desde(Vehiculo::CARRO, 'Bera', placa: 'AC456DF'),
+        );
+    }
+
+    public function test_un_carro_ya_anotado_no_se_puede_marcar_como_moto(): void
+    {
+        $persona = $this->trabajador([
+            'tipo_vehiculo' => Vehiculo::CARRO,
+            'marca' => 'Toyota',
+            'placa' => 'AB123CD',
+        ]);
+
+        $this->expectException(ValidationException::class);
+
+        $this->marcaje->registrar(
+            $persona,
+            Movimiento::ENTRADA,
+            vehiculo: Vehiculo::desde(Vehiculo::MOTO, 'Toyota', placa: 'AB123CD'),
+        );
+    }
+
+    public function test_con_otra_placa_si_se_puede_elegir_la_clase(): void
+    {
+        // Porque ya no es el mismo vehículo: hoy llegó en otra cosa, y eso es un dato, no un error.
+        $persona = $this->trabajador([
+            'tipo_vehiculo' => Vehiculo::MOTO,
+            'marca' => 'Bera',
+            'placa' => 'AC456DF',
+        ]);
+
+        $movimiento = $this->marcaje->registrar(
+            $persona,
+            Movimiento::ENTRADA,
+            vehiculo: Vehiculo::desde(Vehiculo::CARRO, 'Toyota', 'Corolla', 'Gris', 'AB123CD'),
+        );
+
+        $this->assertSame(Vehiculo::CARRO, $movimiento->tipo_vehiculo);
+        $this->assertSame('AB123CD', $movimiento->placa);
+        $this->assertSame(Vehiculo::CARRO, $persona->fresh()->tipo_vehiculo);
+    }
+
+    public function test_repetir_el_mismo_vehiculo_tal_cual_no_da_problema(): void
+    {
+        $persona = $this->trabajador([
+            'tipo_vehiculo' => Vehiculo::MOTO,
+            'marca' => 'Bera',
+            'placa' => 'AC456DF',
+        ]);
+
+        $movimiento = $this->marcaje->registrar(
+            $persona,
+            Movimiento::ENTRADA,
+            vehiculo: Vehiculo::desde(Vehiculo::MOTO, 'Bera', placa: 'AC456DF'),
+        );
+
+        $this->assertSame(Vehiculo::MOTO, $movimiento->tipo_vehiculo);
+    }
+
+    public function test_quien_hoy_viene_caminando_no_choca_con_la_clase_de_su_vehiculo(): void
+    {
+        // Vaciar el vehículo no es cambiarle la clase: es decir que hoy no trajo ninguno.
+        $persona = $this->trabajador([
+            'tipo_vehiculo' => Vehiculo::MOTO,
+            'marca' => 'Bera',
+            'placa' => 'AC456DF',
+        ]);
+
+        $movimiento = $this->marcaje->registrar(
+            $persona,
+            Movimiento::ENTRADA,
+            vehiculo: Vehiculo::desde(Vehiculo::CARRO),
+        );
+
+        $this->assertNull($movimiento->tipo_vehiculo);
+        $this->assertFalse($persona->fresh()->tieneVehiculo());
+    }
+
+    public function test_el_asiento_de_quien_entra_caminando_no_guarda_ningun_tipo(): void
+    {
+        // El botón «Carro» va siempre marcado en la pantalla; si no hay vehículo, no debe
+        // colarse ese tipo en la base y dejar a alguien a pie con carro anotado.
+        $persona = $this->trabajador();
+
+        $movimiento = $this->marcaje->registrar(
+            $persona,
+            Movimiento::ENTRADA,
+            vehiculo: Vehiculo::desde(Vehiculo::CARRO),
+        );
+
+        $this->assertNull($movimiento->tipo_vehiculo);
         $this->assertNull($movimiento->placa);
-        $this->assertNull($persona->fresh()->placa);
+        $this->assertFalse($movimiento->tieneVehiculo());
     }
 
     public function test_el_movimiento_de_un_trabajador_no_lleva_motivo(): void

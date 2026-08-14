@@ -48,6 +48,167 @@ class MarcarPantallaTest extends TestCase
             ->assertSet('invitadoNuevo', false);
     }
 
+    public function test_la_gerencia_del_trabajador_sale_rotulada_y_no_como_un_texto_suelto(): void
+    {
+        // El vigilante tiene que poder decir de dónde es quien tiene delante sin adivinarlo.
+        $this->trabajador(['dependencia' => 'Consultoría Jurídica']);
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSee('Gerencia')
+            ->assertSee('Consultoría Jurídica');
+    }
+
+    public function test_al_trabajador_tambien_se_le_puede_anotar_el_vehiculo(): void
+    {
+        // El personal estaciona aquí igual que los invitados.
+        $this->trabajador();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSee('Vehículo')
+            ->set('tipoVehiculo', 'moto')
+            ->set('marca', 'Bera')
+            ->set('modelo', 'BR-150')
+            ->set('color', 'Negro')
+            ->set('placa', 'AC456DF')
+            ->call('marcarEntrada')
+            ->assertSee('Entrada registrada');
+
+        $this->assertDatabaseHas('movimientos', [
+            'tipo_vehiculo' => 'moto',
+            'placa' => 'AC456DF',
+        ]);
+    }
+
+    public function test_al_trabajador_le_sale_escrito_el_vehiculo_de_la_ultima_vez(): void
+    {
+        $this->trabajador([
+            'tipo_vehiculo' => 'moto',
+            'marca' => 'Bera',
+            'modelo' => 'BR-150',
+            'color' => 'Negro',
+            'placa' => 'AC456DF',
+        ]);
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSet('tipoVehiculo', 'moto')
+            ->assertSet('marca', 'Bera')
+            ->assertSet('placa', 'AC456DF');
+    }
+
+    public function test_a_quien_tiene_moto_la_pantalla_le_fija_la_clase(): void
+    {
+        $this->trabajador([
+            'tipo_vehiculo' => 'moto',
+            'marca' => 'Bera',
+            'placa' => 'AC456DF',
+        ]);
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            // La pantalla apaga el botón de «Carro»…
+            ->assertSet('tipoVehiculo', 'moto')
+            ->assertSee('Ya tiene este vehículo anotado')
+            // …y el servidor lo rechaza igual, aunque se salte la pantalla.
+            ->set('tipoVehiculo', 'carro')
+            ->call('marcarEntrada')
+            ->assertHasErrors('tipoVehiculo');
+
+        $this->assertDatabaseMissing('movimientos', ['tipo_vehiculo' => 'carro']);
+    }
+
+    public function test_otro_vehiculo_devuelve_la_eleccion_de_la_clase(): void
+    {
+        // La salida para cuando de verdad llegó en otra cosa.
+        $this->trabajador([
+            'tipo_vehiculo' => 'moto',
+            'marca' => 'Bera',
+            'placa' => 'AC456DF',
+        ]);
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('cambiarVehiculo')
+            // Las casillas quedan vacías y la clase se puede volver a elegir.
+            ->assertSet('placa', '')
+            ->assertSet('marca', '')
+            ->set('tipoVehiculo', 'carro')
+            ->set('marca', 'Toyota')
+            ->set('placa', 'AB123CD')
+            ->call('marcarEntrada')
+            ->assertHasNoErrors()
+            ->assertSee('Entrada registrada');
+
+        $this->assertDatabaseHas('movimientos', [
+            'tipo_vehiculo' => 'carro',
+            'placa' => 'AB123CD',
+        ]);
+    }
+
+    public function test_a_un_invitado_nuevo_no_se_le_fija_ninguna_clase(): void
+    {
+        // No tiene nada anotado todavía: la elección es libre.
+        Livewire::test(Marcar::class)
+            ->set('cedula', '31415926')
+            ->call('buscar')
+            ->assertSet('invitadoNuevo', true)
+            ->set('nombre', 'Carlos Pérez')
+            ->set('motivo', 'Videoconferencia')
+            ->set('tipoVehiculo', 'moto')
+            ->set('marca', 'Bera')
+            ->set('placa', 'AC456DF')
+            ->call('guardarInvitado')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('personas', [
+            'cedula' => '31415926',
+            'tipo_vehiculo' => 'moto',
+        ]);
+    }
+
+    public function test_quien_entra_caminando_no_queda_con_vehiculo_anotado(): void
+    {
+        // El botón «Carro» va siempre marcado: no puede colarse en la base por sí solo.
+        $this->trabajador();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSet('tipoVehiculo', 'carro')
+            ->call('marcarEntrada')
+            ->assertSee('Entrada registrada');
+
+        $this->assertDatabaseHas('movimientos', [
+            'tipo_vehiculo' => null,
+            'placa' => null,
+        ]);
+    }
+
+    public function test_a_un_invitado_no_se_le_pregunta_la_gerencia(): void
+    {
+        // La gerencia es cosa del personal: un invitado no es de ninguna.
+        Persona::create([
+            'cedula' => '87654321',
+            'tipo' => Persona::INVITADO,
+            'nombre' => 'Carlos Pérez',
+            'motivo' => 'Videoconferencia',
+            'activo' => true,
+        ]);
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '87654321')
+            ->call('buscar')
+            ->assertSee('Carlos Pérez')
+            ->assertDontSee('Gerencia');
+    }
+
     public function test_la_cedula_se_puede_teclear_con_puntos(): void
     {
         $this->trabajador();

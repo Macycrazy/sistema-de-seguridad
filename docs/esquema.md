@@ -24,10 +24,11 @@ nadie es trabajador e invitado a la vez.
 | `dependencia` | varchar(120), nula | Solo trabajador. Viene del sistema de carnets. |
 | `foto_ruta` | varchar(255), nula | Solo trabajador. Ruta relativa dentro del disco privado: `fotos/12345678.jpg`. Ver «las fotos». |
 | `motivo` | varchar(120), nula | Solo invitado: el motivo de la visita **de la última vez**. |
-| `marca` | varchar(40), nula | Solo invitado: el vehículo **de la última vez**. Ver «el vehículo». |
-| `modelo` | varchar(40), nula | Solo invitado. |
-| `color` | varchar(30), nula | Solo invitado. |
-| `placa` | varchar(15), nula, indexada | Solo invitado. **Normalizada**: ver «el vehículo». |
+| `tipo_vehiculo` | varchar(10), nula | `carro` o `moto`. Ver «el vehículo». |
+| `marca` | varchar(40), nula | El vehículo **de la última vez**. |
+| `modelo` | varchar(40), nula | |
+| `color` | varchar(30), nula | |
+| `placa` | varchar(15), nula, indexada | **Normalizada**: ver «el vehículo». |
 | `activo` | boolean, por omisión `true` | |
 | `created_at`, `updated_at` | timestamps | |
 
@@ -56,6 +57,7 @@ Una entrada o una salida: el asiento que deja el botón de la puerta.
 | `ocurrio_en` | timestamp, indexada | **La hora del movimiento.** Es la que hay que usar para listar y filtrar. |
 | `usuario_id` | FK → `users`, nula | Quién lo registró. Ver «lo que falta» abajo. |
 | `motivo` | varchar(120), nula | Copia del motivo que traía el invitado **ese día**. |
+| `tipo_vehiculo` | varchar(10), nula | `carro` o `moto`. |
 | `marca` | varchar(40), nula | Copia del vehículo en el que llegó **ese día**. |
 | `modelo` | varchar(40), nula | |
 | `color` | varchar(30), nula | |
@@ -84,11 +86,45 @@ lunes llegó en su carro y el jueves en otro, cada asiento tiene que decir el de
 
 ## El vehículo
 
-Cuatro columnas —`marca`, `modelo`, `color`, `placa`— en las dos tablas. Es lo que pide la planilla
-de papel que este sistema viene a sustituir.
+Cinco columnas —`tipo_vehiculo`, `marca`, `modelo`, `color`, `placa`— en las dos tablas. Es lo que
+pide la planilla de papel que este sistema viene a sustituir.
 
-**Las cuatro son opcionales de verdad.** La mayoría de la gente entra caminando, y obligar a
-inventarse un vehículo llenaría la base de basura. Un invitado a pie las deja las cuatro en `NULL`.
+**Es de cualquiera, invitado o trabajador.** El personal también estaciona aquí. (En la primera
+versión era solo del invitado; se amplió después.)
+
+**Todas son opcionales de verdad.** La mayoría de la gente entra caminando, y obligar a
+inventarse un vehículo llenaría la base de basura. Quien llega a pie las deja todas en `NULL`.
+
+### `carro` o `moto`
+
+`tipo_vehiculo` va aparte de la marca porque en la puerta son dos cosas distintas: no estacionan
+en el mismo sitio, y «¿cuántas motos hay dentro?» es una pregunta que se hace. Metido dentro de la
+marca («Bera BR-150») habría que conocer la marca para saber qué es.
+
+Dos reglas que conviene tener claras:
+
+1. **Sin vehículo no hay tipo.** En la pantalla el botón «Carro» está *siempre* marcado, así que
+   si el tipo contara como dato, nadie podría entrar caminando. Por eso `vacio()` no lo mira y
+   `desde()` lo pone en `null` cuando no hay nada más.
+2. **Con vehículo y sin elegir, se asume `carro`**, que es lo más común. Cualquier valor que no
+   sea `moto` se guarda como `carro`.
+
+### Un vehículo no cambia de clase
+
+**El tipo va pegado a la placa, no al día.** Si una persona ya tiene un vehículo anotado, marcar
+la otra clase sobre la misma placa se rechaza: la moto de José es una moto todos los días, y
+marcar «carro» encima solo puede ser un error de tecleo — un error que ensuciaría el histórico sin
+que nadie se entere.
+
+Lo comprueba `Marcaje::exigirQueElVehiculoNoCambieDeClase()`, en el servidor. La pantalla además
+apaga el botón que no toca, pero eso es comodidad: esconder un botón no es seguridad.
+
+Las dos salidas legítimas, y ninguna es una excepción a la regla:
+
+| Situación | Qué hacer |
+|---|---|
+| Hoy llegó en **otro** vehículo | Poner la placa nueva. Otra placa es otro vehículo, y su clase se elige libre. En la pantalla, el botón **«Otro vehículo»** vacía las casillas de un toque. |
+| Hoy llegó **caminando** | Vaciar las casillas. Eso no es cambiarle la clase, es decir que hoy no trajo ninguno. |
 
 La única regla, y la pone el servidor: **si se llena alguna, tiene que estar la placa.** «Toyota
 gris» no identifica ningún carro —hay miles— y el día que haya que averiguar quién dejó ese carro
@@ -108,17 +144,21 @@ uno solo.
 
 | Método | Para qué |
 |---|---|
-| `Vehiculo::desde($marca, $modelo, $color, $placa)` | Lo construye ya limpio. Lo vacío queda en `null`. |
+| `Vehiculo::desde($tipo, $marca, $modelo, $color, $placa)` | Lo construye ya limpio. **El tipo va primero.** Lo vacío queda en `null`. |
 | `Vehiculo::desdeModelo($fila)` | El vehículo de una `Persona` o un `Movimiento` ya guardado. |
 | `Vehiculo::normalizarPlaca($placa)` | La placa como se guarda y como hay que buscarla. |
-| `vacio(): bool` | No trajo carro. |
+| `Vehiculo::normalizarTipo($tipo)` | `carro` o `moto`; cualquier otra cosa, `carro`. |
+| `vacio(): bool` | No trajo vehículo. **No mira el tipo.** |
+| `esMoto(): bool` | Para contar motos o separarlas en un listado. |
 | `exigirValido(): void` | Lanza `ValidationException` si hay datos pero falta la placa. |
-| `paraGuardar(): array` | Las cuatro columnas, listas para un `create()` o un `update()`. |
-| `descripcion(): string` | Cómo se lee de un vistazo: `Toyota Corolla · Gris · AB123CD`. |
+| `paraGuardar(): array` | Las columnas, listas para un `create()` o un `update()`. |
+| `etiquetaTipo(): string` | `Carro` o `Moto`, para mostrar. Vacío si no hay vehículo. |
+| `descripcion(): string` | Cómo se lee de un vistazo: `Carro · Toyota Corolla · Gris · AB123CD`. |
 
 En los modelos: `$persona->vehiculo()`, `$persona->tieneVehiculo()` y los mismos dos en
 `Movimiento`. **A la parte 2 le sirven** para su listado: `$movimiento->tieneVehiculo()` dice si
-hay algo que mostrar, y `$movimiento->vehiculo()->descripcion()` lo deja en una línea.
+hay algo que mostrar, `$movimiento->vehiculo()->descripcion()` lo deja en una línea y
+`->esMoto()` permite separar motos de carros.
 
 ### Un vehículo vacío NO es lo mismo que no pasar ninguno
 
@@ -127,12 +167,12 @@ En `Marcaje::registrar()` el parámetro `$vehiculo` distingue dos cosas:
 | Se pasa | Qué significa |
 |---|---|
 | `null` | «No me lo preguntes»: se conserva el que ya tenía la ficha. Es el caso de marcar la salida. |
-| `Vehiculo::desde()` (vacío) | «Hoy vino sin carro»: **borra** el que tuviera anotado. |
+| `Vehiculo::desde()` (vacío) | «Hoy vino caminando»: **borra** el que tuviera anotado. |
 
 Sin esa diferencia, a quien un día llegó en carro se le quedaría la placa pegada para siempre.
 
-**El vehículo es solo del invitado.** Si se le pasa uno a un trabajador, se ignora: su carro no es
-asunto de la puerta, igual que su asiento no lleva motivo.
+El **motivo** sí sigue siendo solo del invitado: un trabajador viene a trabajar, y su asiento no
+lo lleva.
 
 ---
 
@@ -257,6 +297,18 @@ pruebas a una base PostgreSQL de prueba, o usar `whereRaw` con algo que valga en
 `database/seeders/TrabajadoresSeeder.php` crea 11 trabajadores **inventados** con cédulas fáciles
 de teclear (`11111111`, `22222222`, … y `12345678`, `87654321`). El de cédula `99999999` está
 **desactivado** a propósito, para probar que el sistema no lo deja marcar.
+
+Los nombres y las cédulas son inventados, pero las **gerencias sí son las del CIIP** —Tecnología,
+Planificación y Presupuesto, Gestión Humana y Consultoría Jurídica—, porque son las que hay que
+ver en pantalla al probar. Están declaradas como constantes en el propio seeder.
+
+**Tres de los once llegan en vehículo**: dos carros (`22222222` y `12345678`) y una moto
+(`44444444`). El resto entra caminando, que es la proporción real: el vehículo tiene que verse
+como la excepción, no como lo normal.
+
+> En la base la columna se llama **`dependencia`**; en pantalla se rotula **«Gerencia»**, que es
+> como se dice aquí. Renombrar la columna sería un cambio de esquema y hay que hablarlo entre las
+> tres partes: por ahora solo cambia el rótulo.
 
 `database/seeders/FotosInventadasSeeder.php` genera con GD una foto de mentira —un color plano con
 las iniciales— para **uno de cada dos** trabajadores, así en la pantalla se ven los dos casos: con

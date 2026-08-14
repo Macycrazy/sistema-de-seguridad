@@ -119,11 +119,12 @@ class Marcaje
      *
      * @param  string|null  $motivo  El motivo de la visita, si es un invitado que vuelve y lo
      *                               actualiza. Si va nulo se conserva el que ya tenía.
-     * @param  Vehiculo|null  $vehiculo  El vehículo de HOY. Nulo significa «no me lo preguntes,
-     *                                   deja el que ya tenía la ficha». Un Vehiculo vacío es
-     *                                   distinto: significa «hoy vino sin carro», y borra el que
-     *                                   tuviera anotado. Sin esa diferencia, quien un día vino
-     *                                   en carro arrastraría esa placa para siempre.
+     * @param  Vehiculo|null  $vehiculo  El vehículo de HOY, sea invitado o trabajador. Nulo
+     *                                   significa «no me lo preguntes, deja el que ya tenía la
+     *                                   ficha». Un Vehiculo vacío es distinto: significa «hoy
+     *                                   vino caminando», y borra el que tuviera anotado. Sin esa
+     *                                   diferencia, quien un día vino en carro arrastraría esa
+     *                                   placa para siempre.
      *
      * @throws ValidationException si el tipo no es entrada ni salida, o la persona está inactiva
      */
@@ -147,6 +148,7 @@ class Marcaje
         }
 
         $vehiculo?->exigirValido();
+        $this->exigirQueElVehiculoNoCambieDeClase($persona, $vehiculo);
 
         // La ficha y el asiento se guardan juntos o no se guarda ninguno: si falla la
         // actualización del invitado, no queremos un movimiento suelto apuntando a un dato viejo.
@@ -165,8 +167,9 @@ class Marcaje
                 $persona->update(['motivo' => $motivo]);
             }
 
-            // Aquí sí se guarda el vacío: es como se anota que hoy vino sin carro.
-            if ($persona->esInvitado() && $vehiculo !== null) {
+            // El vehículo es de cualquiera: el personal también estaciona aquí. Y aquí sí se
+            // guarda el vacío, que es como se anota que hoy vino caminando.
+            if ($vehiculo !== null) {
                 $persona->update($vehiculo->paraGuardar());
             }
 
@@ -177,10 +180,43 @@ class Marcaje
                 'usuario_id' => $usuarioId,
                 // El asiento de un trabajador no lleva motivo: viene a trabajar.
                 'motivo' => $persona->esInvitado() ? $persona->motivo : null,
-                // Ni vehículo: el carro se le pregunta al invitado, no al personal.
-                ...($persona->esInvitado() ? $persona->vehiculo() : Vehiculo::desde())->paraGuardar(),
+                ...$persona->vehiculo()->paraGuardar(),
             ]);
         });
+    }
+
+    /**
+     * Un vehículo no cambia de clase: la moto de José es una moto todos los días.
+     *
+     * El tipo va pegado a la PLACA, no al día. Mientras siga siendo el mismo vehículo, marcar
+     * «carro» sobre una moto solo puede ser un error de tecleo, y un error así ensucia el
+     * histórico sin que nadie se entere. Si de verdad llegó en otra cosa, es otro vehículo: con
+     * poner la placa nueva, el tipo se vuelve a poder elegir.
+     *
+     * La pantalla ya apaga el botón que no toca, pero eso es comodidad: esconder un botón no es
+     * seguridad, y cualquiera puede enviar una petición sin pasar por ahí.
+     *
+     * @throws ValidationException
+     */
+    protected function exigirQueElVehiculoNoCambieDeClase(Persona $persona, ?Vehiculo $vehiculo): void
+    {
+        if ($vehiculo === null || $vehiculo->vacio() || ! $persona->tieneVehiculo()) {
+            return;
+        }
+
+        $anotado = $persona->vehiculo();
+
+        if ($vehiculo->placa !== $anotado->placa || $vehiculo->tipo === $anotado->tipo) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'tipoVehiculo' => sprintf(
+                'La placa %s ya está anotada como %s. Si hoy llegó en otro vehículo, cambia la placa.',
+                $anotado->placa,
+                mb_strtolower($anotado->etiquetaTipo()),
+            ),
+        ]);
     }
 
     /**

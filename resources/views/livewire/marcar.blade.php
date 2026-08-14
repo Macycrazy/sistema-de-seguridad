@@ -108,7 +108,21 @@
                     <p class="mt-1 font-mono text-sm text-slate-500">{{ $persona->cedulaConPuntos() }}</p>
 
                     @if ($persona->esTrabajador())
-                        <p class="mt-2 text-slate-600">{{ $persona->dependencia }}</p>
+                        {{-- La gerencia va rotulada y no como un texto suelto: el vigilante
+                             tiene que poder decir de un vistazo de dónde es quien tiene delante,
+                             y un renglón gris sin título no se lee, se adivina.
+
+                             En la base la columna se llama «dependencia»; aquí se rotula
+                             «Gerencia», que es como se dice en el CIIP. Renombrar la columna es
+                             un cambio de esquema, y eso se habla con las otras dos partes. --}}
+                        <div class="mt-3">
+                            <p class="font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
+                                Gerencia
+                            </p>
+                            <p class="mt-0.5 text-lg font-semibold text-slate-900">
+                                {{ $persona->dependencia ?: 'Sin gerencia asignada' }}
+                            </p>
+                        </div>
                     @else
                         {{-- Del invitado que vuelve se puede corregir el motivo de hoy: la vez
                              anterior pudo venir a otra cosa. --}}
@@ -124,17 +138,20 @@
                 </div>
             </div>
 
-            {{-- El carro del invitado que vuelve. Sale ya escrito el de la última vez, que casi
-                 siempre es el mismo; si hoy vino caminando, se vacían las casillas y el asiento
-                 de hoy queda sin vehículo sin tocar los de los días anteriores.
+            {{-- El vehículo con el que llega, sea invitado o trabajador: el personal también
+                 estaciona aquí. Sale ya escrito el de la última vez, que casi siempre es el
+                 mismo; si hoy vino caminando, se vacían las casillas y el asiento de hoy queda
+                 sin vehículo sin tocar los de los días anteriores.
 
-                 Va fuera de la fila de la foto para que las cuatro casillas tengan el ancho
-                 entero de la tarjeta, igual que en el alta. --}}
-            @if ($persona->esInvitado())
-                <div class="mt-5">
-                    <x-vehiculo :error="$errors->first('placa')" />
-                </div>
-            @endif
+                 Va fuera de la fila de la foto para que las casillas tengan el ancho entero de
+                 la tarjeta, igual que en el alta. --}}
+            <div class="mt-5">
+                <x-vehiculo
+                    :error="$errors->first('placa')"
+                    :error-tipo="$errors->first('tipoVehiculo')"
+                    :tipo-fijado="$this->tipoFijado"
+                />
+            </div>
 
             {{-- LOS DOS BOTONES --}}
             @if ($persona->activo)
@@ -230,7 +247,11 @@
                     />
                 </div>
 
-                <x-vehiculo :error="$errors->first('placa')" />
+                {{-- En el alta no hay nada anotado todavía, así que la clase se elige libre. --}}
+                <x-vehiculo
+                    :error="$errors->first('placa')"
+                    :error-tipo="$errors->first('tipoVehiculo')"
+                />
 
                 {{-- En el teléfono, uno debajo del otro y a todo el ancho: en fila, «Guardar y
                      continuar» se parte en dos líneas. --}}

@@ -1,5 +1,8 @@
 @props([
     'error' => null,
+    'errorTipo' => null,
+    // Cuando la persona ya tiene un vehículo anotado, su clase no se elige: viene dada.
+    'tipoFijado' => null,
 ])
 
 {{--
@@ -21,6 +24,67 @@
     <legend class="px-2 font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
         Vehículo <span class="font-sans normal-case tracking-normal text-slate-400">· solo si viene en uno</span>
     </legend>
+
+    {{--
+        Carro o moto. Son dos botones y no una lista desplegable porque solo hay dos opciones y
+        en la puerta se resuelve de un toque, sin abrir nada.
+
+        Por debajo son <input type="radio"> de verdad, escondidos con «sr-only»: así funcionan
+        con el teclado y con lector de pantalla, y el navegador se encarga de que solo uno pueda
+        estar marcado. Lo que se ve es la etiqueta de cada uno.
+
+        Empieza en «Carro» marcado, que es lo más común. Eso NO significa que haya vehículo: si
+        las demás casillas están vacías no se guarda nada, ni el tipo.
+    --}}
+    @php
+        $tipos = [
+            \App\Services\Vehiculo::CARRO => 'Carro',
+            \App\Services\Vehiculo::MOTO => 'Moto',
+        ];
+    @endphp
+    <div class="mb-4">
+        <p class="mb-1.5 font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
+            Tipo
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+            @foreach ($tipos as $valor => $texto)
+                @php
+                    // Si la persona ya tiene vehículo, el otro botón queda apagado: un vehículo
+                    // no cambia de clase. Se apaga de verdad, con «disabled», no solo en gris.
+                    $bloqueado = $tipoFijado !== null && $tipoFijado !== $valor;
+                @endphp
+                <label @class(['cursor-pointer', 'cursor-not-allowed' => $bloqueado])>
+                    <input type="radio" name="tipoVehiculo" value="{{ $valor }}"
+                           wire:model.live="tipoVehiculo" class="peer sr-only"
+                           @disabled($bloqueado)>
+                    <span class="block rounded border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600
+                                 peer-checked:border-slate-900 peer-checked:bg-slate-900 peer-checked:text-white
+                                 peer-disabled:border-slate-200 peer-disabled:bg-slate-50 peer-disabled:text-slate-300
+                                 peer-focus-visible:ring-4 peer-focus-visible:ring-slate-900/20">
+                        {{ $texto }}
+                    </span>
+                </label>
+            @endforeach
+
+            {{-- La salida cuando de verdad llegó en otra cosa. Sin esto, un vehículo mal
+                 anotado no habría forma de corregirlo desde la pantalla. --}}
+            @if ($tipoFijado !== null)
+                <button type="button" wire:click="cambiarVehiculo"
+                        class="ml-1 rounded px-2 py-1 text-sm font-semibold text-slate-500 underline
+                               underline-offset-2 hover:text-slate-900">
+                    Otro vehículo
+                </button>
+            @endif
+        </div>
+
+        @if ($errorTipo)
+            <p class="mt-1.5 text-sm text-alto">{{ $errorTipo }}</p>
+        @elseif ($tipoFijado !== null)
+            <p class="mt-1.5 text-sm text-slate-500">
+                Ya tiene este vehículo anotado. Si hoy llegó en otro, pulsa «Otro vehículo».
+            </p>
+        @endif
+    </div>
 
     {{-- En el teléfono, dos y dos: cuatro casillas en fila quedan tan estrechas que no se lee
          ni la etiqueta. Desde tableta en adelante, las cuatro en fila como en la planilla. --}}

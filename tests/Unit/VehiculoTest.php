@@ -35,7 +35,7 @@ class VehiculoTest extends TestCase
 
     public function test_los_demas_datos_se_recortan_y_no_se_quedan_con_espacios_de_sobra(): void
     {
-        $vehiculo = Vehiculo::desde('  Toyota ', 'Corolla   LE', ' Gris  ', 'AB123CD');
+        $vehiculo = Vehiculo::desde(Vehiculo::CARRO, '  Toyota ', 'Corolla   LE', ' Gris  ', 'AB123CD');
 
         $this->assertSame('Toyota', $vehiculo->marca);
         $this->assertSame('Corolla LE', $vehiculo->modelo);
@@ -45,7 +45,7 @@ class VehiculoTest extends TestCase
     public function test_sin_ningun_dato_el_vehiculo_esta_vacio(): void
     {
         $this->assertTrue(Vehiculo::desde()->vacio());
-        $this->assertTrue(Vehiculo::desde('', '  ', '', null)->vacio());
+        $this->assertTrue(Vehiculo::desde(marca: '', modelo: '  ', color: '', placa: null)->vacio());
         $this->assertFalse(Vehiculo::desde(placa: 'AB123CD')->vacio());
     }
 
@@ -82,12 +82,51 @@ class VehiculoTest extends TestCase
     public function test_la_descripcion_se_lee_de_un_vistazo(): void
     {
         $this->assertSame(
-            'Toyota Corolla · Gris · AB123CD',
-            Vehiculo::desde('Toyota', 'Corolla', 'Gris', 'AB123CD')->descripcion(),
+            'Carro · Toyota Corolla · Gris · AB123CD',
+            Vehiculo::desde(Vehiculo::CARRO, 'Toyota', 'Corolla', 'Gris', 'AB123CD')->descripcion(),
+        );
+
+        $this->assertSame(
+            'Moto · Bera BR-150 · Negro · AC456DF',
+            Vehiculo::desde(Vehiculo::MOTO, 'Bera', 'BR-150', 'Negro', 'AC456DF')->descripcion(),
         );
 
         // Y no deja separadores sueltos cuando falta algún dato.
-        $this->assertSame('AB123CD', Vehiculo::desde(placa: 'AB123CD')->descripcion());
+        $this->assertSame('Carro · AB123CD', Vehiculo::desde(placa: 'AB123CD')->descripcion());
         $this->assertSame('', Vehiculo::desde()->descripcion());
+    }
+
+    public function test_sin_vehiculo_no_se_guarda_ningun_tipo(): void
+    {
+        // El botón «Carro» está siempre marcado en la pantalla. Si no hay vehículo, ese tipo no
+        // significa nada y no puede acabar en la base: quedaría gente a pie con carro anotado.
+        $aPie = Vehiculo::desde(Vehiculo::CARRO);
+
+        $this->assertTrue($aPie->vacio());
+        $this->assertNull($aPie->tipo);
+        $this->assertNull($aPie->paraGuardar()['tipo_vehiculo']);
+    }
+
+    public function test_si_hay_vehiculo_y_no_se_eligio_tipo_se_asume_carro(): void
+    {
+        $this->assertSame(Vehiculo::CARRO, Vehiculo::desde(placa: 'AB123CD')->tipo);
+    }
+
+    public function test_la_moto_se_distingue_del_carro(): void
+    {
+        $moto = Vehiculo::desde(Vehiculo::MOTO, placa: 'AC456DF');
+        $carro = Vehiculo::desde(Vehiculo::CARRO, placa: 'AB123CD');
+
+        $this->assertTrue($moto->esMoto());
+        $this->assertFalse($carro->esMoto());
+        $this->assertSame('Moto', $moto->etiquetaTipo());
+        $this->assertSame('Carro', $carro->etiquetaTipo());
+    }
+
+    public function test_un_tipo_que_no_existe_se_trata_como_carro(): void
+    {
+        // Nadie puede meter «camión» por la pantalla, pero una petición a mano sí.
+        $this->assertSame(Vehiculo::CARRO, Vehiculo::desde('camion', placa: 'AB123CD')->tipo);
+        $this->assertSame(Vehiculo::MOTO, Vehiculo::desde('  MOTO  ', placa: 'AC456DF')->tipo);
     }
 }
