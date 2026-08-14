@@ -9,21 +9,6 @@
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
 
-    <header class="border-b border-slate-200 bg-white">
-        <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-            {{-- El logo vive en el propio proyecto, no en un CDN: el servidor donde esto
-                 va a correr no tiene salida a Internet. --}}
-            <a href="{{ route('inicio') }}" class="flex items-center gap-3">
-                <img
-                    src="{{ asset('img/logo-ciip.jpg') }}"
-                    alt="Centro Internacional de Inversión Productiva"
-                    width="322"
-                    height="65"
-                    class="h-8 w-auto"
-                >
-                <span class="border-l border-slate-200 pl-3 text-sm font-semibold tracking-tight">
-                    {{ config('app.name') }}
-
     {{--
         Encabezado del sistema, en el azul del CIIP (--color-marca en app.css).
 
@@ -49,9 +34,39 @@
                 </span>
             </a>
 
-            <span class="shrink-0 font-mono text-xs uppercase tracking-widest text-white/70">
-                @yield('seccion', 'Inicio')
-            </span>
+            <div class="flex shrink-0 items-center gap-3 sm:gap-4">
+                <span class="font-mono text-xs uppercase tracking-widest text-white/70">
+                    @yield('seccion', 'Inicio')
+                </span>
+
+                {{--
+                    Quién tiene la sesión abierta. En el puesto se turnan varias personas en la
+                    misma máquina, así que tiene que verse de un vistazo con qué usuario se está
+                    marcando: media parte 3 se cae si alguien marca todo un turno con el usuario
+                    del turno anterior.
+                --}}
+                @auth
+                    <span class="hidden h-9 w-px bg-white/25 sm:block"></span>
+
+                    {{-- Por aquí se entra a cambiar la propia clave: es lo único «mío» que hay. --}}
+                    <a href="{{ route('clave') }}"
+                       title="Cambiar mi clave"
+                       class="hidden text-right transition hover:opacity-80 sm:block">
+                        <span class="block text-sm font-semibold leading-tight text-white">
+                            {{ auth()->user()->nombreCorto() }}
+                        </span>
+                        <span class="block font-mono text-[10px] uppercase tracking-widest text-white/70">
+                            {{ auth()->user()->rol->etiqueta() }}
+                        </span>
+                    </a>
+
+                    {{-- Por POST: un GET lo dispara cualquier cosa que cargue una URL. --}}
+                    <form method="POST" action="{{ route('salir') }}">
+                        @csrf
+                        <x-boton type="submit" variante="secundario" tamano="chico">Salir</x-boton>
+                    </form>
+                @endauth
+            </div>
         </div>
     </header>
 

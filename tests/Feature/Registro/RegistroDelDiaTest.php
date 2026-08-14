@@ -10,12 +10,29 @@ use App\Services\Registro\Movimiento;
 use App\Services\Registro\Persona;
 use App\Services\Registro\TipoDePersona;
 use Carbon\CarbonImmutable;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class RegistroDelDiaTest extends TestCase
 {
+    /*
+     * Esta pantalla lee de RegistroInventado, que no toca la base, así que antes no hacían falta
+     * tablas. Desde que los permisos se guardan en «permisos_de_rol», sí: el gate que abre la
+     * pantalla los consulta ahí. Es lo único que cambia; lo que la prueba comprueba, no.
+     */
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Desde la parte 3, el registro está detrás del ingreso. Quién puede verlo —el registro
+        // es la lista completa del personal, así que el vigilante no— es el bloque B.
+        $this->entrandoComo();
+    }
+
     private function fuente(): FuenteDelRegistro
     {
         return app(FuenteDelRegistro::class);

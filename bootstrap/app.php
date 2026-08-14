@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ExigirUsuarioActivo;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,7 +13,16 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Sin sesión no se ve nada del sistema: se va derecho a la puerta. Y quien ya entró no
+        // vuelve a ver la pantalla de ingreso.
+        $middleware->redirectGuestsTo('/ingresar');
+        $middleware->redirectUsersTo('/');
+
+        // Desactivar a un usuario tiene que echarlo ya, no cuando se le ocurra salir.
+        $middleware->web(append: [
+            ExigirUsuarioActivo::class,
+        ]);
+
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

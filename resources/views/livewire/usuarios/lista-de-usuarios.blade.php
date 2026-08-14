@@ -1,0 +1,261 @@
+{{--
+    La pantalla del administrador.
+
+    Las claves las teclea él y se las dicta a su dueño. El sistema no inventa ninguna: para poder
+    dictar una clave generada habría que escribirla en la pantalla, y una clave escrita en la
+    pantalla de un puesto de vigilancia la lee cualquiera que pase por detrás.
+
+    Aquí tampoco hay botón de borrar, y no es un olvido: un usuario borrado dejaría el rastro de la
+    auditoría apuntando al vacío. Se desactiva, y se puede volver a activar.
+--}}
+<div>
+
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-bold tracking-tight">Usuarios</h1>
+            <p class="mt-1 text-sm text-slate-600">
+                Quién puede entrar al sistema y con qué alcance.
+            </p>
+        </div>
+
+        @unless ($creando)
+            <x-boton wire:click="abrirFormulario">Nuevo usuario</x-boton>
+        @endunless
+    </div>
+
+    {{-- El aviso nunca repite la clave: la escribió quien gestiona, ya la sabe. --}}
+    @if ($aviso !== '')
+        <div class="mb-5 rounded border border-parte3/30 bg-parte3-suave px-4 py-3 text-sm font-semibold text-parte3"
+             wire:key="aviso">
+            {{ $aviso }}
+        </div>
+    @endif
+
+    {{-- Lo que no dejó hacer el servidor: desactivarse a uno mismo, o al último administrador. --}}
+    @if ($errors->has('usuario') && ! $creando)
+        <div class="mb-5 rounded border border-alto/30 bg-alto-suave px-4 py-3 text-sm font-semibold text-alto">
+            {{ $errors->first('usuario') }}
+        </div>
+    @endif
+
+    {{-- EL ALTA --}}
+    @if ($creando)
+        <x-tarjeta parte="3" titulo="Nuevo usuario" class="mb-6">
+            <form wire:submit="crear" class="space-y-4">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-campo
+                        etiqueta="Usuario"
+                        nombre="usuario"
+                        autofocus
+                        autocomplete="off"
+                        maxlength="40"
+                        ayuda="Con lo que entra: letras, números, punto, guion o guion bajo."
+                        wire:model="usuario"
+                        :error="$errors->first('usuario')"
+                    />
+
+                    <x-campo
+                        etiqueta="Nombre y apellido"
+                        nombre="nombre"
+                        autocomplete="off"
+                        maxlength="120"
+                        wire:model="nombre"
+                        :error="$errors->first('nombre')"
+                    />
+
+                    <x-campo
+                        etiqueta="Cédula"
+                        nombre="cedula"
+                        autocomplete="off"
+                        inputmode="numeric"
+                        maxlength="9"
+                        oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                        ayuda="Opcional: no todo el que opera el sistema pasa por la puerta."
+                        wire:model="cedula"
+                        :error="$errors->first('cedula')"
+                    />
+
+                    <x-selector
+                        etiqueta="Rol"
+                        nombre="rol"
+                        :opciones="$this->roles"
+                        wire:model="rol"
+                        :error="$errors->first('rol')"
+                    />
+
+                    <x-campo
+                        etiqueta="Clave"
+                        nombre="clave"
+                        type="password"
+                        autocomplete="new-password"
+                        ayuda="Mínimo {{ \App\Services\GestionDeUsuarios::MINIMO_DE_LA_CLAVE }} caracteres. Se la dictas a su dueño."
+                        wire:model="clave"
+                        :error="$errors->first('clave')"
+                    />
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <x-boton type="submit">Crear</x-boton>
+                    <x-boton type="button" variante="secundario" wire:click="cerrarFormulario">
+                        Cancelar
+                    </x-boton>
+                    <p class="text-sm text-slate-500">
+                        Con esa clave entra. Si quiere una suya, la cambia él desde su nombre.
+                    </p>
+                </div>
+            </form>
+        </x-tarjeta>
+    @endif
+
+    {{-- LA LISTA --}}
+    <div class="overflow-hidden rounded border border-slate-200 bg-white shadow-sm">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-slate-200 text-left font-mono text-xs uppercase tracking-widest text-slate-500">
+                        <th scope="col" class="px-4 py-3 font-semibold">Usuario</th>
+                        <th scope="col" class="px-4 py-3 font-semibold">Nombre</th>
+                        <th scope="col" class="px-4 py-3 font-semibold">Cédula</th>
+                        <th scope="col" class="px-4 py-3 font-semibold">Rol</th>
+                        <th scope="col" class="px-4 py-3 font-semibold">Estado</th>
+                        <th scope="col" class="px-4 py-3 text-right font-semibold">Acciones</th>
+                    </tr>
+                </thead>
+
+                <tbody class="divide-y divide-slate-100">
+                    @foreach ($this->usuarios as $fila)
+                        <tr wire:key="usuario-{{ $fila->id }}" @class(['bg-slate-50/60' => ! $fila->activo])>
+                            <td class="px-4 py-3 font-mono text-slate-900">{{ $fila->usuario }}</td>
+                            <td class="px-4 py-3 text-slate-700">{{ $fila->nombre }}</td>
+                            <td class="px-4 py-3 font-mono text-xs text-slate-500">
+                                {{ $fila->cedula ?? '—' }}
+                            </td>
+                            <td class="px-4 py-3 text-slate-700">{{ $fila->rol->etiqueta() }}</td>
+                            <td class="px-4 py-3">
+                                @if ($fila->activo)
+                                    <span class="font-mono text-xs uppercase tracking-widest text-slate-500">Activo</span>
+                                @else
+                                    <x-etiqueta tipo="inactivo" />
+                                @endif
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex flex-wrap items-center justify-end gap-2">
+                                    {{--
+                                        A quien tiene un rol por encima del tuyo no se le dibujan
+                                        botones. Es cortesía: el servicio corta igual a quien mande
+                                        la acción sin pasar por aquí.
+                                    --}}
+                                    @if ($this->puedeGestionar($fila))
+                                        <x-boton
+                                            variante="secundario"
+                                            tamano="chico"
+                                            wire:click="abrirCambioDeClave({{ $fila->id }})"
+                                        >
+                                            Cambio de clave
+                                        </x-boton>
+
+                                        <x-boton
+                                            variante="secundario"
+                                            tamano="chico"
+                                            wire:click="abrirCambioDeRol({{ $fila->id }})"
+                                        >
+                                            Cambiar rol
+                                        </x-boton>
+
+                                        @if ($fila->activo)
+                                            <x-boton
+                                                variante="peligro"
+                                                tamano="chico"
+                                                wire:click="desactivar({{ $fila->id }})"
+                                            >
+                                                Desactivar
+                                            </x-boton>
+                                        @else
+                                            <x-boton
+                                                variante="secundario"
+                                                tamano="chico"
+                                                wire:click="reactivar({{ $fila->id }})"
+                                            >
+                                                Reactivar
+                                            </x-boton>
+                                        @endif
+                                    @else
+                                        <span class="font-mono text-xs uppercase tracking-widest text-slate-400">
+                                            Fuera de tu alcance
+                                        </span>
+                                    @endif
+                                </div>
+                            </td>
+                        </tr>
+
+                        {{-- El campo para teclearle la clave, debajo de su propia fila. --}}
+                        @if ($cambiandoClaveA === $fila->id)
+                            <tr wire:key="cambio-clave-{{ $fila->id }}" class="bg-parte3-suave/40">
+                                <td colspan="6" class="px-4 py-4">
+                                    <form wire:submit="guardarCambioDeClave" class="flex flex-wrap items-end gap-3">
+                                        <div class="w-full sm:w-72">
+                                            <x-campo
+                                                etiqueta="Clave nueva para {{ $fila->nombre }}"
+                                                nombre="clave-nueva-{{ $fila->id }}"
+                                                type="password"
+                                                autofocus
+                                                autocomplete="new-password"
+                                                ayuda="Mínimo {{ \App\Services\GestionDeUsuarios::MINIMO_DE_LA_CLAVE }} caracteres. Con esa entra desde ahora."
+                                                wire:model="claveNueva"
+                                                :error="$errors->first('claveNueva')"
+                                            />
+                                        </div>
+
+                                        <div class="flex items-center gap-2 pb-6">
+                                            <x-boton type="submit" tamano="chico">Guardar</x-boton>
+                                            <x-boton
+                                                type="button"
+                                                variante="secundario"
+                                                tamano="chico"
+                                                wire:click="cerrarCambioDeClave"
+                                            >
+                                                Cancelar
+                                            </x-boton>
+                                        </div>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endif
+
+                        {{-- El selector de rol, debajo de su propia fila. --}}
+                        @if ($cambiandoRolA === $fila->id)
+                            <tr wire:key="cambio-rol-{{ $fila->id }}" class="bg-parte3-suave/40">
+                                <td colspan="6" class="px-4 py-4">
+                                    <form wire:submit="guardarCambioDeRol" class="flex flex-wrap items-end gap-3">
+                                        <div class="w-full sm:w-72">
+                                            <x-selector
+                                                etiqueta="Rol de {{ $fila->nombre }}"
+                                                nombre="rol-nuevo-{{ $fila->id }}"
+                                                :opciones="$this->roles"
+                                                ayuda="Solo puedes darle un rol que alcance el tuyo."
+                                                wire:model="rolNuevo"
+                                                :error="$errors->first('rol')"
+                                            />
+                                        </div>
+
+                                        <div class="flex items-center gap-2 pb-6">
+                                            <x-boton type="submit" tamano="chico">Guardar</x-boton>
+                                            <x-boton
+                                                type="button"
+                                                variante="secundario"
+                                                tamano="chico"
+                                                wire:click="cerrarCambioDeRol"
+                                            >
+                                                Cancelar
+                                            </x-boton>
+                                        </div>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endif
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
