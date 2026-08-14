@@ -273,8 +273,10 @@ class MarcajeTest extends TestCase
             Vehiculo::desde(Vehiculo::CARRO, 'Toyota', 'Corolla', 'Gris', 'AB123CD'),
         );
 
+        $this->marcaje->registrar($invitado, Movimiento::ENTRADA);
+
         // Nulo significa «no me lo preguntes»: es como marca la salida quien ya entró.
-        $salida = $this->marcaje->registrar($invitado, Movimiento::SALIDA);
+        $salida = $this->marcaje->registrar($invitado->fresh(), Movimiento::SALIDA);
 
         $this->assertSame('AB123CD', $salida->placa);
         $this->assertSame('AB123CD', $invitado->fresh()->placa);
@@ -525,18 +527,62 @@ class MarcajeTest extends TestCase
         $this->assertDatabaseCount('movimientos', 2);
     }
 
-    public function test_pasada_la_ventana_el_mismo_movimiento_si_se_registra(): void
+    public function test_pasada_la_ventana_tampoco_se_entra_dos_veces(): void
     {
         $persona = $this->trabajador();
 
         $this->marcaje->registrar($persona, Movimiento::ENTRADA);
 
-        // Un rato después, sin haber salido, se le vuelve a marcar entrada: es un asiento nuevo,
-        // aunque sea del mismo tipo. Corregirlo es asunto del supervisor, no de este servicio.
+        // Fuera de la ventana del antiduplicado ya no es una doble pulsación, pero sigue sin
+        // tener sentido: quien está dentro no vuelve a entrar. Antes esto creaba un segundo
+        // asiento y quedaba en el histórico para siempre; ahora se rechaza.
+        $this->travel(Marcaje::SEGUNDOS_ANTIDUPLICADO + 5)->seconds();
+
+        try {
+            $this->marcaje->registrar($persona->fresh(), Movimiento::ENTRADA);
+            $this->fail('Debió rechazar la segunda entrada.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('tipo', $e->errors());
+        }
+
+        $this->assertDatabaseCount('movimientos', 1);
+    }
+
+    public function test_no_se_puede_salir_sin_haber_entrado(): void
+    {
+        $persona = $this->trabajador();
+
+        $this->expectException(ValidationException::class);
+
+        $this->marcaje->registrar($persona, Movimiento::SALIDA);
+    }
+
+    public function test_el_vaiven_normal_de_un_dia_pasa_sin_estorbo(): void
+    {
+        // Entrar, salir y volver a entrar es lo corriente: la regla no puede estorbarlo.
+        $persona = $this->trabajador();
+
+        $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+        $this->travel(Marcaje::SEGUNDOS_ANTIDUPLICADO + 5)->seconds();
+        $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
         $this->travel(Marcaje::SEGUNDOS_ANTIDUPLICADO + 5)->seconds();
         $this->marcaje->registrar($persona->fresh(), Movimiento::ENTRADA);
 
-        $this->assertDatabaseCount('movimientos', 2);
+        $this->assertDatabaseCount('movimientos', 3);
+        $this->assertTrue($persona->fresh()->estaDentro());
+    }
+
+    public function test_la_doble_pulsacion_no_le_saca_un_aviso_al_vigilante(): void
+    {
+        // La comprobación va DESPUÉS del antiduplicado a propósito: pulsar dos veces el botón
+        // no es un error del vigilante y no debe sacarle un mensaje rojo en pantalla.
+        $persona = $this->trabajador();
+
+        $primero = $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+        $segundo = $this->marcaje->registrar($persona->fresh(), Movimiento::ENTRADA);
+
+        $this->assertSame($primero->id, $segundo->id);
+        $this->assertDatabaseCount('movimientos', 1);
     }
 
     public function test_la_doble_pulsacion_de_dos_personas_distintas_no_se_confunde(): void

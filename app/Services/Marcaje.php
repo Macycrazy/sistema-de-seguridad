@@ -161,6 +161,10 @@ class Marcaje
                 return $repetido;
             }
 
+            // Va DESPUÉS del antiduplicado a propósito: una doble pulsación no es un error del
+            // vigilante y no debe sacarle un aviso en pantalla, se resuelve sola arriba.
+            $this->exigirQueElMovimientoTengaSentido($persona, $tipo);
+
             $motivo = $motivo !== null ? trim($motivo) : null;
 
             if ($persona->esInvitado() && $motivo !== null && $motivo !== '') {
@@ -183,6 +187,38 @@ class Marcaje
                 ...$persona->vehiculo()->paraGuardar(),
             ]);
         });
+    }
+
+    /**
+     * No se entra dos veces seguidas, ni se sale sin haber entrado.
+     *
+     * Quien ya está dentro no puede volver a entrar: sería un asiento que no ocurrió, y como los
+     * movimientos no se borran, se quedaría en el histórico para siempre. Lo mismo al revés.
+     *
+     * La pantalla ya apaga el botón que no toca, pero eso es comodidad: cualquiera puede enviar
+     * una petición sin pasar por ahí.
+     *
+     * OJO si alguien se queda «dentro» de un día para otro porque olvidó marcar la salida: el
+     * botón de entrada le aparecerá apagado. Se arregla como cualquier otro error en este
+     * sistema, con un movimiento nuevo — se le marca la salida que faltaba y ya puede entrar.
+     *
+     * @throws ValidationException
+     */
+    protected function exigirQueElMovimientoTengaSentido(Persona $persona, string $tipo): void
+    {
+        $dentro = $persona->estaDentro();
+
+        if ($tipo === Movimiento::ENTRADA && $dentro) {
+            throw ValidationException::withMessages([
+                'tipo' => 'Ya tiene la entrada marcada: lo que toca es la salida.',
+            ]);
+        }
+
+        if ($tipo === Movimiento::SALIDA && ! $dentro) {
+            throw ValidationException::withMessages([
+                'tipo' => 'No tiene la entrada marcada: no se le puede marcar la salida.',
+            ]);
+        }
     }
 
     /**

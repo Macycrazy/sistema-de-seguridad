@@ -378,7 +378,7 @@ class MarcarPantallaTest extends TestCase
         ]);
     }
 
-    public function test_a_quien_ya_esta_dentro_la_pantalla_le_propone_la_salida(): void
+    public function test_a_quien_ya_esta_dentro_la_pantalla_solo_le_deja_la_salida(): void
     {
         $persona = $this->trabajador();
 
@@ -390,7 +390,46 @@ class MarcarPantallaTest extends TestCase
         Livewire::test(Marcar::class)
             ->set('cedula', '12345678')
             ->call('buscar')
-            ->assertSee('lo que toca es la salida');
+            ->assertSee('solo se le puede marcar la salida');
+    }
+
+    public function test_a_quien_ya_esta_dentro_no_se_le_puede_marcar_otra_entrada(): void
+    {
+        // El botón sale apagado, pero el servidor lo rechaza igual: esconder un botón no es
+        // seguridad, y la pantalla no es el único camino hasta el servicio.
+        $persona = $this->trabajador();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('marcarEntrada')
+            ->assertSee('Entrada registrada');
+
+        // Pasado el antiduplicado, para que no se confunda con una doble pulsación.
+        $this->travel(Marcaje::SEGUNDOS_ANTIDUPLICADO + 5)->seconds();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('marcarEntrada')
+            ->assertHasErrors('tipo');
+
+        // Sigue habiendo un solo asiento: el segundo no llegó a escribirse.
+        $this->assertDatabaseCount('movimientos', 1);
+    }
+
+    public function test_a_quien_no_ha_entrado_no_se_le_puede_marcar_la_salida(): void
+    {
+        $this->trabajador();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSee('solo se le puede marcar la entrada')
+            ->call('marcarSalida')
+            ->assertHasErrors('tipo');
+
+        $this->assertDatabaseCount('movimientos', 0);
     }
 
     public function test_el_alta_de_un_invitado_lo_deja_listo_para_marcar_sin_teclear_la_cedula_otra_vez(): void

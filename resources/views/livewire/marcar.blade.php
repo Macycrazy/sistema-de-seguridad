@@ -156,12 +156,15 @@
             {{-- LOS DOS BOTONES --}}
             @if ($persona->activo)
                 @php
+                    // Solo se puede pulsar el botón que toca: quien ya está dentro no vuelve a
+                    // entrar, y quien no ha entrado no puede salir. El otro se apaga de verdad,
+                    // con «disabled», y el servidor lo rechaza igual — esconder un botón no es
+                    // seguridad.
+                    //
                     // Cada botón conserva SIEMPRE su color: el verde significa entrada en todo el
-                    // sistema y no se le presta al otro botón. Lo que cambia es el realce del que
-                    // corresponde, y que los botones nunca se mueven de sitio: el vigilante los
-                    // busca por posición, no por color.
+                    // sistema y no se le presta al otro botón. Y los botones nunca se mueven de
+                    // sitio: el vigilante los busca por posición, no por color.
                     $realce = 'ring-2 ring-slate-900 ring-offset-2';
-                    $apagado = 'opacity-50';
 
                     // Se calculan aquí y se pasan con «:class», que es la forma de dar una
                     // expresión PHP a un componente sin meterla dentro del atributo.
@@ -170,8 +173,9 @@
                     // otro: a 320 px, dos botones en fila quedan tan estrechos que el texto se
                     // parte y el dedo falla. Desde tableta en adelante van en fila.
                     $ancho = 'w-full sm:w-auto';
-                    $claseEntrada = $ancho.' '.($this->sugerido === 'entrada' ? $realce : $apagado);
-                    $claseSalida = $ancho.' '.($this->sugerido === 'salida' ? $realce : $apagado);
+                    $tocaEntrada = $this->sugerido === 'entrada';
+                    $claseEntrada = $ancho.($tocaEntrada ? ' '.$realce : '');
+                    $claseSalida = $ancho.($tocaEntrada ? '' : ' '.$realce);
                 @endphp
 
                 <div class="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:flex-wrap sm:items-center">
@@ -181,6 +185,7 @@
                         :class="$claseEntrada"
                         wire:click="marcarEntrada"
                         wire:loading.attr="disabled"
+                        :disabled="! $tocaEntrada"
                     >ENTRADA</x-boton>
 
                     <x-boton
@@ -189,16 +194,21 @@
                         :class="$claseSalida"
                         wire:click="marcarSalida"
                         wire:loading.attr="disabled"
+                        :disabled="$tocaEntrada"
                     >SALIDA</x-boton>
 
                     <p class="text-sm text-slate-500 sm:ml-auto sm:max-w-[16rem] sm:text-right">
-                        @if ($this->sugerido === 'salida')
-                            Está dentro: lo que toca es la salida.
+                        @if ($tocaEntrada)
+                            No está dentro: solo se le puede marcar la entrada.
                         @else
-                            No está dentro: lo que toca es la entrada.
+                            Ya tiene la entrada marcada: solo se le puede marcar la salida.
                         @endif
                     </p>
                 </div>
+
+                @error('tipo')
+                    <p class="mt-3 text-sm font-semibold text-alto">{{ $message }}</p>
+                @enderror
             @else
                 <p class="mt-6 border-t border-slate-100 pt-5 text-sm font-semibold text-alto">
                     Esta persona está desactivada y no se le puede marcar. Avisa al supervisor.

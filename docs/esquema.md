@@ -204,17 +204,36 @@ servidor. Hay una prueba que lo comprueba con `../.env` y `/etc/passwd`.
 
 ---
 
-## Movimientos repetidos
+## No se entra dos veces, ni se sale sin haber entrado
 
-`Marcaje::registrar()` **no crea un asiento nuevo** si el último de esa persona es del mismo tipo y
-ocurrió hace menos de `Marcaje::SEGUNDOS_ANTIDUPLICADO` (10 s): devuelve el que ya existe. Cubre la
-doble pulsación del botón y la doble lectura del carnet.
+**Quien ya está dentro no puede volver a entrar, y quien no ha entrado no puede salir.** Lo exige
+`Marcaje::exigirQueElMovimientoTengaSentido()`, y la pantalla además apaga el botón que no toca
+—comodidad, no seguridad: el servidor lo rechaza igual.
 
-Solo mira el último movimiento y solo si es del **mismo tipo**, así que no estorba a la regla de
-corregir con un asiento nuevo: marcar una salida después de una entrada equivocada pasa siempre.
+Un asiento que no ocurrió se quedaría en el histórico **para siempre**, porque los movimientos no
+se borran. Por eso se ataja antes de escribirlo y no después.
 
-Si a la parte 2 le aparecen dos movimientos iguales separados por más de esos 10 segundos, **son
-reales** y se corrigen como cualquier otro error: con un movimiento más, nunca editando.
+> Esto cambió sobre la versión anterior. Antes, dos entradas seguidas separadas por más de la
+> ventana del antiduplicado se consideraban **reales** y se guardaban las dos. Ya no: la segunda
+> se rechaza. La prueba que decía lo contrario está reescrita, no borrada.
+
+**Si alguien se queda «dentro» de un día para otro** porque olvidó marcar la salida, al día
+siguiente le aparecerá el botón de entrada apagado. Se arregla como cualquier otro error en este
+sistema —con un movimiento nuevo—: se le marca la salida que faltaba y ya puede entrar. Son dos
+toques, y deja rastro de lo que pasó.
+
+### Movimientos repetidos
+
+Antes de esa comprobación hay otra: `registrar()` **no crea un asiento nuevo** si el último de esa
+persona es del mismo tipo y ocurrió hace menos de `Marcaje::SEGUNDOS_ANTIDUPLICADO` (10 s):
+devuelve el que ya existe. Cubre la doble pulsación del botón y la doble lectura del carnet.
+
+**El orden entre las dos importa y no es casual.** El antiduplicado va primero: una doble
+pulsación no es un error del vigilante y no debe sacarle un aviso rojo en pantalla — se resuelve
+sola, en silencio. Solo lo que llega fuera de esa ventana se trata como un error de verdad.
+
+Ninguna de las dos estorba a la regla de corregir con un asiento nuevo: marcar una salida después
+de una entrada equivocada pasa siempre, porque el tipo es distinto.
 
 ---
 
