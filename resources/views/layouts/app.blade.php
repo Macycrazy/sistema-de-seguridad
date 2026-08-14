@@ -27,19 +27,47 @@
                      alt="CIIP · Centro Internacional de Inversión Productiva"
                      class="h-14 w-auto shrink-0">
 
-                {{-- En pantallas estrechas se queda solo el logo: el nombre ocuparía el ancho
-                     que necesita la sección. --}}
-                <span class="hidden h-9 w-px shrink-0 bg-white/25 sm:block"></span>
-                {{-- En tableta va algo menor que en computadora: a 640 px, el nombre a tamaño
-                     completo se quedaría sin sitio y saldría recortado. --}}
-                <span class="hidden min-w-0 truncate text-lg font-semibold tracking-tight text-white sm:block lg:text-xl">
+                {{-- El nombre solo cabe en pantalla ancha; en tableta cede el sitio al menú. --}}
+                <span class="hidden h-9 w-px shrink-0 bg-white/25 lg:block"></span>
+                <span class="hidden min-w-0 truncate text-lg font-semibold tracking-tight text-white lg:block">
                     Registro de Entradas y Salidas
                 </span>
             </a>
 
-            <span class="shrink-0 font-mono text-xs uppercase tracking-widest text-white/70">
-                @yield('seccion', 'Inicio')
-            </span>
+            {{--
+                Menú de módulos. El módulo abierto se marca con una pastilla clara.
+                «Usuarios» todavía no existe (es la parte 3): se muestra apagado, para que se
+                vea que viene, sin llevar a ningún lado.
+
+                Cada enlace se declara una vez en $modulos. Para sumar el de usuarios cuando
+                la parte 3 tenga pantalla, se le quita 'pronto' => true y se le pone su ruta.
+            --}}
+            @php
+                $modulos = [
+                    ['ruta' => 'marcar', 'texto' => 'Marcar'],
+                    ['ruta' => 'registro', 'texto' => 'Registro'],
+                    ['ruta' => null, 'texto' => 'Usuarios', 'pronto' => true],
+                ];
+            @endphp
+            <nav class="flex shrink-0 items-center gap-1 font-mono text-xs font-semibold uppercase tracking-widest sm:text-sm sm:tracking-wide"
+                 aria-label="Módulos">
+                @foreach ($modulos as $m)
+                    @if ($m['pronto'] ?? false)
+                        <span class="cursor-default rounded px-3 py-2 text-white/40"
+                              title="Aún no disponible">{{ $m['texto'] }}</span>
+                    @else
+                        @php $activo = request()->routeIs($m['ruta']); @endphp
+                        <a href="{{ route($m['ruta']) }}"
+                           @if ($activo) aria-current="page" @endif
+                           class="rounded px-3 py-2 transition
+                                  {{ $activo
+                                       ? 'bg-white text-marca'
+                                       : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
+                            {{ $m['texto'] }}
+                        </a>
+                    @endif
+                @endforeach
+            </nav>
         </div>
     </header>
 
