@@ -217,6 +217,33 @@ se borran. Por eso se ataja antes de escribirlo y no después.
 > ventana del antiduplicado se consideraban **reales** y se guardaban las dos. Ya no: la segunda
 > se rechaza. La prueba que decía lo contrario está reescrita, no borrada.
 
+### Y hay que esperar entre dos entradas
+
+Además, **entre dos entradas de la misma persona tienen que pasar
+`Marcaje::MINUTOS_ENTRE_ENTRADAS` (20 min)**, haya salido en el medio o no. Es lo que evita que
+alguien que entra y sale a cada rato llene el histórico de movimientos.
+
+**Se cuenta desde la ENTRADA anterior, no desde la salida.** Si se contara desde la salida
+bastaría con quedarse un minuto adentro para saltarse la regla, y no serviría de nada.
+
+Es el único momento en que **no se puede marcar nada**: la persona está fuera, así que la salida
+tampoco aplica. La pantalla apaga los dos botones y dice la hora exacta a partir de la cual se le
+puede marcar la entrada — no un «no se puede» a secas.
+
+| Hora | Qué pasa |
+|---|---|
+| 09:00 | Entrada · ✅ |
+| 09:05 | Salida · ✅ (la espera no estorba a la salida) |
+| 09:08 | Entrada · ❌ «a partir de las 09:20» |
+| 09:20 | Entrada · ✅ |
+
+`Marcaje::puedeEntrarDesde(Persona)` devuelve esa hora, o `null` si puede entrar ya. **A la
+parte 2 le sirve** si quiere avisar de lo mismo en su pantalla.
+
+> Efecto que hay que conocer: a quien baje diez minutos a la calle y vuelva **no se le podrá
+> marcar el regreso** hasta que se cumpla el plazo. Es a propósito, pero conviene tenerlo claro
+> antes de que pase en la puerta.
+
 **Si alguien se queda «dentro» de un día para otro** porque olvidó marcar la salida, al día
 siguiente le aparecerá el botón de entrada apagado. Se arregla como cualquier otro error en este
 sistema —con un movimiento nuevo—: se le marca la salida que faltaba y ya puede entrar. Son dos

@@ -173,9 +173,16 @@
                     // otro: a 320 px, dos botones en fila quedan tan estrechos que el texto se
                     // parte y el dedo falla. Desde tableta en adelante van en fila.
                     $ancho = 'w-full sm:w-auto';
-                    $tocaEntrada = $this->sugerido === 'entrada';
-                    $claseEntrada = $ancho.($tocaEntrada ? ' '.$realce : '');
-                    $claseSalida = $ancho.($tocaEntrada ? '' : ' '.$realce);
+
+                    $estaDentro = $this->sugerido === 'salida';
+
+                    // Entró hace poco y ya salió: hay que esperar. Es el único caso en que NO
+                    // se puede marcar nada, ni entrada ni salida.
+                    $espera = $estaDentro ? null : $this->esperaHasta;
+
+                    $puedeEntrar = ! $estaDentro && $espera === null;
+                    $claseEntrada = $ancho.($puedeEntrar ? ' '.$realce : '');
+                    $claseSalida = $ancho.($estaDentro ? ' '.$realce : '');
                 @endphp
 
                 <div class="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:flex-wrap sm:items-center">
@@ -185,7 +192,7 @@
                         :class="$claseEntrada"
                         wire:click="marcarEntrada"
                         wire:loading.attr="disabled"
-                        :disabled="! $tocaEntrada"
+                        :disabled="! $puedeEntrar"
                     >ENTRADA</x-boton>
 
                     <x-boton
@@ -194,14 +201,18 @@
                         :class="$claseSalida"
                         wire:click="marcarSalida"
                         wire:loading.attr="disabled"
-                        :disabled="$tocaEntrada"
+                        :disabled="! $estaDentro"
                     >SALIDA</x-boton>
 
-                    <p class="text-sm text-slate-500 sm:ml-auto sm:max-w-[16rem] sm:text-right">
-                        @if ($tocaEntrada)
-                            No está dentro: solo se le puede marcar la entrada.
-                        @else
+                    <p class="text-sm sm:ml-auto sm:max-w-[16rem] sm:text-right
+                              {{ $espera ? 'font-semibold text-invitado' : 'text-slate-500' }}">
+                        @if ($estaDentro)
                             Ya tiene la entrada marcada: solo se le puede marcar la salida.
+                        @elseif ($espera)
+                            Entró hace menos de {{ $this->minutosEntreEntradas() }} minutos.
+                            Se le puede marcar otra entrada <strong>a partir de las {{ $espera }}</strong>.
+                        @else
+                            No está dentro: solo se le puede marcar la entrada.
                         @endif
                     </p>
                 </div>

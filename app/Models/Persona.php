@@ -79,6 +79,21 @@ class Persona extends Model
             ->first();
     }
 
+    /**
+     * La última entrada registrada, haya salido después o no.
+     *
+     * No sirve «ultimoMovimiento()» para esto: quien entró y ya salió tiene una salida como
+     * último movimiento, y la entrada que interesa está debajo.
+     */
+    public function ultimaEntrada(): ?Movimiento
+    {
+        return $this->movimientos()
+            ->where('tipo', Movimiento::ENTRADA)
+            ->orderByDesc('ocurrio_en')
+            ->orderByDesc('id')
+            ->first();
+    }
+
     /** Está dentro si su último movimiento fue una entrada. */
     public function estaDentro(): bool
     {

@@ -96,6 +96,28 @@ class Marcar extends Component
         return $this->marcaje->cuantosDentro();
     }
 
+    /**
+     * A qué hora se le podrá volver a marcar la entrada, si es que hay que esperar.
+     *
+     * Null cuando puede entrar ya. Se muestra en pantalla para que el vigilante sepa hasta
+     * cuándo, en vez de pulsar un botón y toparse con un error que no explica nada.
+     */
+    #[Computed]
+    public function esperaHasta(): ?string
+    {
+        $persona = $this->persona();
+
+        return $persona
+            ? $this->marcaje->puedeEntrarDesde($persona)?->format('H:i')
+            : null;
+    }
+
+    /** Los minutos que tienen que pasar entre dos entradas. Lo decide el servicio. */
+    public function minutosEntreEntradas(): int
+    {
+        return Marcaje::MINUTOS_ENTRE_ENTRADAS;
+    }
+
     /** Cuántos dígitos deja teclear el campo. Lo decide el servicio, no la pantalla. */
     public function maximoDigitos(): int
     {
@@ -170,14 +192,14 @@ class Marcar extends Component
 
             $this->personaId = null;
             $this->invitadoNuevo = true;
-            unset($this->persona, $this->sugerido);
+            unset($this->persona, $this->sugerido, $this->esperaHasta);
 
             return;
         }
 
         $this->personaId = $persona->id;
         $this->invitadoNuevo = false;
-        unset($this->persona, $this->sugerido);
+        unset($this->persona, $this->sugerido, $this->esperaHasta);
 
         // Un invitado que vuelve ya trae su motivo: se muestra para confirmarlo o cambiarlo.
         if ($persona->esInvitado()) {
@@ -248,7 +270,7 @@ class Marcar extends Component
     {
         $this->personaId = null;
         $this->invitadoNuevo = false;
-        unset($this->persona, $this->sugerido, $this->tipoFijado);
+        unset($this->persona, $this->sugerido, $this->tipoFijado, $this->esperaHasta);
     }
 
     /** Da de alta al invitado nuevo y lo deja listo para marcar, sin teclear la cédula otra vez. */
@@ -324,7 +346,7 @@ class Marcar extends Component
             'tipoVehiculo', 'marca', 'modelo', 'color', 'placa', 'cambiandoVehiculo',
         ]);
         $this->resetValidation();
-        unset($this->persona, $this->sugerido, $this->dentro, $this->tipoFijado);
+        unset($this->persona, $this->sugerido, $this->dentro, $this->tipoFijado, $this->esperaHasta);
     }
 
     public function render()

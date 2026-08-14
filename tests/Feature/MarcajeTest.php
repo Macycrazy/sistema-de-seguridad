@@ -498,7 +498,9 @@ class MarcajeTest extends TestCase
         $this->marcaje->registrar($luis->fresh(), Movimiento::SALIDA);
         $this->assertSame(2, $this->marcaje->cuantosDentro());
 
-        // Vuelve a entrar: cuenta otra vez.
+        // Vuelve a entrar: cuenta otra vez. Hay que dejar pasar la espera entre entradas,
+        // que aquí no es lo que se está probando pero se aplica igual.
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS)->minutes();
         $this->marcaje->registrar($luis->fresh(), Movimiento::ENTRADA);
         $this->assertSame(3, $this->marcaje->cuantosDentro());
     }
@@ -559,17 +561,106 @@ class MarcajeTest extends TestCase
 
     public function test_el_vaiven_normal_de_un_dia_pasa_sin_estorbo(): void
     {
-        // Entrar, salir y volver a entrar es lo corriente: la regla no puede estorbarlo.
+        // Entrar, salir y volver a entrar es lo corriente: la regla no puede estorbarlo,
+        // siempre que entre las dos entradas hayan pasado los minutos de rigor.
         $persona = $this->trabajador();
 
         $this->marcaje->registrar($persona, Movimiento::ENTRADA);
         $this->travel(Marcaje::SEGUNDOS_ANTIDUPLICADO + 5)->seconds();
         $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
-        $this->travel(Marcaje::SEGUNDOS_ANTIDUPLICADO + 5)->seconds();
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS)->minutes();
         $this->marcaje->registrar($persona->fresh(), Movimiento::ENTRADA);
 
         $this->assertDatabaseCount('movimientos', 3);
         $this->assertTrue($persona->fresh()->estaDentro());
+    }
+
+    public function test_quien_acaba_de_salir_no_puede_volver_a_entrar_en_seguida(): void
+    {
+        // Entra, sale a los cinco minutos y quiere volver: todavía no.
+        $persona = $this->trabajador();
+
+        $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+        $this->travel(5)->minutes();
+        $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
+        $this->travel(3)->minutes();
+
+        try {
+            $this->marcaje->registrar($persona->fresh(), Movimiento::ENTRADA);
+            $this->fail('Debió rechazar la entrada: no han pasado los minutos de espera.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('tipo', $e->errors());
+        }
+
+        // Los dos movimientos de antes siguen ahí; el tercero no llegó a escribirse.
+        $this->assertDatabaseCount('movimientos', 2);
+    }
+
+    public function test_la_espera_se_cuenta_desde_la_entrada_y_no_desde_la_salida(): void
+    {
+        // Es la clave de la regla: si se contara desde la salida, entrar y salir a cada rato
+        // seguiría llenando el histórico — bastaría con quedarse un minuto adentro.
+        $persona = $this->trabajador();
+
+        $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS - 2)->minutes();
+        $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
+
+        // Han pasado 18 minutos desde la entrada y 0 desde la salida.
+        $this->travel(2)->minutes();
+        $this->marcaje->registrar($persona->fresh(), Movimiento::ENTRADA);
+
+        $this->assertDatabaseCount('movimientos', 3);
+    }
+
+    public function test_la_pantalla_puede_saber_a_que_hora_podra_entrar(): void
+    {
+        $persona = $this->trabajador();
+
+        // Sin movimientos, nada que esperar.
+        $this->assertNull($this->marcaje->puedeEntrarDesde($persona));
+
+        $entrada = $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+        $this->travel(5)->minutes();
+        $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
+
+        $desde = $this->marcaje->puedeEntrarDesde($persona->fresh());
+
+        $this->assertNotNull($desde);
+        $this->assertSame(
+            $entrada->ocurrio_en->copy()->addMinutes(Marcaje::MINUTOS_ENTRE_ENTRADAS)->format('H:i'),
+            $desde->format('H:i'),
+        );
+
+        // Cumplido el plazo, ya no hay nada que esperar.
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS)->minutes();
+        $this->assertNull($this->marcaje->puedeEntrarDesde($persona->fresh()));
+    }
+
+    public function test_la_espera_no_estorba_a_la_salida(): void
+    {
+        // Quien está dentro puede salir cuando quiera: la espera es solo para entrar.
+        $persona = $this->trabajador();
+
+        $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+        $this->travel(Marcaje::SEGUNDOS_ANTIDUPLICADO + 5)->seconds();
+        $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
+
+        $this->assertDatabaseCount('movimientos', 2);
+    }
+
+    public function test_la_espera_vale_igual_para_un_invitado(): void
+    {
+        $invitado = $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia');
+
+        $this->marcaje->registrar($invitado, Movimiento::ENTRADA);
+        $this->travel(2)->minutes();
+        $this->marcaje->registrar($invitado->fresh(), Movimiento::SALIDA);
+        $this->travel(2)->minutes();
+
+        $this->expectException(ValidationException::class);
+
+        $this->marcaje->registrar($invitado->fresh(), Movimiento::ENTRADA);
     }
 
     public function test_la_doble_pulsacion_no_le_saca_un_aviso_al_vigilante(): void

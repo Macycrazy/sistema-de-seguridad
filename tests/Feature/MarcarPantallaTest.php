@@ -432,6 +432,69 @@ class MarcarPantallaTest extends TestCase
         $this->assertDatabaseCount('movimientos', 1);
     }
 
+    public function test_a_quien_acaba_de_salir_la_pantalla_le_dice_desde_que_hora_puede_entrar(): void
+    {
+        $persona = $this->trabajador();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('marcarEntrada');
+
+        $this->travel(5)->minutes();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('marcarSalida')
+            ->assertSee('Salida registrada');
+
+        $this->travel(3)->minutes();
+
+        // Ni entrada ni salida: es el único momento en que no se puede marcar nada.
+        $componente = Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar');
+
+        $componente
+            ->assertSee('Entró hace menos de '.Marcaje::MINUTOS_ENTRE_ENTRADAS.' minutos')
+            ->assertSee('a partir de las')
+            // El botón está apagado, pero el servidor lo rechaza igual.
+            ->call('marcarEntrada')
+            ->assertHasErrors('tipo');
+
+        $this->assertDatabaseCount('movimientos', 2);
+    }
+
+    public function test_cumplida_la_espera_la_pantalla_deja_entrar_otra_vez(): void
+    {
+        $persona = $this->trabajador();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('marcarEntrada');
+
+        $this->travel(2)->minutes();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('marcarSalida');
+
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS)->minutes();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSee('solo se le puede marcar la entrada')
+            ->call('marcarEntrada')
+            ->assertHasNoErrors()
+            ->assertSee('Entrada registrada');
+
+        $this->assertDatabaseCount('movimientos', 3);
+    }
+
     public function test_a_quien_no_ha_entrado_no_se_le_puede_marcar_la_salida(): void
     {
         $this->trabajador();

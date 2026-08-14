@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Movimiento;
 use App\Models\Persona;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -27,6 +28,18 @@ class Marcaje
      * diez segundos.
      */
     public const SEGUNDOS_ANTIDUPLICADO = 10;
+
+    /**
+     * Cuánto tiene que pasar entre dos entradas de la misma persona.
+     *
+     * Se cuenta desde su ENTRADA anterior, haya salido en el medio o no: es lo que evita que
+     * alguien que entra y sale a cada rato llene el histórico de movimientos.
+     *
+     * Efecto que hay que conocer: a quien baje diez minutos a la calle y vuelva no se le podrá
+     * marcar el regreso hasta que se cumplan estos minutos. La pantalla le dice al vigilante la
+     * hora exacta a partir de la cual puede.
+     */
+    public const MINUTOS_ENTRE_ENTRADAS = 20;
 
     /**
      * Cuántos dígitos puede tener una cédula. Es la única definición: la pantalla la usa para
@@ -219,6 +232,18 @@ class Marcaje
                 'tipo' => 'No tiene la entrada marcada: no se le puede marcar la salida.',
             ]);
         }
+
+        // Ya salió, pero entró hace muy poco. Se cuenta desde la entrada anterior, no desde la
+        // salida: si no, entrar y salir a cada rato seguiría llenando el histórico.
+        if ($tipo === Movimiento::ENTRADA && $desde = $this->puedeEntrarDesde($persona)) {
+            throw ValidationException::withMessages([
+                'tipo' => sprintf(
+                    'Entró hace menos de %d minutos. Se le puede marcar otra entrada a partir de las %s.',
+                    self::MINUTOS_ENTRE_ENTRADAS,
+                    $desde->format('H:i'),
+                ),
+            ]);
+        }
     }
 
     /**
@@ -273,6 +298,26 @@ class Marcaje
         return $ultimo->ocurrio_en->diffInSeconds(now()) < self::SEGUNDOS_ANTIDUPLICADO
             ? $ultimo
             : null;
+    }
+
+    /**
+     * A partir de qué hora se le puede volver a marcar la entrada.
+     *
+     * Devuelve null cuando puede entrar ya —que es lo normal—, y la hora exacta cuando todavía
+     * hay que esperar. La pantalla la usa para decírselo al vigilante en vez de dejarle pulsar
+     * un botón que va a fallar.
+     */
+    public function puedeEntrarDesde(Persona $persona): ?CarbonInterface
+    {
+        $ultima = $persona->ultimaEntrada();
+
+        if (! $ultima) {
+            return null;
+        }
+
+        $desde = $ultima->ocurrio_en->copy()->addMinutes(self::MINUTOS_ENTRE_ENTRADAS);
+
+        return $desde->isFuture() ? $desde : null;
     }
 
     /** Cuántas personas están dentro en este momento: su último movimiento fue una entrada. */
