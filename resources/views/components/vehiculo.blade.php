@@ -54,6 +54,19 @@
         </p>
 
         <div class="flex flex-col gap-2" role="radiogroup" aria-label="Qué trae hoy">
+            {{-- Primero, porque es lo más común con diferencia: la mayoría de la gente entra
+                 caminando. Lo que más se marca tiene que estar donde primero se mira. --}}
+            <label class="cursor-pointer">
+                <input type="radio" name="traeHoy" value="{{ Marcar::A_PIE }}"
+                       wire:model.live="traeHoy" class="peer sr-only">
+                <span class="block rounded border border-slate-300 px-4 py-3 text-sm text-slate-600
+                             peer-checked:border-slate-900 peer-checked:bg-slate-50 peer-checked:font-semibold
+                             peer-checked:text-slate-900
+                             peer-focus-visible:ring-4 peer-focus-visible:ring-slate-900/20">
+                    Vino a pie
+                </span>
+            </label>
+
             @foreach ($vehiculos as $v)
                 <label class="cursor-pointer" wire:key="veh-{{ $v->id }}">
                     <input type="radio" name="traeHoy" value="{{ $v->placa }}"
@@ -74,18 +87,6 @@
                     </span>
                 </label>
             @endforeach
-
-            {{-- Lo más común de todo: hoy vino caminando. --}}
-            <label class="cursor-pointer">
-                <input type="radio" name="traeHoy" value="{{ Marcar::A_PIE }}"
-                       wire:model.live="traeHoy" class="peer sr-only">
-                <span class="block rounded border border-slate-300 px-4 py-3 text-sm text-slate-600
-                             peer-checked:border-slate-900 peer-checked:bg-slate-50 peer-checked:font-semibold
-                             peer-checked:text-slate-900
-                             peer-focus-visible:ring-4 peer-focus-visible:ring-slate-900/20">
-                    Vino a pie
-                </span>
-            </label>
 
             {{-- Y la salida para cuando trae uno que no está en su lista. --}}
             <label class="cursor-pointer">

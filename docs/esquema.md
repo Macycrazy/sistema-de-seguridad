@@ -21,7 +21,8 @@ nadie es trabajador e invitado a la vez.
 | `cedula` | varchar(20), **única** | **Solo dígitos**, sin puntos ni letra. Ver «la cédula» abajo. |
 | `tipo` | varchar(20), indexada | `trabajador` o `invitado` |
 | `nombre` | varchar(120) | |
-| `dependencia` | varchar(120), nula | Solo trabajador. Viene del sistema de carnets. |
+| `dependencia` | varchar(120), nula | Solo trabajador. Viene del sistema de carnets. En pantalla se rotula «Gerencia». |
+| `piso` | varchar(10), nula | Dónde labora, o a dónde va. **Normalizado**: ver «el piso». |
 | `foto_ruta` | varchar(255), nula | Solo trabajador. Ruta relativa dentro del disco privado: `fotos/12345678.jpg`. Ver «las fotos». |
 | `motivo` | varchar(120), nula | Solo invitado: el motivo de la visita **de la última vez**. |
 | `activo` | boolean, por omisión `true` | |
@@ -77,6 +78,7 @@ Una entrada o una salida: el asiento que deja el botón de la puerta.
 | `ocurrio_en` | timestamp, indexada | **La hora del movimiento.** Es la que hay que usar para listar y filtrar. |
 | `usuario_id` | FK → `users`, nula | Quién lo registró. Ver «lo que falta» abajo. |
 | `motivo` | varchar(120), nula | Copia del motivo que traía el invitado **ese día**. |
+| `piso` | varchar(10), nula, indexada | Copia del piso al que fue **ese día**. Lo llevan los dos tipos. |
 | `tipo_vehiculo` | varchar(10), nula | `carro` o `moto`. |
 | `marca` | varchar(40), nula | Copia del vehículo en el que llegó **ese día**. |
 | `modelo` | varchar(40), nula | |
@@ -101,6 +103,31 @@ videoconferencia y el jueves a entregar material, el asiento del lunes tiene que
 
 Las cuatro columnas del vehículo siguen exactamente la misma regla, y por el mismo motivo: si el
 lunes llegó en su carro y el jueves en otro, cada asiento tiene que decir el de su día.
+
+---
+
+## El piso
+
+Va con el código del edificio: **`2-1`, `2-2`** y así. Significa dos cosas parecidas pero no
+iguales, y por eso comparte columna:
+
+| Quién | Qué significa | Se le pregunta |
+|---|---|---|
+| Trabajador | **Dónde labora.** Es fijo, viene de su ficha. | **No.** La pantalla solo lo muestra, al lado de la gerencia. |
+| Invitado | **A dónde se dirige hoy.** | **Siempre**, y es obligatorio. Puede cambiar de una visita a otra, igual que el motivo. |
+
+Es obligatorio para el invitado porque es lo que permite responder «¿quién hay en el 2-1?», que es
+media razón de ser de este registro.
+
+En `movimientos` va la copia congelada del piso al que fue **ese día** —para los dos tipos—, con la
+misma lógica que el motivo y el vehículo. Está indexada: «¿quién subió al 2-1 hoy?» es una pregunta
+de la puerta, y **le sirve a la parte 2**.
+
+### Se guarda normalizado
+
+Sin espacios y en mayúsculas, con `Persona::normalizarPiso()`. Así `2-1` y `2 - 1` no acaban siendo
+dos pisos distintos al buscar. **Si consultas por piso, normaliza antes.** La casilla hace lo mismo
+mientras se teclea, para que no se vea una cosa y se guarde otra.
 
 ---
 
@@ -352,7 +379,8 @@ todo a este servicio:
 | `buscarPorCedula(string): ?Persona` | El **único** sitio por donde se consulta una cédula. |
 | `movimientoSugerido(Persona): string` | `entrada` o `salida`, según dónde esté la persona. |
 | `registrar(Persona, string $tipo, ?int $usuarioId, ?string $motivo, ?Vehiculo $vehiculo): Movimiento` | El **único** sitio por donde se escribe un movimiento. |
-| `registrarInvitado(string $cedula, string $nombre, string $motivo, ?Vehiculo $vehiculo): Persona` | Da de alta un invitado con lo mínimo, y su vehículo si trajo uno. |
+| `registrarInvitado(string $cedula, string $nombre, string $motivo, ?string $piso, ?DatosVehiculo $vehiculo): Persona` | Da de alta un invitado. El piso es **obligatorio**. |
+| `puedeEntrarDesde(Persona): ?CarbonInterface` | Desde qué hora se le puede volver a marcar la entrada, o `null` si ya. |
 | `cuantosDentro(): int` | **Le sirve a la parte 2** para su contador de quién está dentro. |
 
 En el modelo `Persona`: `estaDentro()`, `ultimoMovimiento()`, `esInvitado()`, `esTrabajador()`,

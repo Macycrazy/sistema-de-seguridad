@@ -39,6 +39,14 @@ class Marcar extends Component
 
     public string $motivo = '';
 
+    /**
+     * A qué piso se dirige el invitado, con el código del edificio: «2-1», «2-2» y así.
+     *
+     * Se le pregunta SIEMPRE, porque puede cambiar de una visita a otra. Al trabajador no: el
+     * suyo es fijo, viene de su ficha y en la pantalla solo se muestra.
+     */
+    public string $piso = '';
+
     /** Se marcó «a pie»: hoy no trajo ningún vehículo. Es lo más común. */
     public const A_PIE = '';
 
@@ -197,6 +205,7 @@ class Marcar extends Component
             if (! $this->invitadoNuevo) {
                 $this->nombre = '';
                 $this->motivo = '';
+                $this->piso = '';
                 $this->olvidarVehiculo();
             }
 
@@ -211,9 +220,11 @@ class Marcar extends Component
         $this->invitadoNuevo = false;
         unset($this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta);
 
-        // Un invitado que vuelve ya trae su motivo: se muestra para confirmarlo o cambiarlo.
+        // Un invitado que vuelve ya trae su motivo y el piso de la última vez: se muestran para
+        // confirmarlos o cambiarlos, que para eso se le pregunta cada visita.
         if ($persona->esInvitado()) {
             $this->motivo = (string) $persona->motivo;
+            $this->piso = (string) $persona->piso;
         }
 
         // Se propone lo mismo que trajo la última vez que entró, que casi siempre acierta. Si
@@ -280,6 +291,10 @@ class Marcar extends Component
     /** Da de alta al invitado nuevo y lo deja listo para marcar, sin teclear la cédula otra vez. */
     public function guardarInvitado(): void
     {
+        // Se limpia lo de antes: si no, quien corrige el dato que faltaba y vuelve a pulsar se
+        // queda mirando el aviso rojo del intento anterior, ya resuelto.
+        $this->resetValidation();
+
         $vehiculo = $this->vehiculo();
 
         try {
@@ -287,6 +302,7 @@ class Marcar extends Component
                 $this->cedula,
                 $this->nombre,
                 $this->motivo,
+                $this->piso,
                 $vehiculo,
             );
         } catch (ValidationException $e) {
@@ -297,6 +313,10 @@ class Marcar extends Component
 
         $this->personaId = $persona->id;
         $this->invitadoNuevo = false;
+
+        // Se relee de la ficha, ya normalizado: si el vigilante tecleó «2 - 1» y se guardó
+        // «2-1», la pantalla tiene que enseñar lo que quedó guardado y no lo que él escribió.
+        $this->piso = (string) $persona->piso;
 
         // Ya tiene ficha, así que a partir de aquí manda la casilla y no lo tecleado. Se deja
         // marcado el vehículo que se acaba de anotar: si no, el invitado que llegó en carro
@@ -328,6 +348,9 @@ class Marcar extends Component
             return;
         }
 
+        // Igual que en el alta: el aviso del intento anterior no puede quedarse colgado.
+        $this->resetValidation();
+
         try {
             $this->marcaje->registrar(
                 persona: $persona,
@@ -335,6 +358,8 @@ class Marcar extends Component
                 // La parte 3 pondrá aquí el usuario que tiene la sesión abierta.
                 usuarioId: auth()->id(),
                 motivo: $persona->esInvitado() ? $this->motivo : null,
+                // Al trabajador no se le pregunta: su piso ya está en la ficha.
+                piso: $persona->esInvitado() ? $this->piso : null,
                 // El vehículo se le pregunta a todos: el personal también estaciona aquí.
                 vehiculo: $this->vehiculo(),
             );
@@ -355,7 +380,7 @@ class Marcar extends Component
     public function limpiar(): void
     {
         $this->reset([
-            'cedula', 'personaId', 'invitadoNuevo', 'nombre', 'motivo', 'confirmacion',
+            'cedula', 'personaId', 'invitadoNuevo', 'nombre', 'motivo', 'piso', 'confirmacion',
             'traeHoy', 'tipoVehiculo', 'marca', 'modelo', 'color', 'placa',
         ]);
         $this->resetValidation();

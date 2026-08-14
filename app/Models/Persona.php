@@ -38,10 +38,15 @@ class Persona extends Model
         'tipo',
         'nombre',
         'dependencia',
+        // Dónde labora el trabajador, o a dónde se dirige el invitado. Ver la migración.
+        'piso',
         'foto_ruta',
         'motivo',
         'activo',
     ];
+
+    /** Cuánto cabe en la columna «piso». Ver la migración. */
+    public const LARGO_PISO = 10;
 
     protected function casts(): array
     {
@@ -57,6 +62,19 @@ class Persona extends Model
     public static function normalizarCedula(?string $cedula): string
     {
         return preg_replace('/\D/', '', (string) $cedula) ?? '';
+    }
+
+    /**
+     * Deja el piso sin espacios y en mayúsculas, para que «2-1» y «2 - 1» no acaben siendo dos
+     * pisos distintos al buscar. Misma idea que la cédula y que la placa.
+     *
+     * Vacío se convierte en nulo: es como se guarda «no consta».
+     */
+    public static function normalizarPiso(?string $piso): ?string
+    {
+        $piso = mb_strtoupper(preg_replace('/\s+/u', '', (string) $piso) ?? '');
+
+        return $piso === '' ? null : mb_substr($piso, 0, self::LARGO_PISO);
     }
 
     public function movimientos(): HasMany

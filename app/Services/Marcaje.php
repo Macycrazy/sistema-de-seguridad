@@ -87,11 +87,13 @@ class Marcaje
         string $cedula,
         string $nombre,
         string $motivo,
+        ?string $piso = null,
         ?DatosVehiculo $vehiculo = null,
     ): Persona {
         $cedula = Persona::normalizarCedula($cedula);
         $nombre = trim($nombre);
         $motivo = trim($motivo);
+        $piso = Persona::normalizarPiso($piso);
         $vehiculo ??= DatosVehiculo::desde();
 
         $this->exigirCedulaValida($cedula);
@@ -108,6 +110,14 @@ class Marcaje
             ]);
         }
 
+        // Al invitado se le pregunta SIEMPRE a dónde va: es lo que permite saber quién hay en
+        // cada piso, que es media razón de ser de este registro.
+        if ($piso === null) {
+            throw ValidationException::withMessages([
+                'piso' => 'Hace falta el piso al que se dirige.',
+            ]);
+        }
+
         // Un vehículo a medias no se guarda: o no hay carro, o al menos se sabe la placa.
         $vehiculo->exigirValido();
 
@@ -118,12 +128,13 @@ class Marcaje
         }
 
         // La ficha y su vehículo se crean juntos o no se crea ninguno.
-        return DB::transaction(function () use ($cedula, $nombre, $motivo, $vehiculo) {
+        return DB::transaction(function () use ($cedula, $nombre, $motivo, $piso, $vehiculo) {
             $persona = Persona::create([
                 'cedula' => $cedula,
                 'tipo' => Persona::INVITADO,
                 'nombre' => $nombre,
                 'motivo' => $motivo,
+                'piso' => $piso,
                 'activo' => true,
             ]);
 
@@ -156,6 +167,7 @@ class Marcaje
         string $tipo,
         ?int $usuarioId = null,
         ?string $motivo = null,
+        ?string $piso = null,
         ?DatosVehiculo $vehiculo = null,
     ): Movimiento {
         if (! in_array($tipo, [Movimiento::ENTRADA, Movimiento::SALIDA], true)) {
@@ -176,7 +188,9 @@ class Marcaje
 
         // La ficha y el asiento se guardan juntos o no se guarda ninguno: si falla la
         // actualización del invitado, no queremos un movimiento suelto apuntando a un dato viejo.
-        return DB::transaction(function () use ($persona, $tipo, $usuarioId, $motivo, $vehiculo) {
+        $piso = Persona::normalizarPiso($piso);
+
+        return DB::transaction(function () use ($persona, $tipo, $usuarioId, $motivo, $piso, $vehiculo) {
             // Doble pulsación del botón, o el lector de carnets leyendo dos veces el mismo
             // carnet: se devuelve el asiento que ya existe en vez de crear otro igual.
             // Como los movimientos no se borran, un duplicado se quedaría en el histórico
@@ -195,6 +209,12 @@ class Marcaje
                 $persona->update(['motivo' => $motivo]);
             }
 
+            // El piso del invitado cambia de una visita a otra: se le pregunta y se guarda. El
+            // del trabajador es fijo y viene de su ficha, así que no se toca.
+            if ($persona->esInvitado() && $piso !== null) {
+                $persona->update(['piso' => $piso]);
+            }
+
             // Si trajo uno que no tenía anotado, se le suma a la ficha: la próxima vez ya sale
             // en la lista y el vigilante solo lo señala en vez de teclearlo entero.
             if (! $vehiculo->vacio() && ! $persona->vehiculoConPlaca($vehiculo->placa)) {
@@ -208,6 +228,8 @@ class Marcaje
                 'usuario_id' => $usuarioId,
                 // El asiento de un trabajador no lleva motivo: viene a trabajar.
                 'motivo' => $persona->esInvitado() ? $persona->motivo : null,
+                // El piso sí lo llevan los dos: el suyo si labora aquí, aquel al que va si visita.
+                'piso' => $persona->piso,
                 // Copia congelada de lo que trajo HOY, no un enlace a la tabla: el asiento tiene
                 // que seguir diciendo la verdad de ese día aunque el vehículo se corrija o se
                 // borre después.

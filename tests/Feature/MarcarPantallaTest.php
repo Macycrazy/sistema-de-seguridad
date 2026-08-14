@@ -71,6 +71,67 @@ class MarcarPantallaTest extends TestCase
             ->assertSee('Consultoría Jurídica');
     }
 
+    public function test_del_trabajador_sale_su_piso_junto_a_la_gerencia(): void
+    {
+        // Las dos cosas que el vigilante necesita saber de quien labora aquí, juntas.
+        $this->trabajador(['dependencia' => 'Tecnología', 'piso' => '2-1']);
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSee('Gerencia')
+            ->assertSee('Tecnología')
+            ->assertSee('Piso')
+            ->assertSee('2-1');
+    }
+
+    public function test_a_un_invitado_se_le_pregunta_el_piso_y_sin_el_no_se_guarda(): void
+    {
+        Livewire::test(Marcar::class)
+            ->set('cedula', '31415926')
+            ->call('buscar')
+            ->assertSet('invitadoNuevo', true)
+            ->assertSee('Piso')
+            ->set('nombre', 'Carlos Pérez')
+            ->set('motivo', 'Videoconferencia')
+            // Sin piso no pasa.
+            ->call('guardarInvitado')
+            ->assertHasErrors('piso')
+            ->assertSet('invitadoNuevo', true)
+            // Con piso sí.
+            ->set('piso', '2-1')
+            ->call('guardarInvitado')
+            ->assertHasNoErrors()
+            ->assertSet('invitadoNuevo', false);
+
+        $this->assertSame('2-1', Persona::where('cedula', '31415926')->sole()->piso);
+    }
+
+    public function test_al_invitado_que_vuelve_se_le_vuelve_a_preguntar_el_piso(): void
+    {
+        // Puede ir a otro sitio que la vez pasada, así que sale el de la última visita pero
+        // editable — no se da por sabido.
+        $invitado = Persona::create([
+            'cedula' => '87654321',
+            'tipo' => Persona::INVITADO,
+            'nombre' => 'Carlos Pérez',
+            'motivo' => 'Videoconferencia',
+            'piso' => '2-1',
+            'activo' => true,
+        ]);
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '87654321')
+            ->call('buscar')
+            ->assertSet('piso', '2-1')
+            ->set('piso', '4-1')
+            ->call('marcarEntrada')
+            ->assertSee('Entrada registrada');
+
+        $this->assertDatabaseHas('movimientos', ['piso' => '4-1']);
+        $this->assertSame('4-1', $invitado->fresh()->piso);
+    }
+
     public function test_al_trabajador_tambien_se_le_puede_anotar_el_vehiculo(): void
     {
         // El personal estaciona aquí igual que los invitados. Sin nada anotado todavía, se
@@ -246,6 +307,7 @@ class MarcarPantallaTest extends TestCase
             ->assertSet('invitadoNuevo', true)
             ->set('nombre', 'Carlos Pérez')
             ->set('motivo', 'Videoconferencia')
+            ->set('piso', '2-1')
             ->set('tipoVehiculo', 'moto')
             ->set('marca', 'Bera')
             ->set('placa', 'AC456DF')
@@ -586,6 +648,7 @@ class MarcarPantallaTest extends TestCase
             ->call('buscar')
             ->set('nombre', 'Carlos Pérez')
             ->set('motivo', 'Videoconferencia')
+            ->set('piso', '2-1')
             ->call('guardarInvitado')
             ->assertSet('invitadoNuevo', false)
             ->assertSee('Carlos Pérez')
@@ -608,6 +671,7 @@ class MarcarPantallaTest extends TestCase
             ->call('buscar')
             ->set('nombre', 'Carlos Pérez')
             ->set('motivo', 'Videoconferencia')
+            ->set('piso', '2-1')
             ->set('marca', 'Toyota')
             ->set('modelo', 'Corolla')
             ->set('color', 'Gris')
@@ -637,6 +701,7 @@ class MarcarPantallaTest extends TestCase
             ->call('buscar')
             ->set('nombre', 'Carlos Pérez')
             ->set('motivo', 'Videoconferencia')
+            ->set('piso', '2-1')
             ->call('guardarInvitado')
             ->assertHasNoErrors()
             ->assertSet('invitadoNuevo', false);
@@ -651,6 +716,7 @@ class MarcarPantallaTest extends TestCase
             ->call('buscar')
             ->set('nombre', 'Carlos Pérez')
             ->set('motivo', 'Videoconferencia')
+            ->set('piso', '2-1')
             ->set('marca', 'Toyota')
             ->set('color', 'Gris')
             ->call('guardarInvitado')

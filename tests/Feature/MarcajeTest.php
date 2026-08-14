@@ -106,7 +106,7 @@ class MarcajeTest extends TestCase
 
     public function test_un_invitado_nuevo_se_crea_con_solo_nombre_y_el_motivo(): void
     {
-        $invitado = $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia');
+        $invitado = $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia', '2-1');
 
         $this->assertSame(Persona::INVITADO, $invitado->tipo);
         $this->assertSame('87654321', $invitado->cedula);
@@ -124,6 +124,7 @@ class MarcajeTest extends TestCase
             '87654321',
             'Carlos Pérez',
             'Videoconferencia',
+            '2-1',
             DatosVehiculo::desde(DatosVehiculo::CARRO, 'Toyota', 'Corolla', 'Gris', 'AB123CD'),
         );
 
@@ -139,7 +140,7 @@ class MarcajeTest extends TestCase
     public function test_un_invitado_que_llega_caminando_no_lleva_vehiculo(): void
     {
         // Es el caso normal, y por eso el vehículo ni siquiera se pasa.
-        $invitado = $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia');
+        $invitado = $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia', '2-1');
 
         $this->assertFalse($invitado->tieneVehiculos());
         $this->assertCount(0, $invitado->vehiculos);
@@ -154,6 +155,7 @@ class MarcajeTest extends TestCase
             '87654321',
             'Carlos Pérez',
             'Videoconferencia',
+            '2-1',
             DatosVehiculo::desde(marca: 'Toyota', color: 'Gris'),
         );
     }
@@ -166,6 +168,7 @@ class MarcajeTest extends TestCase
                 (string) (87654320 + $i),
                 'Carlos Pérez',
                 'Videoconferencia',
+                '2-1',
                 DatosVehiculo::desde(DatosVehiculo::CARRO, 'Toyota', 'Corolla', 'Gris', $tecleada),
             );
 
@@ -175,6 +178,57 @@ class MarcajeTest extends TestCase
                 "Falló tecleando «{$tecleada}»",
             );
         }
+    }
+
+    public function test_a_un_invitado_hay_que_decirle_a_que_piso_va(): void
+    {
+        // Es lo que permite saber quién hay en cada piso, que es media razón de ser del registro.
+        $this->expectException(ValidationException::class);
+
+        $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia', '  ');
+    }
+
+    public function test_el_piso_se_guarda_siempre_igual_aunque_se_teclee_con_espacios(): void
+    {
+        // Misma idea que la cédula y la placa: «2-1» y «2 - 1» son el mismo piso.
+        foreach (['2-1', '2 - 1', ' 2-1 ', '2 -1'] as $i => $tecleado) {
+            $invitado = $this->marcaje->registrarInvitado(
+                (string) (87654320 + $i),
+                'Carlos Pérez',
+                'Videoconferencia',
+                $tecleado,
+            );
+
+            $this->assertSame('2-1', $invitado->piso, "Falló tecleando «{$tecleado}»");
+        }
+    }
+
+    public function test_el_asiento_guarda_el_piso_al_que_fue_ese_dia(): void
+    {
+        $invitado = $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia', '2-1');
+
+        $lunes = $this->marcaje->registrar($invitado, Movimiento::ENTRADA);
+        $this->assertSame('2-1', $lunes->piso);
+        $this->marcaje->registrar($invitado->fresh(), Movimiento::SALIDA);
+
+        // El jueves va a otro piso: el asiento del lunes tiene que seguir diciendo el suyo.
+        $this->travel(1)->day();
+        $jueves = $this->marcaje->registrar($invitado->fresh(), Movimiento::ENTRADA, piso: '4-1');
+
+        $this->assertSame('4-1', $jueves->piso);
+        $this->assertSame('2-1', $lunes->fresh()->piso);
+        $this->assertSame('4-1', $invitado->fresh()->piso);
+    }
+
+    public function test_al_trabajador_no_se_le_pregunta_el_piso_porque_ya_lo_tiene(): void
+    {
+        // El suyo es fijo: viene de su ficha y la puerta no se lo cambia.
+        $persona = $this->trabajador(['piso' => '2-1']);
+
+        $movimiento = $this->marcaje->registrar($persona, Movimiento::ENTRADA, piso: '9-9');
+
+        $this->assertSame('2-1', $movimiento->piso);
+        $this->assertSame('2-1', $persona->fresh()->piso);
     }
 
     public function test_un_invitado_sin_nombre_no_se_guarda(): void
@@ -197,12 +251,12 @@ class MarcajeTest extends TestCase
 
         $this->expectException(ValidationException::class);
 
-        $this->marcaje->registrarInvitado('12.345.678', 'Carlos Pérez', 'Videoconferencia');
+        $this->marcaje->registrarInvitado('12.345.678', 'Carlos Pérez', 'Videoconferencia', '2-1');
     }
 
     public function test_el_invitado_que_vuelve_se_encuentra_solo_con_la_cedula(): void
     {
-        $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia');
+        $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia', '2-1');
 
         $encontrado = $this->marcaje->buscarPorCedula('87654321');
 
@@ -213,7 +267,7 @@ class MarcajeTest extends TestCase
 
     public function test_el_movimiento_de_un_invitado_guarda_el_motivo_de_ese_dia(): void
     {
-        $invitado = $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia');
+        $invitado = $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia', '2-1');
 
         $primero = $this->marcaje->registrar($invitado, Movimiento::ENTRADA);
         $this->assertSame('Videoconferencia', $primero->motivo);
@@ -233,6 +287,7 @@ class MarcajeTest extends TestCase
             '87654321',
             'Carlos Pérez',
             'Videoconferencia',
+            '2-1',
             DatosVehiculo::desde(DatosVehiculo::CARRO, 'Toyota', 'Corolla', 'Gris', 'AB123CD'),
         );
 
@@ -681,7 +736,7 @@ class MarcajeTest extends TestCase
 
     public function test_la_espera_vale_igual_para_un_invitado(): void
     {
-        $invitado = $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia');
+        $invitado = $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia', '2-1');
 
         $this->marcaje->registrar($invitado, Movimiento::ENTRADA);
         $this->travel(2)->minutes();

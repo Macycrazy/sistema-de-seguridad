@@ -40,24 +40,26 @@ class TrabajadoresSeeder extends Seeder
         // Luis tiene DOS —carro y moto—, que es el caso que hay que poder probar: en la puerta
         // se le marca cuál de los dos trae ese día. Los otros dos tienen uno solo, y entre los
         // tres se ven las dos clases.
+        // El piso va con el código del edificio: «2-1», «2-2» y así. La gente de una misma
+        // gerencia comparte piso, que es como está repartido el edificio de verdad.
         $trabajadores = [
-            ['cedula' => '11111111', 'nombre' => 'Ana Rodríguez Peña', 'gerencia' => self::GESTION_HUMANA],
-            ['cedula' => '22222222', 'nombre' => 'Luis Hernández Mora', 'gerencia' => self::TECNOLOGIA, 'vehiculos' => [
+            ['cedula' => '11111111', 'nombre' => 'Ana Rodríguez Peña', 'gerencia' => self::GESTION_HUMANA, 'piso' => '3-1'],
+            ['cedula' => '22222222', 'nombre' => 'Luis Hernández Mora', 'gerencia' => self::TECNOLOGIA, 'piso' => '2-1', 'vehiculos' => [
                 [DatosVehiculo::CARRO, 'Toyota', 'Corolla', 'Gris', 'AB123CD'],
                 [DatosVehiculo::MOTO, 'Empire', 'Horse', 'Rojo', 'AE321JK'],
             ]],
-            ['cedula' => '33333333', 'nombre' => 'Carmen Díaz Silva', 'gerencia' => self::PLANIFICACION],
-            ['cedula' => '44444444', 'nombre' => 'José Martínez Rojas', 'gerencia' => self::JURIDICA, 'vehiculos' => [
+            ['cedula' => '33333333', 'nombre' => 'Carmen Díaz Silva', 'gerencia' => self::PLANIFICACION, 'piso' => '2-2'],
+            ['cedula' => '44444444', 'nombre' => 'José Martínez Rojas', 'gerencia' => self::JURIDICA, 'piso' => '4-1', 'vehiculos' => [
                 [DatosVehiculo::MOTO, 'Bera', 'BR-150', 'Negro', 'AC456DF'],
             ]],
-            ['cedula' => '55555555', 'nombre' => 'María Fernández Ruiz', 'gerencia' => self::PLANIFICACION],
-            ['cedula' => '66666666', 'nombre' => 'Pedro Gómez Alvarado', 'gerencia' => self::TECNOLOGIA],
-            ['cedula' => '77777777', 'nombre' => 'Rosa Blanco Ceballos', 'gerencia' => self::GESTION_HUMANA],
-            ['cedula' => '88888888', 'nombre' => 'Miguel Suárez Lugo', 'gerencia' => self::TECNOLOGIA],
-            ['cedula' => '12345678', 'nombre' => 'Daniela Paredes Ortiz', 'gerencia' => self::JURIDICA, 'vehiculos' => [
+            ['cedula' => '55555555', 'nombre' => 'María Fernández Ruiz', 'gerencia' => self::PLANIFICACION, 'piso' => '2-2'],
+            ['cedula' => '66666666', 'nombre' => 'Pedro Gómez Alvarado', 'gerencia' => self::TECNOLOGIA, 'piso' => '2-1'],
+            ['cedula' => '77777777', 'nombre' => 'Rosa Blanco Ceballos', 'gerencia' => self::GESTION_HUMANA, 'piso' => '3-1'],
+            ['cedula' => '88888888', 'nombre' => 'Miguel Suárez Lugo', 'gerencia' => self::TECNOLOGIA, 'piso' => '2-1'],
+            ['cedula' => '12345678', 'nombre' => 'Daniela Paredes Ortiz', 'gerencia' => self::JURIDICA, 'piso' => '4-1', 'vehiculos' => [
                 [DatosVehiculo::CARRO, 'Chevrolet', 'Aveo', 'Azul', 'AD789GH'],
             ]],
-            ['cedula' => '87654321', 'nombre' => 'Rafael Montero Vega', 'gerencia' => self::PLANIFICACION],
+            ['cedula' => '87654321', 'nombre' => 'Rafael Montero Vega', 'gerencia' => self::PLANIFICACION, 'piso' => '2-2'],
         ];
 
         foreach ($trabajadores as $trabajador) {
@@ -70,6 +72,7 @@ class TrabajadoresSeeder extends Seeder
                     // cambio de esquema que hay que hablar con las otras dos partes. En pantalla
                     // se lee «Gerencia», que es como se dice aquí.
                     'dependencia' => $trabajador['gerencia'],
+                    'piso' => $trabajador['piso'],
                     'activo' => true,
                 ],
             );
@@ -92,6 +95,7 @@ class TrabajadoresSeeder extends Seeder
                 'tipo' => Persona::TRABAJADOR,
                 'nombre' => 'Elena Castro Ávila',
                 'dependencia' => self::GESTION_HUMANA,
+                'piso' => '3-1',
                 'activo' => false,
             ],
         );

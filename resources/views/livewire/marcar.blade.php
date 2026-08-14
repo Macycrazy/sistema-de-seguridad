@@ -115,24 +115,64 @@
                              En la base la columna se llama «dependencia»; aquí se rotula
                              «Gerencia», que es como se dice en el CIIP. Renombrar la columna es
                              un cambio de esquema, y eso se habla con las otras dos partes. --}}
-                        <div class="mt-3">
-                            <p class="font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
-                                Gerencia
-                            </p>
-                            <p class="mt-0.5 text-lg font-semibold text-slate-900">
-                                {{ $persona->dependencia ?: 'Sin gerencia asignada' }}
-                            </p>
+                        {{-- Gerencia y piso van juntos: son las dos cosas que el vigilante
+                             necesita saber de quien labora aquí. El piso del trabajador es fijo
+                             —viene de su ficha— así que se muestra, no se pregunta. --}}
+                        <div class="mt-3 flex flex-wrap gap-x-10 gap-y-3">
+                            <div>
+                                <p class="font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
+                                    Gerencia
+                                </p>
+                                <p class="mt-0.5 text-lg font-semibold text-slate-900">
+                                    {{ $persona->dependencia ?: 'Sin gerencia asignada' }}
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
+                                    Piso
+                                </p>
+                                <p class="mt-0.5 font-mono text-lg font-semibold tracking-wide text-slate-900">
+                                    {{ $persona->piso ?: '—' }}
+                                </p>
+                            </div>
                         </div>
                     @else
-                        {{-- Del invitado que vuelve se puede corregir el motivo de hoy: la vez
-                             anterior pudo venir a otra cosa. --}}
-                        <div class="mt-3 max-w-sm">
-                            <x-campo
-                                etiqueta="Motivo de visita"
-                                nombre="motivo"
-                                wire:model="motivo"
-                                :error="$errors->first('motivo')"
-                            />
+                        {{-- Del invitado que vuelve se corrigen el motivo y el piso de hoy: la
+                             vez anterior pudo venir a otra cosa y a otro sitio. Al invitado el
+                             piso se le pregunta SIEMPRE, no se da por sabido.
+
+                             El piso se acomoda solo mientras se teclea —sin espacios y en
+                             mayúsculas— igual que la placa y por la misma razón: si la casilla
+                             dejara ver «2 - 1» y en la base quedara «2-1», lo que se ve y lo que
+                             se guarda no serían lo mismo.
+
+                             OJO: ese «oninput» va pegado a los demás atributos. Un comentario
+                             de Blade metido entre los atributos de un <x-...> rompe el análisis
+                             de la etiqueta y se come en silencio lo que venga detrás. --}}
+                        <div class="mt-3 flex flex-wrap items-start gap-4">
+                            <div class="min-w-0 flex-1 basis-64">
+                                <x-campo
+                                    etiqueta="Motivo de visita"
+                                    nombre="motivo"
+                                    wire:model="motivo"
+                                    :error="$errors->first('motivo')"
+                                />
+                            </div>
+
+                            <div class="w-28 shrink-0">
+                                <x-campo
+                                    etiqueta="Piso"
+                                    nombre="piso"
+                                    wire:model="piso"
+                                    autocomplete="off"
+                                    placeholder="ej. 2-1"
+                                    class="font-mono"
+                                    maxlength="{{ \App\Models\Persona::LARGO_PISO }}"
+                                    oninput="this.value = this.value.toUpperCase().replace(/\s+/g, '')"
+                                    :error="$errors->first('piso')"
+                                />
+                            </div>
                         </div>
                     @endif
                 </div>
@@ -244,8 +284,8 @@
                     Esta cédula no está en el sistema: es un invitado.
                 </p>
                 <p class="mt-1 text-sm text-slate-600">
-                    Solo hacen falta dos datos: nombre y motivo. La próxima vez que venga, con la
-                    cédula bastará.
+                    Hacen falta tres datos: nombre, motivo y el piso al que va. La próxima vez que
+                    venga, con la cédula bastará —salvo el piso, que se pregunta siempre.
                 </p>
             </div>
 
@@ -260,13 +300,35 @@
                         :error="$errors->first('nombre')"
                     />
 
-                    <x-campo
-                        etiqueta="Motivo de visita"
-                        nombre="motivo"
-                        wire:model="motivo"
-                        autocomplete="off"
-                        :error="$errors->first('motivo')"
-                    />
+                    {{-- El piso al que va es obligatorio, igual que el motivo: es lo que
+                         permite saber quién hay en cada piso, que es media razón de ser de
+                         este registro. --}}
+                    <div class="flex flex-wrap items-start gap-4">
+                        <div class="min-w-0 flex-1 basis-56">
+                            <x-campo
+                                etiqueta="Motivo de visita"
+                                nombre="motivo"
+                                wire:model="motivo"
+                                autocomplete="off"
+                                :error="$errors->first('motivo')"
+                            />
+                        </div>
+
+                        <div class="w-28 shrink-0">
+                            <x-campo
+                                etiqueta="Piso"
+                                nombre="piso"
+                                wire:model="piso"
+                                autocomplete="off"
+                                placeholder="ej. 2-1"
+                                class="font-mono"
+                                maxlength="{{ \App\Models\Persona::LARGO_PISO }}"
+                                oninput="this.value = this.value.toUpperCase().replace(/\s+/g, '')"
+                                ayuda="A dónde va."
+                                :error="$errors->first('piso')"
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 {{-- En el alta no hay nada anotado todavía, así que la clase se elige libre. --}}
