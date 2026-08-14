@@ -89,9 +89,12 @@
     {{-- En el teléfono, dos y dos: cuatro casillas en fila quedan tan estrechas que no se lee
          ni la etiqueta. Desde tableta en adelante, las cuatro en fila como en la planilla. --}}
     <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <x-campo etiqueta="Marca" nombre="marca" wire:model="marca" autocomplete="off" placeholder="Toyota" />
-        <x-campo etiqueta="Modelo" nombre="modelo" wire:model="modelo" autocomplete="off" placeholder="Corolla" />
-        <x-campo etiqueta="Color" nombre="color" wire:model="color" autocomplete="off" placeholder="Gris" />
+        {{-- Los ejemplos van con «ej.» delante. Sin eso, un «Toyota» en gris claro se confunde
+             con un Toyota ya escrito, y en la puerta se marca de pie y apurado: nadie se para a
+             mirar de qué tono es la letra. --}}
+        <x-campo etiqueta="Marca" nombre="marca" wire:model="marca" autocomplete="off" placeholder="ej. Toyota" />
+        <x-campo etiqueta="Modelo" nombre="modelo" wire:model="modelo" autocomplete="off" placeholder="ej. Corolla" />
+        <x-campo etiqueta="Color" nombre="color" wire:model="color" autocomplete="off" placeholder="ej. Gris" />
 
         {{--
             La placa se acomoda sola mientras se teclea: mayúsculas y sin guiones ni espacios.
@@ -108,7 +111,7 @@
             nombre="placa"
             wire:model="placa"
             autocomplete="off"
-            placeholder="AB123CD"
+            placeholder="ej. AB123CD"
             class="font-mono"
             maxlength="{{ \App\Services\Vehiculo::LARGO_PLACA }}"
             oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9ÁÉÍÓÚÑ]/g, '')"

@@ -152,6 +152,20 @@ class MarcarPantallaTest extends TestCase
         ]);
     }
 
+    public function test_los_ejemplos_del_vehiculo_se_distinguen_de_un_dato_escrito(): void
+    {
+        // «Toyota» en gris claro se confunde con un Toyota ya escrito. Con «ej.» delante, no.
+        $this->trabajador();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSee('ej. Toyota')
+            ->assertSee('ej. Corolla')
+            ->assertSee('ej. Gris')
+            ->assertSee('ej. AB123CD');
+    }
+
     public function test_a_un_invitado_nuevo_no_se_le_fija_ninguna_clase(): void
     {
         // No tiene nada anotado todavía: la elección es libre.
