@@ -9,6 +9,8 @@
     'piso' => '',
     // Si toca escribirlo porque el sitio no está en la lista.
     'aMano' => false,
+    // Los pisos que el catálogo nombra: ['9' => 'Presidencia'].
+    'nombres' => [],
 ])
 
 @php
@@ -47,18 +49,31 @@
 
         <div class="mb-3 flex flex-wrap gap-2">
             @foreach (array_keys($mapa) as $n)
-                @php $nMarcado = ! $aMano && (string) $nivel === (string) $n; @endphp
+                @php
+                    $nMarcado = ! $aMano && (string) $nivel === (string) $n;
+
+                    // Solo los pisos que el catálogo nombra —hoy el 9, que es Presidencia—. Son
+                    // los que no llegan a enseñar la lista de oficinas, así que no tendrían dónde
+                    // decir cómo se llaman. Ver Marcar::nombresDePiso().
+                    $nombreDelPiso = $nombres[(string) $n] ?? '';
+                @endphp
 
                 <button type="button"
                         wire:key="nivel-{{ $n }}"
                         wire:click="elegirNivel(@js((string) $n))"
                         aria-pressed="{{ $nMarcado ? 'true' : 'false' }}"
-                        class="min-w-12 whitespace-nowrap rounded-full border px-4 py-2 font-mono text-base font-bold
+                        class="min-w-12 whitespace-nowrap rounded-2xl border px-4 py-2 text-center
                                transition focus:outline-none focus-visible:ring-4 focus-visible:ring-parte1/25
                                {{ $nMarcado
                                     ? 'border-parte1 bg-parte1 text-white'
                                     : 'border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50' }}">
-                    {{ $n }}
+                    <span class="block font-mono text-base font-bold">{{ $n }}</span>
+
+                    @if ($nombreDelPiso)
+                        <span class="block text-xs {{ $nMarcado ? 'text-white/80' : 'text-slate-500' }}">
+                            {{ $nombreDelPiso }}
+                        </span>
+                    @endif
                 </button>
             @endforeach
         </div>

@@ -179,8 +179,12 @@
                         @endunless
 
                         @if ($dentroDeHoy)
+                            {{-- La hora a la que entró, no los minutos que lleva. Un «54 min» hay
+                                 que restarlo mentalmente para saber de cuándo se habla; «08:12»
+                                 se compara de un vistazo con el reloj de la pared. En 24 h, como
+                                 el resto del sistema. --}}
                             <x-etiqueta tipo="entrada">
-                                Dentro · {{ (int) abs(now()->diffInMinutes($ultimo->ocurrio_en)) }} min
+                                Dentro · {{ $ultimo->ocurrio_en->format('H:i') }}
                             </x-etiqueta>
                         @elseif ($estaDentroAhora)
                             {{-- Se le quedó la entrada de otro día sin salida. Va en rojo porque
@@ -320,6 +324,7 @@
 
                     <x-piso
                         :mapa="$this->oficinasPorPiso"
+                        :nombres="$this->nombresDePiso"
                         :nivel="$nivel"
                         :piso="$piso"
                         :a-mano="$pisoAMano"
@@ -507,6 +512,7 @@
 
                     <x-piso
                         :mapa="$this->oficinasPorPiso"
+                        :nombres="$this->nombresDePiso"
                         :nivel="$nivel"
                         :piso="$piso"
                         :a-mano="$pisoAMano"

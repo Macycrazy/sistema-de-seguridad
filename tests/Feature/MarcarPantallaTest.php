@@ -610,11 +610,17 @@ class MarcarPantallaTest extends TestCase
      */
     public function test_un_piso_con_una_sola_oficina_queda_anotado_de_un_toque(): void
     {
-        config(['edificio.oficinas' => ['LOBBY', 'PB-1', '2-1', '2-2', '7']]);
+        config([
+            'edificio.oficinas' => ['LOBBY', 'PB-1', '2-1', '2-2', '7', '9'],
+            'edificio.nombres' => ['9' => 'Presidencia'],
+        ]);
 
         $pantalla = Livewire::test(Marcar::class)
             ->set('cedula', '25375258')
-            ->call('buscar');
+            ->call('buscar')
+            // Un piso de una sola oficina no llega a enseñar su nombre en la lista de oficinas,
+            // porque esa lista no se dibuja. Si el sitio tiene nombre, va en el botón del piso.
+            ->assertSee('Presidencia');
 
         // El sitio entero, sin guion.
         $pantalla->call('elegirNivel', 'LOBBY')

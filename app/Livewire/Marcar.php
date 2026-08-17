@@ -411,6 +411,48 @@ class Marcar extends Component
         return $mapa;
     }
 
+    /**
+     * El nombre con el que se conoce a un piso entero, para ponerlo en su botón.
+     *
+     *     ['9' => 'Presidencia']
+     *
+     * Solo lo tienen los pisos de UNA SOLA oficina —los que no llegan a enseñar la lista de
+     * oficinas, así que no tendrían dónde enseñar su nombre—, y solo si ese nombre está en el
+     * catálogo del edificio.
+     *
+     * Que venga del catálogo y no de las fichas no es un detalle: el catálogo nombra el SITIO
+     * —«el 9 es Presidencia», que es como se le llama antes que por su número— mientras que la
+     * ficha dice qué gerencia labora en una oficina. Poner gerencias en los botones de los pisos
+     * llenaría la fila de nombres que solo valen para un despacho.
+     *
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function nombresDePiso(): array
+    {
+        $delCatalogo = [];
+
+        foreach ((array) config('edificio.nombres', []) as $codigo => $nombre) {
+            $delCatalogo[(string) $codigo] = trim((string) $nombre);
+        }
+
+        $nombres = [];
+
+        foreach ($this->oficinasPorPiso() as $nivel => $oficinas) {
+            if (count($oficinas) !== 1) {
+                continue;
+            }
+
+            $nombre = $delCatalogo[array_key_first($oficinas)] ?? '';
+
+            if ($nombre !== '') {
+                $nombres[$nivel] = $nombre;
+            }
+        }
+
+        return $nombres;
+    }
+
     /** El piso al que pertenece un código de oficina: de «2-1» sale «2». */
     public static function nivelDe(?string $piso): string
     {
