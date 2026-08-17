@@ -18,6 +18,16 @@ class AvisoActualizarTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Desde la parte 3 ninguna pantalla se ve sin haber entrado. Este aviso vive en la de
+        // marcar, así que la prueba entra primero. El usuario no se guarda en la base, así que
+        // sirve igual cuando abajo se borra la tabla de migraciones.
+        $this->entrandoComo();
+    }
+
     public function test_con_la_base_al_dia_no_sale_ningun_aviso(): void
     {
         // RefreshDatabase corre todas las migraciones, así que no debe faltar ninguna.
