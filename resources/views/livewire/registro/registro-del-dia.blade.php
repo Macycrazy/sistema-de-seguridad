@@ -71,13 +71,16 @@
                             <button
                                 type="button"
                                 wire:click="abrirPanel('{{ $persona->id }}')"
+                                title="{{ $persona->nombre() }}"
                                 class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-slate-50"
                             >
-                                <span>
-                                    <span class="font-medium">{{ $persona->nombre() }}</span>
-                                    <span class="block font-mono text-xs text-slate-500">{{ $persona->documento() }}</span>
+                                {{-- min-w-0 deja que el nombre largo se trunque en vez de partirse
+                                     en dos líneas y amontonarse con la etiqueta. --}}
+                                <span class="min-w-0 flex-1">
+                                    <span class="block truncate font-medium">{{ $persona->nombre() }}</span>
+                                    <span class="block truncate font-mono text-xs text-slate-500">{{ $persona->documento() }}</span>
                                 </span>
-                                <x-etiqueta :tipo="$persona->tipo->value" />
+                                <x-etiqueta :tipo="$persona->tipo->value" class="shrink-0" />
                             </button>
                         </li>
                     @endforeach
