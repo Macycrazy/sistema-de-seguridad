@@ -65,14 +65,7 @@ class RegistroInventadoTest extends TestCase
     {
         // Una salida que cruzara la medianoche aparecería en la lista del día siguiente
         // y descuadraría el contador de quién quedó dentro.
-        //
-        // El domingo el puesto no registra, así que ese día no sirve para esta prueba: si «ayer»
-        // cae domingo —cuando hoy es lunes— se toma el sábado, que sí tiene movimientos.
         $ayer = CarbonImmutable::today()->subDay();
-
-        if ($ayer->isSunday()) {
-            $ayer = $ayer->subDay();
-        }
 
         $movimientos = $this->fuente()->movimientosDelDia($ayer);
 

@@ -333,14 +333,16 @@ final class RegistroInventado implements FuenteDelRegistro
             $dia = $hoy->subDays($atras);
             $esHoy = $atras === 0;
 
-            // El domingo el puesto casi no ve movimiento.
-            if ($dia->isSunday()) {
-                continue;
+            // El puesto registra todos los días. El fin de semana ve mucho menos movimiento,
+            // pero no cero: hay guardias, mantenimiento y trabajo puntual. Hoy siempre va lleno
+            // para que el demo tenga qué mostrar, sea el día que sea.
+            if ($esHoy) {
+                $asistencia = self::ENTRARON_HOY;
+            } elseif ($dia->isSaturday() || $dia->isSunday()) {
+                $asistencia = (int) round($trabajadores->count() * 0.18);
+            } else {
+                $asistencia = $this->dado->getInt(198, 232);
             }
-
-            $asistencia = $dia->isSaturday()
-                ? (int) round($trabajadores->count() * 0.18)
-                : ($esHoy ? self::ENTRARON_HOY : $this->dado->getInt(198, 232));
 
             $delDia = $this->barajar($trabajadores)->take($asistencia);
 

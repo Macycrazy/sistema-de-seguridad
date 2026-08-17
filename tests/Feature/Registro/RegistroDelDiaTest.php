@@ -485,14 +485,12 @@ class RegistroDelDiaTest extends TestCase
     #[Test]
     public function un_dia_sin_movimientos_lo_dice_en_vez_de_mostrar_una_tabla_vacia(): void
     {
-        // El domingo el puesto no registra nada.
-        $domingo = CarbonImmutable::today();
-        while (! $domingo->isSunday()) {
-            $domingo = $domingo->subDay();
-        }
+        // Un día fuera del histórico que genera el fixture: no puede tener movimientos, sea
+        // el día de la semana que sea.
+        $diaLejano = CarbonImmutable::today()->subDays(90);
 
         Livewire::test(RegistroDelDia::class)
-            ->set('fecha', $domingo->toDateString())
+            ->set('fecha', $diaLejano->toDateString())
             ->assertSee('No hay movimientos con estos filtros');
     }
 
