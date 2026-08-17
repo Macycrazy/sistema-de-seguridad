@@ -619,7 +619,7 @@ class MarcarPantallaTest extends TestCase
         // El sitio entero, sin guion.
         $pantalla->call('elegirNivel', 'LOBBY')
             ->assertSet('piso', 'LOBBY')
-            ->assertSee('Queda anotado')
+            // Ni se pregunta la oficina ni se dice nada más: el botón marcado ya lo dice todo.
             ->assertDontSee('¿A qué oficina?');
 
         $pantalla->call('elegirNivel', '7')->assertSet('piso', '7');
@@ -645,22 +645,20 @@ class MarcarPantallaTest extends TestCase
             'edificio.nombres' => ['9' => 'Presidencia'],
         ]);
 
-        Livewire::test(Marcar::class)
-            ->set('cedula', '25375258')
-            ->call('buscar')
-            ->call('elegirNivel', '9')
-            ->assertSet('piso', '9')
-            ->assertSee('Presidencia');
+        // Se comprueba sobre el mapa y no sobre lo dibujado: dónde se enseñe el nombre es cosa de
+        // la maquetación, pero de dónde sale es la regla, y es esta la que no puede cambiar.
+        $this->assertSame(
+            ['9' => 'Presidencia'],
+            Livewire::test(Marcar::class)->instance()->oficinasPorPiso()['9'],
+        );
 
         // Ahora sí hay alguien anotado en esa oficina, y lo que diga su ficha manda.
         $this->trabajador(['cedula' => '44444444', 'piso' => '9', 'dependencia' => 'Despacho']);
 
-        Livewire::test(Marcar::class)
-            ->set('cedula', '25375258')
-            ->call('buscar')
-            ->call('elegirNivel', '9')
-            ->assertSee('Despacho')
-            ->assertDontSee('Presidencia');
+        $this->assertSame(
+            ['9' => 'Despacho'],
+            Livewire::test(Marcar::class)->instance()->oficinasPorPiso()['9'],
+        );
     }
 
     /** El aviso de invitado se puede cerrar, y vuelve a salir con la cédula siguiente. */

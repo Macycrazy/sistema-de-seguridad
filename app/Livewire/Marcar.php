@@ -54,6 +54,15 @@ class Marcar extends Component
     /** El piso —solo el número— que se escogió primero, antes de elegir la oficina. */
     public string $nivel = '';
 
+    /**
+     * Si hay que escribir el sitio a mano, porque no está en la lista del edificio.
+     *
+     * Por omisión no: se toca el piso, se toca la oficina y ya está dicho. La casilla solo
+     * aparece cuando de verdad hace falta —un sitio que no consta— y no como una segunda forma de
+     * hacer lo que los botones acaban de hacer.
+     */
+    public bool $pisoAMano = false;
+
     /** Los dos campos obligatorios del formulario de invitado. */
     public string $nombre = '';
 
@@ -299,6 +308,10 @@ class Marcar extends Component
 
             // Para que la lista de oficinas salga ya abierta por el piso de la última visita.
             $this->nivel = self::nivelDe($this->piso);
+
+            // Si la última vez fue a un sitio que no consta en la lista —uno viejo, o tecleado a
+            // mano—, la casilla sale abierta con lo que hay: si no, el dato quedaría invisible.
+            $this->pisoAMano = $this->piso !== '' && ! $this->pisoEstaEnLaLista();
         }
 
         // Se propone lo mismo que trajo la última vez que entró, que casi siempre acierta. Si
@@ -421,6 +434,36 @@ class Marcar extends Component
         $oficinas = array_keys($this->oficinasPorPiso()[$nivel] ?? []);
 
         $this->piso = count($oficinas) === 1 ? $oficinas[0] : '';
+
+        // Se escogió de la lista, así que la casilla de escribir deja de hacer falta.
+        $this->pisoAMano = false;
+    }
+
+    /** Se escogió una oficina de la lista: se anota y se cierra la casilla de escribir. */
+    public function elegirOficina(string $codigo): void
+    {
+        $this->piso = $codigo;
+        $this->pisoAMano = false;
+    }
+
+    /** El sitio no está en la lista del edificio: hay que teclearlo. */
+    public function escribirPisoAMano(): void
+    {
+        $this->pisoAMano = true;
+        $this->piso = '';
+        $this->nivel = '';
+    }
+
+    /** Si el sitio que hay puesto consta en la lista del edificio. */
+    public function pisoEstaEnLaLista(): bool
+    {
+        foreach ($this->oficinasPorPiso() as $oficinas) {
+            if (array_key_exists($this->piso, $oficinas)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Si se teclea el código a mano, el piso de arriba se pone al día solo. */
@@ -578,8 +621,8 @@ class Marcar extends Component
         // vigilante no se acordaría de que quedó en «E» del anterior—.
         $this->reset([
             'cedula', 'nacionalidad', 'personaId', 'invitadoNuevo', 'avisoInvitado', 'nombre',
-            'motivo', 'piso', 'nivel', 'confirmacion', 'traeHoy', 'tipoVehiculo', 'marca',
-            'modelo', 'color', 'placa',
+            'motivo', 'piso', 'nivel', 'pisoAMano', 'confirmacion', 'traeHoy', 'tipoVehiculo',
+            'marca', 'modelo', 'color', 'placa',
         ]);
         $this->resetValidation();
 

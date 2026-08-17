@@ -322,6 +322,7 @@
                         :mapa="$this->oficinasPorPiso"
                         :nivel="$nivel"
                         :piso="$piso"
+                        :a-mano="$pisoAMano"
                         :error="$errors->first('piso')"
                     />
                 </div>
@@ -508,6 +509,7 @@
                         :mapa="$this->oficinasPorPiso"
                         :nivel="$nivel"
                         :piso="$piso"
+                        :a-mano="$pisoAMano"
                         :error="$errors->first('piso')"
                     />
                 </div>
