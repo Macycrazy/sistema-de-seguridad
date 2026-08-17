@@ -166,7 +166,7 @@ vez. La pantalla resuelve tres casos:
 
 | Situación | Qué se ve |
 |---|---|
-| Tiene vehículos | La lista con los suyos, más «A pie» y «Otro…». Sale marcado el de su última entrada. |
+| Tiene vehículos | La lista con los suyos, más «Vino a pie» y «Otro…». Sale marcado el de su última entrada. |
 | No tiene ninguno | Las casillas para teclear uno. Es el caso del invitado nuevo. |
 | Marcó «Otro…» | Las casillas para teclear, y al marcar **se le suma a su ficha** — la próxima vez ya sale en la lista. |
 

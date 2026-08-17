@@ -33,7 +33,7 @@
 
       · CON LISTA — la persona ya tiene vehículos anotados. Se SEÑALA cuál trae hoy, sin teclear
         nada. Es lo normal: quien tiene carro y moto viene en uno de los dos, y el vigilante solo
-        marca cuál. «A pie» y «Otro…» son dos opciones más de la misma lista.
+        marca cuál. «Vino a pie» y «Otro…» son dos opciones más de la misma lista.
 
       · SIN LISTA — el alta de un invitado, o alguien que trae uno que no tenía anotado. Ahí sí
         se teclea, y al marcar se le suma a su ficha para que la próxima vez ya salga en la lista.
@@ -64,11 +64,17 @@
             <label class="cursor-pointer">
                 <input type="radio" name="traeHoy" value="{{ Marcar::A_PIE }}"
                        wire:model.live="traeHoy" class="peer sr-only">
-                <span class="block rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-600
+                {{-- «whitespace-nowrap» para que el rótulo no se parta en dos renglones cuando la
+                     fila se aprieta: un «A» arriba y un «pie» abajo no se lee, se descifra. --}}
+                <span class="block whitespace-nowrap rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-600
                              peer-checked:border-parte1 peer-checked:bg-parte1-suave peer-checked:font-semibold
                              peer-checked:text-parte1
                              peer-focus-visible:ring-4 peer-focus-visible:ring-parte1/25">
-                    A pie
+                    {{-- «Vino a pie» y no «A pie» a secas: esto último es una frase válida en
+                         inglés —«a pie», un pastel— y el traductor automático del navegador la
+                         detectaba como tal. En un teléfono se veía «Un pastel» donde tenía que
+                         decir que la persona venía caminando. --}}
+                    Vino a pie
                 </span>
             </label>
 
@@ -90,7 +96,7 @@
                          esta pastilla —que sí es hermana— y no los renglones de adentro, donde no
                          se aplicaría nada. --}}
                     <span title="{{ trim($v->marca.' '.$v->modelo) ?: 'Sin marca ni modelo anotados' }}"
-                          class="block rounded-full border border-slate-300 px-4 py-1.5 text-center
+                          class="block whitespace-nowrap rounded-full border border-slate-300 px-4 py-1.5 text-center
                                  peer-checked:border-parte1 peer-checked:bg-parte1-suave
                                  peer-focus-visible:ring-4 peer-focus-visible:ring-parte1/25">
                         <span class="block text-sm text-slate-700">
