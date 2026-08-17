@@ -242,7 +242,7 @@ class MarcarPantallaTest extends TestCase
         Livewire::test(Marcar::class)
             ->set('cedula', '12345678')
             ->call('buscar')
-            ->assertSee('Vino a pie')
+            ->assertSee('A pie')
             ->set('traeHoy', Marcar::A_PIE)
             ->call('marcarEntrada')
             ->assertSee('Entrada registrada');
@@ -257,7 +257,7 @@ class MarcarPantallaTest extends TestCase
         Livewire::test(Marcar::class)
             ->set('cedula', '12345678')
             ->call('buscar')
-            ->assertSee('Otro vehículo')
+            ->assertSee('Otro…')
             ->set('traeHoy', Marcar::OTRO)
             ->set('tipoVehiculo', 'carro')
             ->set('marca', 'Ford')

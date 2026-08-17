@@ -158,9 +158,9 @@ vez. La pantalla resuelve tres casos:
 
 | Situación | Qué se ve |
 |---|---|
-| Tiene vehículos | La lista con los suyos, más «Vino a pie» y «Otro vehículo…». Sale marcado el de su última entrada. |
+| Tiene vehículos | La lista con los suyos, más «A pie» y «Otro…». Sale marcado el de su última entrada. |
 | No tiene ninguno | Las casillas para teclear uno. Es el caso del invitado nuevo. |
-| Marcó «Otro vehículo…» | Las casillas para teclear, y al marcar **se le suma a su ficha** — la próxima vez ya sale en la lista. |
+| Marcó «Otro…» | Las casillas para teclear, y al marcar **se le suma a su ficha** — la próxima vez ya sale en la lista. |
 
 Que se marque uno **no borra los otros**: son suyos igual, y venir a pie un día tampoco se
 deshace de ninguno. Lo único que cambia de un día para otro es lo que dice el asiento.
@@ -193,7 +193,7 @@ Las dos salidas legítimas, y ninguna es una excepción a la regla:
 
 | Situación | Qué hacer |
 |---|---|
-| Hoy llegó en **otro** vehículo | Poner la placa nueva. Otra placa es otro vehículo, y su clase se elige libre. En la pantalla, el botón **«Otro vehículo»** vacía las casillas de un toque. |
+| Hoy llegó en **otro** vehículo | Poner la placa nueva. Otra placa es otro vehículo, y su clase se elige libre. En la pantalla, el botón **«Otro…»** vacía las casillas de un toque. |
 | Hoy llegó **caminando** | Vaciar las casillas. Eso no es cambiarle la clase, es decir que hoy no trajo ninguno. |
 
 La única regla, y la pone el servidor: **si se llena alguna, tiene que estar la placa.** «Toyota
