@@ -424,13 +424,11 @@
                         @elseif ($estaDentro)
                             Ya tiene la entrada marcada: solo se le puede marcar la salida.
                         @elseif ($espera)
-                            Entró hace menos de {{ $this->minutosEntreEntradas() }} minutos.
-                            Se le puede marcar otra entrada <strong>a partir de las {{ $espera }}</strong>.
-                            {{-- El porqué, en pequeño: sin esta frase el vigilante cree que el
-                                 sistema está fallando. --}}
-                            <span class="mt-1 block font-normal text-slate-500">
-                                El plazo se cuenta desde su entrada anterior, no desde la salida.
-                            </span>
+                            {{-- La frase la redacta el servicio: hay dos plazos —uno desde su
+                                 entrada anterior y otro desde su salida— y solo él sabe cuál
+                                 manda ahora. Si la armara la pantalla, el vigilante leería el
+                                 motivo equivocado la mitad de las veces. --}}
+                            {{ $this->motivoEspera }}
                         @else
                             No está dentro: solo se le puede marcar la entrada.
                         @endif

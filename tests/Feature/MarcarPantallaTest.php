@@ -859,7 +859,9 @@ class MarcarPantallaTest extends TestCase
             ->call('buscar');
 
         $componente
-            ->assertSee('Entró hace menos de '.Marcaje::MINUTOS_ENTRE_ENTRADAS.' minutos')
+            // Salió hace tres minutos, así que el plazo que manda es el de la salida — y la
+            // pantalla tiene que decir ESE motivo, no el de la entrada anterior.
+            ->assertSee('Salió hace menos de '.Marcaje::MINUTOS_ENTRE_SALIDA_Y_ENTRADA.' minutos')
             ->assertSee('a partir de las')
             // El botón está apagado, pero el servidor lo rechaza igual.
             ->call('marcarEntrada')

@@ -58,6 +58,18 @@ class Marcaje
     public const MINUTOS_ENTRE_ENTRADA_Y_SALIDA = 5;
 
     /**
+     * Cuánto tiene que pasar entre la salida de alguien y su siguiente entrada.
+     *
+     * Hace falta aparte de MINUTOS_ENTRE_ENTRADAS, y este es el hueco que tapa: aquel plazo se
+     * cuenta desde la ENTRADA anterior, así que a quien lleva toda la mañana dentro ya se le
+     * cumplió hace rato. Salía y se le podía marcar la entrada en el mismo segundo — que es
+     * justo la doble pulsación que se quiere atajar.
+     *
+     * Con este, después de una salida siempre hay que esperar, sea la hora que sea.
+     */
+    public const MINUTOS_ENTRE_SALIDA_Y_ENTRADA = 5;
+
+    /**
      * Cuántos dígitos puede tener una cédula. Es la única definición: la pantalla la usa para
      * no dejar teclear de más y el servidor para validar, así no se pueden desajustar.
      */
@@ -322,16 +334,10 @@ class Marcaje
             ]);
         }
 
-        // Ya salió, pero entró hace muy poco. Se cuenta desde la entrada anterior, no desde la
-        // salida: si no, entrar y salir a cada rato seguiría llenando el histórico.
-        if ($tipo === Movimiento::ENTRADA && $desde = $this->puedeEntrarDesde($persona)) {
-            throw ValidationException::withMessages([
-                'tipo' => sprintf(
-                    'Entró hace menos de %d minutos. Se le puede marcar otra entrada a partir de las %s.',
-                    self::MINUTOS_ENTRE_ENTRADAS,
-                    $desde->format(Movimiento::FORMATO_HORA),
-                ),
-            ]);
+        // Ya salió, pero todavía no le toca volver a entrar: o entró hace poco, o salió hace poco.
+        // El motivo lo redacta el servicio, que es quien sabe cuál de los dos plazos manda.
+        if ($tipo === Movimiento::ENTRADA && $motivo = $this->motivoDeLaEsperaParaEntrar($persona)) {
+            throw ValidationException::withMessages(['tipo' => $motivo]);
         }
     }
 
@@ -398,15 +404,57 @@ class Marcaje
      */
     public function puedeEntrarDesde(Persona $persona): ?CarbonInterface
     {
-        $ultima = $persona->ultimaEntrada();
+        // Dos plazos, y manda el que termine más tarde: hay que cumplir los dos.
+        $desde = null;
 
-        if (! $ultima) {
+        foreach ([$this->desdeLaEntrada($persona), $this->desdeLaSalida($persona)] as $momento) {
+            if ($momento && (! $desde || $momento->greaterThan($desde))) {
+                $desde = $momento;
+            }
+        }
+
+        return $desde?->isFuture() ? $desde : null;
+    }
+
+    /**
+     * Por qué no se le puede marcar la entrada todavía, ya redactado. Null si puede entrar.
+     *
+     * La frase se arma aquí y no en la pantalla porque los dos plazos se parecen y sus motivos
+     * no: uno dice «entró hace poco» y el otro «salió hace poco». Con el texto en la pantalla,
+     * el vigilante leería el motivo equivocado la mitad de las veces.
+     */
+    public function motivoDeLaEsperaParaEntrar(Persona $persona): ?string
+    {
+        $desde = $this->puedeEntrarDesde($persona);
+
+        if (! $desde) {
             return null;
         }
 
-        $desde = $ultima->ocurrio_en->copy()->addMinutes(self::MINUTOS_ENTRE_ENTRADAS);
+        $porLaSalida = $this->desdeLaSalida($persona);
 
-        return $desde->isFuture() ? $desde : null;
+        [$minutos, $verbo] = $porLaSalida && $porLaSalida->equalTo($desde)
+            ? [self::MINUTOS_ENTRE_SALIDA_Y_ENTRADA, 'Salió']
+            : [self::MINUTOS_ENTRE_ENTRADAS, 'Entró'];
+
+        return sprintf(
+            '%s hace menos de %d minutos. Se le puede marcar otra entrada a partir de las %s.',
+            $verbo,
+            $minutos,
+            $desde->format(Movimiento::FORMATO_HORA),
+        );
+    }
+
+    /** Cuándo se cumple el plazo que se cuenta desde su entrada anterior. */
+    private function desdeLaEntrada(Persona $persona): ?CarbonInterface
+    {
+        return $persona->ultimaEntrada()?->ocurrio_en->copy()->addMinutes(self::MINUTOS_ENTRE_ENTRADAS);
+    }
+
+    /** Cuándo se cumple el plazo que se cuenta desde su última salida. */
+    private function desdeLaSalida(Persona $persona): ?CarbonInterface
+    {
+        return $persona->ultimaSalida()?->ocurrio_en->copy()->addMinutes(self::MINUTOS_ENTRE_SALIDA_Y_ENTRADA);
     }
 
     /**

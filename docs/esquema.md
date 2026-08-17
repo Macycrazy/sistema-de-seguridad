@@ -342,6 +342,24 @@ puede marcar la entrada — no un «no se puede» a secas.
 `Marcaje::puedeEntrarDesde(Persona)` devuelve esa hora, o `null` si puede entrar ya. **A la
 parte 2 le sirve** si quiere avisar de lo mismo en su pantalla.
 
+### Y después de salir, para volver a entrar
+
+`Marcaje::MINUTOS_ENTRE_SALIDA_Y_ENTRADA` (**5 min**), contados desde la última salida. Tapa el
+hueco que dejaba el plazo de arriba por su cuenta: aquel se cuenta desde la **entrada** anterior,
+así que a quien llevaba toda la mañana dentro ya se le había cumplido — salía y se le podía marcar
+la entrada en el mismo segundo.
+
+Los dos plazos de la entrada se cumplen **a la vez**, y `puedeEntrarDesde()` devuelve el que
+termine más tarde. Cuál de los dos manda cambia el motivo que se le enseña al vigilante, así que la
+frase la redacta `Marcaje::motivoDeLaEsperaParaEntrar()` y **no la pantalla**: si no, leería
+«entró hace poco» cuando el problema es que acaba de salir.
+
+> **Con los números de hoy, el de la salida manda siempre.** No se puede salir antes de
+> entrada+5, así que salida+5 nunca cae antes de entrada+10. El plazo entre dos entradas queda como
+> un suelo que en la práctica no llega a tocarse. No es un fallo —los tres son coherentes—, pero si
+> alguien sube el de las entradas a veinte minutos, ese volverá a mandar. Hay una prueba que lo
+> deja escrito.
+
 ### Y también hay que esperar para salir
 
 Entre la entrada de alguien y su salida tienen que pasar
