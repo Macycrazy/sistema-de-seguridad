@@ -534,6 +534,25 @@ class MarcarPantallaTest extends TestCase
     }
 
     /**
+     * El color se lee en la propia pastilla, no en un «title»: la pantalla se usa en un teléfono
+     * y ahí no hay puntero que pase por encima, así que un title no lo ve nunca nadie.
+     *
+     * Se comprueba con el punto de separación delante —«· Gris»— a propósito: «Gris» a secas
+     * también aparecería si el color volviera a esconderse en el title, y la prueba pasaría sin
+     * que se viera nada en pantalla.
+     */
+    public function test_la_pastilla_del_vehiculo_dice_de_que_color_es(): void
+    {
+        $this->conCarroYMoto($this->trabajador());
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSee('· Gris')
+            ->assertSee('· Negro');
+    }
+
+    /**
      * Los pisos que se ofrecen como atajo NO son una lista escrita en el código: salen de las
      * fichas que ya hay en la base, así que aparecen solos cuando se cargue el personal de verdad.
      *
