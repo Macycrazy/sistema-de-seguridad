@@ -323,6 +323,21 @@ puede marcar la entrada — no un «no se puede» a secas.
 `Marcaje::puedeEntrarDesde(Persona)` devuelve esa hora, o `null` si puede entrar ya. **A la
 parte 2 le sirve** si quiere avisar de lo mismo en su pantalla.
 
+### Y también hay que esperar para salir
+
+Entre la entrada de alguien y su salida tienen que pasar
+`Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA` (**5 min**). Nadie entra y se va al minuto: un par de
+asientos separados por segundos casi siempre es el carnet leído dos veces o el botón equivocado, y
+como los movimientos no se borran, ese asiento se quedaría en el histórico para siempre.
+
+**Son dos plazos distintos y no tienen por qué valer igual.** El de arriba —10 min entre dos
+entradas— evita que alguien llene el registro entrando a cada rato; este evita el asiento que no
+ocurrió. `Marcaje::puedeSalirDesde(Persona)` devuelve la hora a partir de la cual se le puede
+marcar la salida, o `null` si puede salir ya, igual que su hermana.
+
+Si de verdad hubo que sacar a alguien antes de los cinco minutos, se corrige como todo aquí: con un
+movimiento nuevo cuando se pueda, nunca editando el anterior.
+
 > Efecto que hay que conocer: a quien baje un momento a la calle y vuelva **no se le podrá
 > marcar el regreso** hasta que se cumpla el plazo. Es a propósito, pero conviene tenerlo claro
 > antes de que pase en la puerta.
@@ -439,6 +454,14 @@ y cubren la parte 1 completa sin tocar la pantalla:
 da igual porque no usa SQL propio de Postgres, pero la parte 2 va a usar `ILIKE` en su búsqueda por
 nombre, y eso **no existe en SQLite**. Cuando llegue ese momento hay que decidir entre cambiar las
 pruebas a una base PostgreSQL de prueba, o usar `whereRaw` con algo que valga en las dos.
+
+> **Ya mordió una vez, y conviene saber cómo.** `cuantosDentroPorTipo()` se escribió con
+> `pluck(DB::raw('count(*)'), ...)`. SQLite llama a esa columna `count(*)` y PostgreSQL la llama
+> `count`, así que **las pruebas pasaban en verde y la pantalla reventaba** en el servidor de
+> verdad. La regla que evita toda esta familia de fallos es corta: **a toda columna calculada,
+> alias.** `selectRaw('... count(*) as cuantos')` y luego `pluck('cuantos', ...)`. Y lo que no
+> tenga prueba que lo cubra —porque la base de las pruebas no es la de producción— se comprueba a
+> mano contra PostgreSQL antes de darlo por hecho.
 
 ---
 

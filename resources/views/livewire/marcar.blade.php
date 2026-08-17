@@ -68,15 +68,23 @@
                 Cambiarla vuelve a buscar: el mismo número con otra letra es otra persona, así que
                 la ficha que hubiera en pantalla deja de valer en cuanto se toca.
             --}}
-            <div class="flex items-end gap-3">
-                <div class="w-28 shrink-0">
+            {{-- Se alinean por ARRIBA y no por abajo: debajo del campo de la cédula va su renglón
+                 de ayuda, así que alineando por abajo la casilla de la letra quedaba un renglón
+                 más baja que la de al lado.
+
+                 Las dos casillas miden lo mismo de alto —h-16— para que la fila sea una fila y no
+                 dos cosas puestas juntas. Y el rótulo va con «tracking-tight» porque
+                 «NACIONALIDAD» es larga: con el espaciado de los demás se partiría en dos
+                 renglones y volvería a descuadrar la fila. --}}
+            <div class="flex items-start gap-3">
+                <div class="w-24 shrink-0">
                     <label for="nacionalidad"
-                           class="mb-1.5 block font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
-                        Letra
+                           class="mb-1.5 block font-mono text-xs font-semibold uppercase tracking-tight text-slate-500">
+                        Nacionalidad
                     </label>
 
                     <select id="nacionalidad" name="nacionalidad" wire:model.live="nacionalidad"
-                            class="block w-full rounded border-2 border-parte1 bg-white px-3 py-3 text-center
+                            class="block h-16 w-full rounded border-2 border-parte1 bg-white px-2 text-center
                                    font-mono text-2xl font-semibold text-slate-900
                                    focus:border-parte1 focus:outline-none focus:ring-4 focus:ring-parte1/25">
                         @foreach (\App\Models\Persona::NACIONALIDADES as $letra => $nombre)
@@ -225,18 +233,60 @@
                         </dd>
                     </div>
 
+                    {{-- La entrada Y la salida juntas, no solo la última.
+
+                         Con un solo renglón —«salida, 09:03»— hay que adivinar a qué hora entró,
+                         que es justo la otra mitad de lo que el vigilante quiere saber. Las dos
+                         una debajo de otra se leen de un golpe: entró a las 08:12 y salió a las
+                         09:03.
+
+                         Cada una es la ÚLTIMA de su clase, así que pueden ser de días distintos:
+                         por eso se dice la fecha cuando no es de hoy. --}}
                     <div class="col-span-2 bg-white px-3 py-2">
                         <dt class="font-mono text-[0.625rem] font-semibold uppercase tracking-widest text-slate-500">
-                            Último movimiento
+                            Últimos movimientos
                         </dt>
-                        <dd class="mt-0.5 text-slate-900">
+
+                        @php
+                            $ultimaEntrada = $persona->ultimaEntrada();
+                            $ultimaSalida = $persona->ultimaSalida();
+                        @endphp
+
+                        <dd class="mt-1 space-y-0.5 text-slate-900">
                             @if (! $ultimo)
                                 Sin movimientos: es la primera vez que se le marca.
                             @else
-                                <span class="font-semibold capitalize">{{ $ultimo->tipo }}</span>
-                                ·
-                                {{ $ultimo->ocurrio_en->isToday() ? 'hoy' : 'el '.$ultimo->ocurrio_en->format('d/m') }}
-                                a las {{ $ultimo->ocurrio_en->format('H:i') }}
+                                <span class="flex items-baseline gap-2">
+                                    <span class="w-16 shrink-0 font-mono text-[0.625rem] font-bold uppercase tracking-widest text-ok">
+                                        Entrada
+                                    </span>
+                                    <span>
+                                        @if ($ultimaEntrada)
+                                            {{ $ultimaEntrada->ocurrio_en->isToday()
+                                                ? 'hoy'
+                                                : 'el '.$ultimaEntrada->ocurrio_en->format('d/m') }}
+                                            a las {{ $ultimaEntrada->ocurrio_en->format('H:i') }}
+                                        @else
+                                            <span class="text-slate-400">sin registrar</span>
+                                        @endif
+                                    </span>
+                                </span>
+
+                                <span class="flex items-baseline gap-2">
+                                    <span class="w-16 shrink-0 font-mono text-[0.625rem] font-bold uppercase tracking-widest text-slate-500">
+                                        Salida
+                                    </span>
+                                    <span>
+                                        @if ($ultimaSalida)
+                                            {{ $ultimaSalida->ocurrio_en->isToday()
+                                                ? 'hoy'
+                                                : 'el '.$ultimaSalida->ocurrio_en->format('d/m') }}
+                                            a las {{ $ultimaSalida->ocurrio_en->format('H:i') }}
+                                        @else
+                                            <span class="text-slate-400">sin registrar</span>
+                                        @endif
+                                    </span>
+                                </span>
 
                                 @if ($estaDentroAhora && ! $dentroDeHoy)
                                     <span class="mt-1 block text-sm font-semibold text-alto">
@@ -319,9 +369,15 @@
                     // se puede marcar nada, ni entrada ni salida.
                     $espera = $estaDentro ? null : $this->esperaHasta;
 
+                    // Está dentro pero acaba de entrar: la salida todavía no. Son dos plazos
+                    // distintos y no tienen por qué valer igual.
+                    $esperaSalida = $estaDentro ? $this->esperaSalidaHasta : null;
+
                     $puedeEntrar = ! $estaDentro && $espera === null;
+                    $puedeSalir = $estaDentro && $esperaSalida === null;
+
                     $claseEntrada = $ancho.($puedeEntrar ? ' '.$realce : '');
-                    $claseSalida = $ancho.($estaDentro ? ' '.$realce : '');
+                    $claseSalida = $ancho.($puedeSalir ? ' '.$realce : '');
                 @endphp
 
                 {{-- LOS DOS BOTONES.
@@ -345,12 +401,20 @@
                         :class="$claseSalida"
                         wire:click="marcarSalida"
                         wire:loading.attr="disabled"
-                        :disabled="! $estaDentro"
+                        :disabled="! $puedeSalir"
                     >SALIDA</x-boton>
 
                     <p class="text-sm sm:ml-auto sm:max-w-[16rem] sm:text-right
-                              {{ $espera ? 'font-semibold text-invitado' : 'text-slate-500' }}">
-                        @if ($estaDentro)
+                              {{ $espera || $esperaSalida ? 'font-semibold text-invitado' : 'text-slate-500' }}">
+                        @if ($esperaSalida)
+                            Entró hace menos de {{ $this->minutosEntreEntradaYSalida() }} minutos.
+                            Se le puede marcar la salida <strong>a partir de las {{ $esperaSalida }}</strong>.
+                            {{-- El porqué, en pequeño: nadie entra y se va al minuto, así que un
+                                 par de asientos pegados casi siempre es un error de la puerta. --}}
+                            <span class="mt-1 block font-normal text-slate-500">
+                                Nadie entra y se va al minuto: casi siempre es el carnet leído dos veces.
+                            </span>
+                        @elseif ($estaDentro)
                             Ya tiene la entrada marcada: solo se le puede marcar la salida.
                         @elseif ($espera)
                             Entró hace menos de {{ $this->minutosEntreEntradas() }} minutos.

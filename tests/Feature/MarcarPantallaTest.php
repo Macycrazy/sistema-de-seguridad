@@ -648,10 +648,55 @@ class MarcarPantallaTest extends TestCase
             ->call('buscar')
             ->call('marcarEntrada');
 
+        // Recién entrado, la salida todavía no: hay que dejar pasar su plazo.
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
+
         Livewire::test(Marcar::class)
             ->set('cedula', '12345678')
             ->call('buscar')
             ->assertSee('solo se le puede marcar la salida');
+    }
+
+    /**
+     * Nadie entra y se va al minuto: un par de asientos pegados casi siempre es el carnet leído
+     * dos veces o el botón equivocado. Es un plazo distinto del que hay entre dos entradas, y por
+     * eso tiene su propia constante.
+     */
+    public function test_la_salida_no_se_puede_marcar_recien_entrado(): void
+    {
+        $this->travelTo(now()->setTime(9, 0));
+
+        $this->trabajador();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('marcarEntrada');
+
+        // Un minuto después: está dentro, pero la salida no toca todavía.
+        $this->travel(1)->minutes();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSee('Se le puede marcar la salida')
+            ->assertSee('09:05')
+            ->call('marcarSalida')
+            ->assertHasErrors('tipo');
+
+        $this->assertDatabaseCount('movimientos', 1);
+
+        // Cumplido el plazo, sale sin problema.
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('marcarSalida')
+            ->assertHasNoErrors()
+            ->assertSee('Salida registrada');
+
+        $this->assertDatabaseCount('movimientos', 2);
     }
 
     public function test_a_quien_ya_esta_dentro_no_se_le_puede_marcar_otra_entrada(): void
@@ -722,13 +767,15 @@ class MarcarPantallaTest extends TestCase
             ->call('buscar')
             ->call('marcarEntrada');
 
-        $this->travel(2)->minutes();
+        // Lo que haga falta para poder marcarle la salida.
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
 
         Livewire::test(Marcar::class)
             ->set('cedula', '12345678')
             ->call('buscar')
             ->call('marcarSalida');
 
+        // La espera de la ENTRADA se cuenta desde la entrada anterior, no desde esta salida.
         $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS)->minutes();
 
         Livewire::test(Marcar::class)

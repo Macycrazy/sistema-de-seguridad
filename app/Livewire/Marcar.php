@@ -158,6 +158,27 @@ class Marcar extends Component
         return Marcaje::MINUTOS_ENTRE_ENTRADAS;
     }
 
+    /** Los minutos que tienen que pasar entre la entrada y su salida. Otro plazo, otro número. */
+    public function minutosEntreEntradaYSalida(): int
+    {
+        return Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA;
+    }
+
+    /**
+     * A qué hora se le podrá marcar la SALIDA, si es que hay que esperar.
+     *
+     * Null cuando puede salir ya, que es lo normal: solo hay espera si acaba de entrar.
+     */
+    #[Computed]
+    public function esperaSalidaHasta(): ?string
+    {
+        $persona = $this->persona();
+
+        return $persona
+            ? $this->marcaje->puedeSalirDesde($persona)?->format('H:i')
+            : null;
+    }
+
     /**
      * Cuántos dígitos deja teclear el campo. Lo decide el servicio, no la pantalla, y depende de
      * la letra: la jurídica admite uno más porque su número es un RIF.
@@ -249,14 +270,14 @@ class Marcar extends Component
 
             $this->personaId = null;
             $this->invitadoNuevo = true;
-            unset($this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta);
+            unset($this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta, $this->esperaSalidaHasta);
 
             return;
         }
 
         $this->personaId = $persona->id;
         $this->invitadoNuevo = false;
-        unset($this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta);
+        unset($this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta, $this->esperaSalidaHasta);
 
         // Un invitado que vuelve ya trae su motivo y el piso de la última vez: se muestran para
         // confirmarlos o cambiarlos, que para eso se le pregunta cada visita.
@@ -346,7 +367,7 @@ class Marcar extends Component
     {
         $this->personaId = null;
         $this->invitadoNuevo = false;
-        unset($this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta);
+        unset($this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta, $this->esperaSalidaHasta);
     }
 
     /** Da de alta al invitado nuevo y lo deja listo para marcar, sin teclear la cédula otra vez. */
@@ -456,7 +477,14 @@ class Marcar extends Component
             'confirmacion', 'traeHoy', 'tipoVehiculo', 'marca', 'modelo', 'color', 'placa',
         ]);
         $this->resetValidation();
-        unset($this->persona, $this->sugerido, $this->dentro, $this->vehiculos, $this->esperaHasta);
+
+        // Los dos contadores se olvidan juntos: acaba de registrarse un movimiento, así que lo
+        // que decían ya no es cierto. Olvidar solo el total dejaría el desglose de antes en
+        // pantalla, y el vigilante vería «41 y 6» debajo de un total que ya cambió.
+        unset(
+            $this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta,
+            $this->esperaSalidaHasta, $this->dentro, $this->dentroPorTipo,
+        );
     }
 
     public function render()

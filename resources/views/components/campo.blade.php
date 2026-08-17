@@ -13,7 +13,9 @@
     // porque se teclea mirando el carnet y se comprueba de un vistazo, con el brazo estirado.
     // Es un tamaño MÁS, no un cambio de los que ya había: lo demás del sistema sigue igual.
     $medidas = match ($tamano) {
-        'puerta' => 'px-4 py-3 text-center text-4xl font-mono font-semibold tracking-wider',
+        // Alto fijo —h-16— para que la casilla de la nacionalidad, que va al lado, pueda ser
+        // exactamente igual de alta sin depender del tamaño de su letra.
+        'puerta' => 'h-16 px-3 text-center text-3xl font-mono font-semibold tracking-wider',
         'grande' => 'px-4 py-4 text-2xl font-mono tracking-wider',
         default => 'px-3 py-2.5 text-sm',
     };

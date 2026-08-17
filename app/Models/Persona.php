@@ -142,6 +142,21 @@ class Persona extends Model
             ->first();
     }
 
+    /**
+     * La última salida registrada, hermana de ultimaEntrada().
+     *
+     * La pantalla enseña las dos juntas: «entró a las 08:12, salió a las 09:03» dice de un golpe
+     * lo que pasó hoy, y con una sola de ellas hay que adivinar la otra.
+     */
+    public function ultimaSalida(): ?Movimiento
+    {
+        return $this->movimientos()
+            ->where('tipo', Movimiento::SALIDA)
+            ->orderByDesc('ocurrio_en')
+            ->orderByDesc('id')
+            ->first();
+    }
+
     /** Está dentro si su último movimiento fue una entrada. */
     public function estaDentro(): bool
     {

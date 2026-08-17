@@ -42,6 +42,22 @@ class Marcaje
     public const MINUTOS_ENTRE_ENTRADAS = 10;
 
     /**
+     * Cuánto tiene que pasar entre la entrada de alguien y su salida.
+     *
+     * Nadie entra y se va al minuto: un par de asientos separados por segundos casi siempre es el
+     * carnet leído dos veces o el vigilante pulsando el botón que no era, y eso ensucia el
+     * histórico sin que nadie se entere. Con cinco minutos, la salida de verdad pasa siempre y la
+     * equivocada se ataja.
+     *
+     * NO es lo mismo que MINUTOS_ENTRE_ENTRADAS y no tienen por qué valer igual: aquel evita que
+     * alguien llene el registro entrando a cada rato; este evita el asiento que no ocurrió.
+     *
+     * Si de verdad hubo que sacar a alguien antes de los cinco minutos, se corrige como todo en
+     * este sistema: con un movimiento nuevo cuando se pueda, nunca editando el anterior.
+     */
+    public const MINUTOS_ENTRE_ENTRADA_Y_SALIDA = 5;
+
+    /**
      * Cuántos dígitos puede tener una cédula. Es la única definición: la pantalla la usa para
      * no dejar teclear de más y el servidor para validar, así no se pueden desajustar.
      */
@@ -294,6 +310,18 @@ class Marcaje
             ]);
         }
 
+        // Está dentro, pero acaba de entrar. Nadie entra y se va al minuto: casi siempre es el
+        // carnet leído dos veces o el botón equivocado.
+        if ($tipo === Movimiento::SALIDA && $desde = $this->puedeSalirDesde($persona)) {
+            throw ValidationException::withMessages([
+                'tipo' => sprintf(
+                    'Entró hace menos de %d minutos. Se le puede marcar la salida a partir de las %s.',
+                    self::MINUTOS_ENTRE_ENTRADA_Y_SALIDA,
+                    $desde->format('H:i'),
+                ),
+            ]);
+        }
+
         // Ya salió, pero entró hace muy poco. Se cuenta desde la entrada anterior, no desde la
         // salida: si no, entrar y salir a cada rato seguiría llenando el histórico.
         if ($tipo === Movimiento::ENTRADA && $desde = $this->puedeEntrarDesde($persona)) {
@@ -381,6 +409,26 @@ class Marcaje
         return $desde->isFuture() ? $desde : null;
     }
 
+    /**
+     * A partir de qué hora se le puede marcar la SALIDA, si es que hay que esperar.
+     *
+     * Hermana de puedeEntrarDesde(): devuelve null cuando puede salir ya —que es lo normal— y la
+     * hora exacta cuando acaba de entrar. La pantalla la usa para apagar el botón y decir hasta
+     * cuándo, en vez de dejar pulsar algo que va a fallar.
+     */
+    public function puedeSalirDesde(Persona $persona): ?CarbonInterface
+    {
+        $ultima = $persona->ultimaEntrada();
+
+        if (! $ultima) {
+            return null;
+        }
+
+        $desde = $ultima->ocurrio_en->copy()->addMinutes(self::MINUTOS_ENTRE_ENTRADA_Y_SALIDA);
+
+        return $desde->isFuture() ? $desde : null;
+    }
+
     /** Cuántas personas están dentro en este momento: su último movimiento fue una entrada. */
     public function cuantosDentro(): int
     {
@@ -405,12 +453,21 @@ class Marcaje
             ->selectRaw('persona_id, max(id) as ultimo_id')
             ->groupBy('persona_id');
 
+        /*
+         * OJO con el alias de la cuenta: es obligatorio, no cosmético.
+         *
+         * Sin él, cada base le pone a esa columna el nombre que quiere —SQLite la llama
+         * «count(*)» y PostgreSQL «count»— y pluck() se queda sin encontrarla. Las pruebas corren
+         * en SQLite y el sistema en PostgreSQL, así que el fallo pasaba las pruebas y luego
+         * reventaba la pantalla. Con alias, las dos dicen «cuantos».
+         */
         $cuenta = DB::table('movimientos')
             ->joinSub($ultimos, 'u', fn ($union) => $union->on('movimientos.id', '=', 'u.ultimo_id'))
             ->join('personas', 'personas.id', '=', 'movimientos.persona_id')
             ->where('movimientos.tipo', Movimiento::ENTRADA)
             ->groupBy('personas.tipo')
-            ->pluck(DB::raw('count(*)'), 'personas.tipo');
+            ->selectRaw('personas.tipo as tipo, count(*) as cuantos')
+            ->pluck('cuantos', 'tipo');
 
         return [
             Persona::TRABAJADOR => (int) $cuenta->get(Persona::TRABAJADOR, 0),
