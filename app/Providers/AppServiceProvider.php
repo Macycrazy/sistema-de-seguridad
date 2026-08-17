@@ -5,7 +5,7 @@ namespace App\Providers;
 use App\Models\User;
 use App\Services\Permisos;
 use App\Services\Registro\FuenteDelRegistro;
-use App\Services\Registro\RegistroInventado;
+use App\Services\Registro\RegistroReal;
 use App\Usuarios\Permiso;
 use App\Usuarios\Rol;
 use Illuminate\Auth\Middleware\Authorize;
@@ -22,14 +22,12 @@ class AppServiceProvider extends ServiceProvider
     {
         // De dónde saca sus datos el registro (parte 2).
         //
-        // Hoy son datos inventados, porque el esquema de las tablas todavía no está
-        // acordado entre las tres partes. Cuando lo esté, se escribe la implementación
-        // contra la base de datos y se cambia solo esta línea: ni el componente Livewire
-        // ni las vistas ni las pruebas se enteran.
+        // Ya lee de las tablas reales (`personas` y `movimientos`): lo que marca la parte 1
+        // aparece en el registro. La versión inventada (RegistroInventado) sigue existiendo
+        // para las pruebas del componente, que la fijan por su cuenta.
         //
-        // Singleton a propósito: generar el juego de datos cuesta, y así se hace una vez
-        // por request en vez de una vez por cada sitio que lo pida.
-        $this->app->singleton(FuenteDelRegistro::class, RegistroInventado::class);
+        // Singleton por consistencia con el resto; RegistroReal no guarda estado entre llamadas.
+        $this->app->singleton(FuenteDelRegistro::class, RegistroReal::class);
 
         // Singleton también, y por lo mismo: los gates preguntan aquí en cada comprobación, y sin
         // esto sería una consulta por cada botón de cada pantalla.
