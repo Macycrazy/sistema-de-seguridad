@@ -8,6 +8,7 @@ use App\Services\Registro\Ente;
 use App\Services\Registro\FuenteDelRegistro;
 use App\Services\Registro\Movimiento;
 use App\Services\Registro\Persona;
+use App\Services\Registro\RegistroInventado;
 use App\Services\Registro\TipoDePersona;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -31,6 +32,12 @@ class RegistroDelDiaTest extends TestCase
         // Desde la parte 3, el registro está detrás del ingreso. Quién puede verlo —el registro
         // es la lista completa del personal, así que el vigilante no— es el bloque B.
         $this->entrandoComo();
+
+        // Estas pruebas comprueban el COMPONENTE (paginación, filtros, panel) contra un juego de
+        // datos conocido. La app ya lee de la base real (RegistroReal), pero aquí se fija el
+        // inventado a propósito: es el fixture estable con cientos de movimientos que hace falta
+        // para probar la paginación. Las pruebas de RegistroReal van aparte, contra la base.
+        $this->app->singleton(FuenteDelRegistro::class, RegistroInventado::class);
     }
 
     private function fuente(): FuenteDelRegistro
