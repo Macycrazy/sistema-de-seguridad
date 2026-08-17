@@ -170,6 +170,20 @@ class Marcar extends Component
             : null;
     }
 
+    /**
+     * Por qué todavía no se le puede marcar la entrada, ya redactado por el servicio.
+     *
+     * La pantalla no arma esta frase: hay dos plazos —uno desde su entrada anterior y otro desde
+     * su salida— y solo el servicio sabe cuál de los dos manda en este momento.
+     */
+    #[Computed]
+    public function motivoEspera(): ?string
+    {
+        $persona = $this->persona();
+
+        return $persona ? $this->marcaje->motivoDeLaEsperaParaEntrar($persona) : null;
+    }
+
     /** Los minutos que tienen que pasar entre dos entradas. Lo decide el servicio. */
     public function minutosEntreEntradas(): int
     {
@@ -291,14 +305,14 @@ class Marcar extends Component
 
             // Cédula nueva, aviso nuevo: lo que se cerró antes era para el invitado anterior.
             $this->avisoInvitado = true;
-            unset($this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta, $this->esperaSalidaHasta);
+            unset($this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta, $this->esperaSalidaHasta, $this->motivoEspera);
 
             return;
         }
 
         $this->personaId = $persona->id;
         $this->invitadoNuevo = false;
-        unset($this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta, $this->esperaSalidaHasta);
+        unset($this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta, $this->esperaSalidaHasta, $this->motivoEspera);
 
         // Un invitado que vuelve ya trae su motivo y el piso de la última vez: se muestran para
         // confirmarlos o cambiarlos, que para eso se le pregunta cada visita.
@@ -556,7 +570,7 @@ class Marcar extends Component
     {
         $this->personaId = null;
         $this->invitadoNuevo = false;
-        unset($this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta, $this->esperaSalidaHasta);
+        unset($this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta, $this->esperaSalidaHasta, $this->motivoEspera);
     }
 
     /** Da de alta al invitado nuevo y lo deja listo para marcar, sin teclear la cédula otra vez. */
