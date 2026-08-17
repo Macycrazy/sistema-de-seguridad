@@ -1,10 +1,19 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+{{--
+    «translate="no"» no es un capricho: el traductor del navegador reescribe lo que ve, y aquí lo
+    que se ve son datos. Pasó de verdad en un teléfono — el rótulo «A pie» se detectó como inglés
+    y apareció «Un pastel» en la pantalla de la puerta. Con un nombre, una placa o un piso, el
+    vigilante estaría leyendo algo que no es lo que hay guardado.
+--}}
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" translate="no">
 <head>
     <meta charset="utf-8">
     {{-- viewport-fit=cover: que el color llegue hasta el borde en teléfonos con notch. --}}
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    {{-- Lo mismo para Google Traductor, que no siempre respeta el atributo de arriba. --}}
+    <meta name="google" content="notranslate">
     <title>@yield('titulo', config('app.name')) · CIIP</title>
 
     {{-- Se instala en la pantalla de inicio y abre a pantalla completa, como una app. El azul del

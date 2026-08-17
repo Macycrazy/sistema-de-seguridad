@@ -35,11 +35,27 @@ class Marcaje
      * Se cuenta desde su ENTRADA anterior, haya salido en el medio o no: es lo que evita que
      * alguien que entra y sale a cada rato llene el histórico de movimientos.
      *
-     * Efecto que hay que conocer: a quien baje diez minutos a la calle y vuelva no se le podrá
+     * Efecto que hay que conocer: a quien baje un momento a la calle y vuelva no se le podrá
      * marcar el regreso hasta que se cumplan estos minutos. La pantalla le dice al vigilante la
      * hora exacta a partir de la cual puede.
      */
-    public const MINUTOS_ENTRE_ENTRADAS = 20;
+    public const MINUTOS_ENTRE_ENTRADAS = 10;
+
+    /**
+     * Cuánto tiene que pasar entre la entrada de alguien y su salida.
+     *
+     * Nadie entra y se va al minuto: un par de asientos separados por segundos casi siempre es el
+     * carnet leído dos veces o el vigilante pulsando el botón que no era, y eso ensucia el
+     * histórico sin que nadie se entere. Con cinco minutos, la salida de verdad pasa siempre y la
+     * equivocada se ataja.
+     *
+     * NO es lo mismo que MINUTOS_ENTRE_ENTRADAS y no tienen por qué valer igual: aquel evita que
+     * alguien llene el registro entrando a cada rato; este evita el asiento que no ocurrió.
+     *
+     * Si de verdad hubo que sacar a alguien antes de los cinco minutos, se corrige como todo en
+     * este sistema: con un movimiento nuevo cuando se pueda, nunca editando el anterior.
+     */
+    public const MINUTOS_ENTRE_ENTRADA_Y_SALIDA = 5;
 
     /**
      * Cuántos dígitos puede tener una cédula. Es la única definición: la pantalla la usa para
@@ -50,10 +66,26 @@ class Marcaje
     public const DIGITOS_MAXIMOS = 9;
 
     /**
+     * La persona jurídica admite un dígito más: su número es un RIF, y esos llegan a diez.
+     *
+     * Va por letra y no subiendo el máximo de todas, porque una cédula V de diez dígitos no
+     * existe y dejarla pasar sería abrir la puerta a un error de tecleo que nadie atajaría.
+     */
+    public const DIGITOS_MAXIMOS_JURIDICO = 10;
+
+    /** Cuántos dígitos admite cada letra. */
+    public static function digitosMaximos(?string $nacionalidad = null): int
+    {
+        return Persona::normalizarNacionalidad($nacionalidad) === Persona::JURIDICO
+            ? self::DIGITOS_MAXIMOS_JURIDICO
+            : self::DIGITOS_MAXIMOS;
+    }
+
+    /**
      * Busca a quién pertenece una cédula. Devuelve null si no está en el sistema, que es la
      * señal de que estamos ante un invitado nuevo.
      */
-    public function buscarPorCedula(string $cedula): ?Persona
+    public function buscarPorCedula(string $cedula, ?string $nacionalidad = null): ?Persona
     {
         $cedula = Persona::normalizarCedula($cedula);
 
@@ -61,7 +93,12 @@ class Marcaje
             return null;
         }
 
-        return Persona::where('cedula', $cedula)->first();
+        // La letra va SIEMPRE en la búsqueda, aunque no la manden: sin ella, «E-12345678» le
+        // sacaría al vigilante la ficha del venezolano con ese número. Quien no la pase se lleva
+        // «V», que es lo que se daba por sentado antes de preguntarla.
+        return Persona::where('cedula', $cedula)
+            ->where('nacionalidad', Persona::normalizarNacionalidad($nacionalidad))
+            ->first();
     }
 
     /**
@@ -89,14 +126,16 @@ class Marcaje
         string $motivo,
         ?string $piso = null,
         ?DatosVehiculo $vehiculo = null,
+        ?string $nacionalidad = null,
     ): Persona {
         $cedula = Persona::normalizarCedula($cedula);
+        $nacionalidad = Persona::normalizarNacionalidad($nacionalidad);
         $nombre = trim($nombre);
         $motivo = trim($motivo);
         $piso = Persona::normalizarPiso($piso);
         $vehiculo ??= DatosVehiculo::desde();
 
-        $this->exigirCedulaValida($cedula);
+        $this->exigirCedulaValida($cedula, $nacionalidad);
 
         if ($nombre === '') {
             throw ValidationException::withMessages([
@@ -121,16 +160,18 @@ class Marcaje
         // Un vehículo a medias no se guarda: o no hay carro, o al menos se sabe la placa.
         $vehiculo->exigirValido();
 
-        if (Persona::where('cedula', $cedula)->exists()) {
+        // La pareja entera, no solo el número: el mismo número con otra letra es otra persona.
+        if (Persona::where('cedula', $cedula)->where('nacionalidad', $nacionalidad)->exists()) {
             throw ValidationException::withMessages([
                 'cedula' => 'Esa cédula ya está registrada en el sistema.',
             ]);
         }
 
         // La ficha y su vehículo se crean juntos o no se crea ninguno.
-        return DB::transaction(function () use ($cedula, $nombre, $motivo, $piso, $vehiculo) {
+        return DB::transaction(function () use ($cedula, $nacionalidad, $nombre, $motivo, $piso, $vehiculo) {
             $persona = Persona::create([
                 'cedula' => $cedula,
+                'nacionalidad' => $nacionalidad,
                 'tipo' => Persona::INVITADO,
                 'nombre' => $nombre,
                 'motivo' => $motivo,
@@ -269,6 +310,18 @@ class Marcaje
             ]);
         }
 
+        // Está dentro, pero acaba de entrar. Nadie entra y se va al minuto: casi siempre es el
+        // carnet leído dos veces o el botón equivocado.
+        if ($tipo === Movimiento::SALIDA && $desde = $this->puedeSalirDesde($persona)) {
+            throw ValidationException::withMessages([
+                'tipo' => sprintf(
+                    'Entró hace menos de %d minutos. Se le puede marcar la salida a partir de las %s.',
+                    self::MINUTOS_ENTRE_ENTRADA_Y_SALIDA,
+                    $desde->format('H:i'),
+                ),
+            ]);
+        }
+
         // Ya salió, pero entró hace muy poco. Se cuenta desde la entrada anterior, no desde la
         // salida: si no, entrar y salir a cada rato seguiría llenando el histórico.
         if ($tipo === Movimiento::ENTRADA && $desde = $this->puedeEntrarDesde($persona)) {
@@ -356,17 +409,70 @@ class Marcaje
         return $desde->isFuture() ? $desde : null;
     }
 
+    /**
+     * A partir de qué hora se le puede marcar la SALIDA, si es que hay que esperar.
+     *
+     * Hermana de puedeEntrarDesde(): devuelve null cuando puede salir ya —que es lo normal— y la
+     * hora exacta cuando acaba de entrar. La pantalla la usa para apagar el botón y decir hasta
+     * cuándo, en vez de dejar pulsar algo que va a fallar.
+     */
+    public function puedeSalirDesde(Persona $persona): ?CarbonInterface
+    {
+        $ultima = $persona->ultimaEntrada();
+
+        if (! $ultima) {
+            return null;
+        }
+
+        $desde = $ultima->ocurrio_en->copy()->addMinutes(self::MINUTOS_ENTRE_ENTRADA_Y_SALIDA);
+
+        return $desde->isFuture() ? $desde : null;
+    }
+
     /** Cuántas personas están dentro en este momento: su último movimiento fue una entrada. */
     public function cuantosDentro(): int
+    {
+        return array_sum($this->cuantosDentroPorTipo());
+    }
+
+    /**
+     * Lo mismo, pero separado en trabajadores e invitados.
+     *
+     * No es un adorno del contador: en una emergencia, «hay 47 personas dentro» no sirve igual
+     * que «41 trabajadores y 6 invitados». A los de casa se les localiza por su dependencia; a
+     * los invitados no los conoce nadie y hay que ir a buscarlos al piso que visitaban.
+     *
+     * Devuelve SIEMPRE las dos claves, aunque alguna esté en cero: quien lo use no tiene por qué
+     * comprobar si existen.
+     *
+     * @return array{trabajador: int, invitado: int}
+     */
+    public function cuantosDentroPorTipo(): array
     {
         $ultimos = DB::table('movimientos')
             ->selectRaw('persona_id, max(id) as ultimo_id')
             ->groupBy('persona_id');
 
-        return DB::table('movimientos')
+        /*
+         * OJO con el alias de la cuenta: es obligatorio, no cosmético.
+         *
+         * Sin él, cada base le pone a esa columna el nombre que quiere —SQLite la llama
+         * «count(*)» y PostgreSQL «count»— y pluck() se queda sin encontrarla. Las pruebas corren
+         * en SQLite y el sistema en PostgreSQL, así que el fallo pasaba las pruebas y luego
+         * reventaba la pantalla. Con alias, las dos dicen «cuantos».
+         */
+        $cuenta = DB::table('movimientos')
             ->joinSub($ultimos, 'u', fn ($union) => $union->on('movimientos.id', '=', 'u.ultimo_id'))
+            ->join('personas', 'personas.id', '=', 'movimientos.persona_id')
             ->where('movimientos.tipo', Movimiento::ENTRADA)
-            ->count();
+            ->groupBy('personas.tipo')
+            ->selectRaw('personas.tipo as tipo, count(*) as cuantos')
+            ->pluck('cuantos', 'tipo');
+
+        return [
+            Persona::TRABAJADOR => (int) $cuenta->get(Persona::TRABAJADOR, 0),
+            Persona::INVITADO => (int) $cuenta->get(Persona::INVITADO, 0),
+        ];
     }
 
     /**
@@ -376,9 +482,10 @@ class Marcaje
      *
      * @throws ValidationException
      */
-    public function exigirCedulaValida(string $cedula): string
+    public function exigirCedulaValida(string $cedula, ?string $nacionalidad = null): string
     {
         $cedula = Persona::normalizarCedula($cedula);
+        $maximo = self::digitosMaximos($nacionalidad);
 
         if ($cedula === '') {
             throw ValidationException::withMessages([
@@ -386,12 +493,12 @@ class Marcaje
             ]);
         }
 
-        if (strlen($cedula) < self::DIGITOS_MINIMOS || strlen($cedula) > self::DIGITOS_MAXIMOS) {
+        if (strlen($cedula) < self::DIGITOS_MINIMOS || strlen($cedula) > $maximo) {
             throw ValidationException::withMessages([
                 'cedula' => sprintf(
                     'Esa cédula no parece válida: debe tener entre %d y %d dígitos.',
                     self::DIGITOS_MINIMOS,
-                    self::DIGITOS_MAXIMOS,
+                    $maximo,
                 ),
             ]);
         }

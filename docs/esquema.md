@@ -18,7 +18,8 @@ nadie es trabajador e invitado a la vez.
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | bigint | |
-| `cedula` | varchar(20), **única** | **Solo dígitos**, sin puntos ni letra. Ver «la cédula» abajo. |
+| `cedula` | varchar(20), indexada | **Solo el número**, sin puntos ni letra. Ver «la cédula» abajo. |
+| `nacionalidad` | char(1), por omisión `V` | La letra: `V`, `E` o `J`. **Única junto a `cedula`.** |
 | `tipo` | varchar(20), indexada | `trabajador` o `invitado` |
 | `nombre` | varchar(120) | |
 | `dependencia` | varchar(120), nula | Solo trabajador. Viene del sistema de carnets. En pantalla se rotula «Gerencia». |
@@ -30,6 +31,13 @@ nadie es trabajador e invitado a la vez.
 
 Las columnas que solo aplican a un tipo van **nulas** en el otro. Del invitado se guarda lo mínimo:
 nombre y **motivo de la visita**. Nada de foto del documento, teléfono ni dirección.
+
+> **AVISO A LAS PARTES 2 Y 3 · lo único de `personas` cambió.** Ya no es `cedula` a secas, sino la
+> pareja **`(nacionalidad, cedula)`**. Antes la letra se tiraba al normalizar, y eso hacía que
+> `V-12345678` y `E-12345678` fueran la misma ficha: al segundo que llegara le salían el nombre, la
+> foto y la dependencia del primero. Si buscáis por cédula, hay que llevar también la letra o
+> quedaros con el valor por omisión `V` —que es lo que se venía dando por sentado—. Las fichas que
+> ya estaban quedaron todas en `V`; si alguna era de un extranjero, se corrige a mano.
 
 > **El vehículo ya NO está aquí.** Estuvo en cinco columnas de esta tabla, y eso daba por sentado
 > que cada quien tiene uno solo. No es cierto —hay quien viene en carro unos días y en moto
@@ -123,6 +131,25 @@ En `movimientos` va la copia congelada del piso al que fue **ese día** —para 
 misma lógica que el motivo y el vehículo. Está indexada: «¿quién subió al 2-1 hoy?» es una pregunta
 de la puerta, y **le sirve a la parte 2**.
 
+### La lista de oficinas vive en `config/edificio.php`
+
+El catálogo de sitios —`LOBBY`, `PB-1`, `2-1`… `8-2`— está ahí y no en la base de datos: es la
+lista del edificio, no un dato del sistema. Cuando alguien se muda de oficina, se edita ese
+archivo.
+
+Tampoco se saca de las fichas del personal, aunque el código ya conste en ellas: **hay sitios donde
+no labora nadie** —el LOBBY, un piso recién desocupado— y aun así se va de visita a ellos.
+
+La **gerencia** de cada oficina sí sale de las fichas, así que no puede contradecirlas. Una oficina
+sin nadie asignado se ofrece igual, solo que sin nombre debajo.
+
+En la pantalla se pregunta en **dos pasos** —primero el piso, después la oficina— porque una lista
+de treinta códigos delante de alguien que espera de pie no se lee, se busca. Los códigos sin guion
+(`LOBBY`, `7`) son un sitio entero: se escogen de un toque, sin segundo paso.
+
+Nada de esto valida: el vigilante puede escribir a mano un código que no esté en la lista. **Son
+atajos, no una reja.**
+
 ### Se guarda normalizado
 
 Sin espacios y en mayúsculas, con `Persona::normalizarPiso()`. Así `2-1` y `2 - 1` no acaban siendo
@@ -158,9 +185,9 @@ vez. La pantalla resuelve tres casos:
 
 | Situación | Qué se ve |
 |---|---|
-| Tiene vehículos | La lista con los suyos, más «Vino a pie» y «Otro vehículo…». Sale marcado el de su última entrada. |
+| Tiene vehículos | La lista con los suyos, más «Vino a pie» y «Otro…». Sale marcado el de su última entrada. |
 | No tiene ninguno | Las casillas para teclear uno. Es el caso del invitado nuevo. |
-| Marcó «Otro vehículo…» | Las casillas para teclear, y al marcar **se le suma a su ficha** — la próxima vez ya sale en la lista. |
+| Marcó «Otro…» | Las casillas para teclear, y al marcar **se le suma a su ficha** — la próxima vez ya sale en la lista. |
 
 Que se marque uno **no borra los otros**: son suyos igual, y venir a pie un día tampoco se
 deshace de ninguno. Lo único que cambia de un día para otro es lo que dice el asiento.
@@ -193,7 +220,7 @@ Las dos salidas legítimas, y ninguna es una excepción a la regla:
 
 | Situación | Qué hacer |
 |---|---|
-| Hoy llegó en **otro** vehículo | Poner la placa nueva. Otra placa es otro vehículo, y su clase se elige libre. En la pantalla, el botón **«Otro vehículo»** vacía las casillas de un toque. |
+| Hoy llegó en **otro** vehículo | Poner la placa nueva. Otra placa es otro vehículo, y su clase se elige libre. En la pantalla, el botón **«Otro…»** vacía las casillas de un toque. |
 | Hoy llegó **caminando** | Vaciar las casillas. Eso no es cambiarle la clase, es decir que hoy no trajo ninguno. |
 
 La única regla, y la pone el servidor: **si se llena alguna, tiene que estar la placa.** «Toyota
@@ -295,7 +322,7 @@ se borran. Por eso se ataja antes de escribirlo y no después.
 ### Y hay que esperar entre dos entradas
 
 Además, **entre dos entradas de la misma persona tienen que pasar
-`Marcaje::MINUTOS_ENTRE_ENTRADAS` (20 min)**, haya salido en el medio o no. Es lo que evita que
+`Marcaje::MINUTOS_ENTRE_ENTRADAS` (10 min)**, haya salido en el medio o no. Es lo que evita que
 alguien que entra y sale a cada rato llene el histórico de movimientos.
 
 **Se cuenta desde la ENTRADA anterior, no desde la salida.** Si se contara desde la salida
@@ -308,14 +335,29 @@ puede marcar la entrada — no un «no se puede» a secas.
 | Hora | Qué pasa |
 |---|---|
 | 09:00 | Entrada · ✅ |
-| 09:05 | Salida · ✅ (la espera no estorba a la salida) |
-| 09:08 | Entrada · ❌ «a partir de las 09:20» |
-| 09:20 | Entrada · ✅ |
+| 09:03 | Salida · ✅ (la espera no estorba a la salida) |
+| 09:06 | Entrada · ❌ «a partir de las 09:10» |
+| 09:10 | Entrada · ✅ |
 
 `Marcaje::puedeEntrarDesde(Persona)` devuelve esa hora, o `null` si puede entrar ya. **A la
 parte 2 le sirve** si quiere avisar de lo mismo en su pantalla.
 
-> Efecto que hay que conocer: a quien baje diez minutos a la calle y vuelva **no se le podrá
+### Y también hay que esperar para salir
+
+Entre la entrada de alguien y su salida tienen que pasar
+`Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA` (**5 min**). Nadie entra y se va al minuto: un par de
+asientos separados por segundos casi siempre es el carnet leído dos veces o el botón equivocado, y
+como los movimientos no se borran, ese asiento se quedaría en el histórico para siempre.
+
+**Son dos plazos distintos y no tienen por qué valer igual.** El de arriba —10 min entre dos
+entradas— evita que alguien llene el registro entrando a cada rato; este evita el asiento que no
+ocurrió. `Marcaje::puedeSalirDesde(Persona)` devuelve la hora a partir de la cual se le puede
+marcar la salida, o `null` si puede salir ya, igual que su hermana.
+
+Si de verdad hubo que sacar a alguien antes de los cinco minutos, se corrige como todo aquí: con un
+movimiento nuevo cuando se pueda, nunca editando el anterior.
+
+> Efecto que hay que conocer: a quien baje un momento a la calle y vuelva **no se le podrá
 > marcar el regreso** hasta que se cumpla el plazo. Es a propósito, pero conviene tenerlo claro
 > antes de que pase en la puerta.
 
@@ -341,14 +383,33 @@ de una entrada equivocada pasa siempre, porque el tipo es distinto.
 
 ## La cédula
 
-Se guarda y se busca **siempre normalizada a solo dígitos**, con
-`Persona::normalizarCedula($cedula)`. Así `12345678`, `12.345.678` y `V-12.345.678` son la misma
-persona. Si escribes una consulta por cédula, normaliza antes o no encontrarás nada.
+Son **dos datos, no uno**: el número y la letra.
+
+El **número** se guarda y se busca siempre normalizado a solo dígitos, con
+`Persona::normalizarCedula($cedula)`. Así `12345678` y `12.345.678` son el mismo. Si escribes una
+consulta por cédula, normaliza antes o no encontrarás nada.
+
+La **letra** —`V` venezolano, `E` extranjero, `J` jurídico— va aparte, en `nacionalidad`, y se
+escoge en un desplegable: no se teclea pegada al número. `Persona::normalizarNacionalidad()` la
+deja en mayúscula y convierte en `V` cualquier cosa que no reconozca, que es lo que se daba por
+sentado cuando no se preguntaba.
+
+**Los dos juntos identifican a la persona.** `V-12345678` y `E-12345678` son dos fichas distintas,
+y por eso lo único de la tabla es la pareja `(nacionalidad, cedula)` y no el número solo. Buscar
+por número sin la letra devuelve al venezolano: es lo que hace `buscarPorCedula()` cuando no se le
+pasa nada, para no romper a quien ya la llamaba con un solo argumento.
+
+Para mostrarla entera se usa `Persona::cedulaCompleta()` — `V-12.345.678` —, que es como está en el
+documento que el vigilante tiene en la mano.
 
 Cuántos dígitos puede tener lo dicen `Marcaje::DIGITOS_MINIMOS` (6) y `Marcaje::DIGITOS_MAXIMOS`
-(9). **Es la única definición**: la usa el servidor para validar en `exigirCedulaValida()` y la
-pantalla para el `maxlength` del campo, así no se pueden desajustar. Si el rango cambia, se cambia
-ahí y ya.
+(9), **salvo la jurídica**, que llega a `Marcaje::DIGITOS_MAXIMOS_JURIDICO` (10) porque su número es
+un RIF. El rango de cada letra sale de `Marcaje::digitosMaximos($nacionalidad)`. **Es la única
+definición**: la usa el servidor para validar en `exigirCedulaValida()` y la pantalla para el
+`maxlength` del campo, así no se pueden desajustar.
+
+Va por letra y no subiendo el máximo de todas a diez: una cédula `V` de diez dígitos no existe, y
+dejarla pasar sería abrir la puerta a un error de tecleo que después nadie atajaría.
 
 El campo de la cédula **solo admite dígitos**: `maxlength` corta por longitud y un `oninput` borra
 al instante cualquier cosa que no sea un número, también lo que se pegue. Ojo con no confundirse:
@@ -382,6 +443,7 @@ todo a este servicio:
 | `registrarInvitado(string $cedula, string $nombre, string $motivo, ?string $piso, ?DatosVehiculo $vehiculo): Persona` | Da de alta un invitado. El piso es **obligatorio**. |
 | `puedeEntrarDesde(Persona): ?CarbonInterface` | Desde qué hora se le puede volver a marcar la entrada, o `null` si ya. |
 | `cuantosDentro(): int` | **Le sirve a la parte 2** para su contador de quién está dentro. |
+| `cuantosDentroPorTipo(): array` | Lo mismo, separado en `trabajador` e `invitado`. Devuelve siempre las dos claves. |
 
 En el modelo `Persona`: `estaDentro()`, `ultimoMovimiento()`, `esInvitado()`, `esTrabajador()`,
 `tieneFoto()`, `rutaFotoSegura()`, `iniciales()` (para el hueco de la foto, sin pedir imágenes a
@@ -411,6 +473,14 @@ y cubren la parte 1 completa sin tocar la pantalla:
 da igual porque no usa SQL propio de Postgres, pero la parte 2 va a usar `ILIKE` en su búsqueda por
 nombre, y eso **no existe en SQLite**. Cuando llegue ese momento hay que decidir entre cambiar las
 pruebas a una base PostgreSQL de prueba, o usar `whereRaw` con algo que valga en las dos.
+
+> **Ya mordió una vez, y conviene saber cómo.** `cuantosDentroPorTipo()` se escribió con
+> `pluck(DB::raw('count(*)'), ...)`. SQLite llama a esa columna `count(*)` y PostgreSQL la llama
+> `count`, así que **las pruebas pasaban en verde y la pantalla reventaba** en el servidor de
+> verdad. La regla que evita toda esta familia de fallos es corta: **a toda columna calculada,
+> alias.** `selectRaw('... count(*) as cuantos')` y luego `pluck('cuantos', ...)`. Y lo que no
+> tenga prueba que lo cubra —porque la base de las pruebas no es la de producción— se comprueba a
+> mano contra PostgreSQL antes de darlo por hecho.
 
 ---
 

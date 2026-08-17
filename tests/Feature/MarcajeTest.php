@@ -52,6 +52,92 @@ class MarcajeTest extends TestCase
         return $persona->fresh();
     }
 
+    /**
+     * El mismo número con otra letra es OTRA persona.
+     *
+     * Antes de guardar la letra, «V-12345678» y «E-12345678» eran la misma ficha: al segundo que
+     * llegara le salía el nombre, la foto y la dependencia del primero, y se le marcaba la entrada
+     * a otro. En un sistema que existe para probar quién estuvo dónde, eso no se sostiene.
+     */
+    public function test_el_mismo_numero_con_otra_letra_es_otra_persona(): void
+    {
+        $venezolana = $this->trabajador([
+            'cedula' => '12345678',
+            'nacionalidad' => Persona::VENEZOLANO,
+            'nombre' => 'Ana Rodríguez Peña',
+        ]);
+
+        $extranjero = $this->trabajador([
+            'cedula' => '12345678',
+            'nacionalidad' => Persona::EXTRANJERO,
+            'nombre' => 'John Smith',
+        ]);
+
+        $this->assertNotSame($venezolana->id, $extranjero->id);
+
+        $this->assertSame(
+            $venezolana->id,
+            $this->marcaje->buscarPorCedula('12345678', Persona::VENEZOLANO)?->id,
+        );
+
+        $this->assertSame(
+            $extranjero->id,
+            $this->marcaje->buscarPorCedula('12345678', Persona::EXTRANJERO)?->id,
+        );
+
+        // Sin decir la letra se busca como venezolano, que es lo que se daba por sentado antes.
+        $this->assertSame($venezolana->id, $this->marcaje->buscarPorCedula('12345678')?->id);
+    }
+
+    /** La misma cédula ENTERA sí sigue sin poder repetirse. */
+    public function test_no_se_puede_dar_de_alta_a_un_invitado_con_una_cedula_que_ya_existe(): void
+    {
+        $this->trabajador(['cedula' => '12345678', 'nacionalidad' => Persona::VENEZOLANO]);
+
+        $this->expectException(ValidationException::class);
+
+        $this->marcaje->registrarInvitado(
+            cedula: '12345678',
+            nombre: 'John Smith',
+            motivo: 'Videoconferencia',
+            piso: '2-2',
+            nacionalidad: Persona::VENEZOLANO,
+        );
+    }
+
+    /** Pero con otra letra sí, porque es otra persona. */
+    public function test_un_invitado_extranjero_puede_tener_el_numero_de_un_trabajador(): void
+    {
+        $this->trabajador(['cedula' => '12345678', 'nacionalidad' => Persona::VENEZOLANO]);
+
+        $invitado = $this->marcaje->registrarInvitado(
+            cedula: '12345678',
+            nombre: 'John Smith',
+            motivo: 'Videoconferencia',
+            piso: '2-2',
+            nacionalidad: Persona::EXTRANJERO,
+        );
+
+        $this->assertSame(Persona::EXTRANJERO, $invitado->nacionalidad);
+        $this->assertSame('E-12.345.678', $invitado->cedulaCompleta());
+    }
+
+    /**
+     * La jurídica admite un dígito más, porque su número es un RIF. Va por letra y no subiendo el
+     * máximo de todas: una cédula V de diez dígitos no existe.
+     */
+    public function test_la_juridica_admite_diez_digitos_y_la_venezolana_no(): void
+    {
+        $this->assertSame(
+            '4101234567',
+            $this->marcaje->exigirCedulaValida('4101234567', Persona::JURIDICO),
+        );
+
+        $this->expectException(ValidationException::class);
+
+        $this->marcaje->exigirCedulaValida('4101234567', Persona::VENEZOLANO);
+    }
+
     public function test_la_cedula_se_encuentra_aunque_se_teclee_con_puntos_o_con_la_letra(): void
     {
         $this->trabajador(['cedula' => '12345678']);
@@ -88,6 +174,7 @@ class MarcajeTest extends TestCase
     {
         $persona = $this->trabajador();
         $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
         $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
 
         $this->assertSame(Movimiento::ENTRADA, $this->marcaje->movimientoSugerido($persona->fresh()));
@@ -209,6 +296,7 @@ class MarcajeTest extends TestCase
 
         $lunes = $this->marcaje->registrar($invitado, Movimiento::ENTRADA);
         $this->assertSame('2-1', $lunes->piso);
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
         $this->marcaje->registrar($invitado->fresh(), Movimiento::SALIDA);
 
         // El jueves va a otro piso: el asiento del lunes tiene que seguir diciendo el suyo.
@@ -271,6 +359,7 @@ class MarcajeTest extends TestCase
 
         $primero = $this->marcaje->registrar($invitado, Movimiento::ENTRADA);
         $this->assertSame('Videoconferencia', $primero->motivo);
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
         $this->marcaje->registrar($invitado->fresh(), Movimiento::SALIDA);
 
         // Vuelve otro día por otro motivo: el asiento viejo tiene que seguir diciendo el de aquel día.
@@ -296,6 +385,7 @@ class MarcajeTest extends TestCase
         $lunes = $this->marcaje->registrar($invitado, Movimiento::ENTRADA, vehiculo: $suToyota);
         $this->assertSame('AB123CD', $lunes->placa);
         $this->assertSame('Toyota', $lunes->marca);
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
         $this->marcaje->registrar($invitado->fresh(), Movimiento::SALIDA);
 
         // El jueves viene en otro carro: el asiento del lunes tiene que seguir diciendo el suyo.
@@ -332,6 +422,7 @@ class MarcajeTest extends TestCase
         $moto = DatosVehiculo::desde(DatosVehiculo::MOTO, 'Bera', 'BR-150', 'Negro', 'AC456DF');
 
         $this->marcaje->registrar($persona, Movimiento::ENTRADA, vehiculo: $moto);
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
         $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA, vehiculo: $moto);
         $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS)->minutes();
         $this->marcaje->registrar($persona->fresh(), Movimiento::ENTRADA, vehiculo: $moto);
@@ -345,6 +436,7 @@ class MarcajeTest extends TestCase
         $moto = DatosVehiculo::desde(DatosVehiculo::MOTO, 'Bera', 'BR-150', 'Negro', 'AC456DF');
 
         $enMoto = $this->marcaje->registrar($persona, Movimiento::ENTRADA, vehiculo: $moto);
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
         $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA, vehiculo: $moto);
 
         // No pasar vehículo, o pasar uno vacío, significan lo mismo: hoy vino caminando.
@@ -580,6 +672,7 @@ class MarcajeTest extends TestCase
         $this->marcaje->registrar($rosa, Movimiento::ENTRADA);
         $this->assertSame(3, $this->marcaje->cuantosDentro());
 
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
         $this->marcaje->registrar($luis->fresh(), Movimiento::SALIDA);
         $this->assertSame(2, $this->marcaje->cuantosDentro());
 
@@ -608,6 +701,7 @@ class MarcajeTest extends TestCase
 
         // Se marcó una entrada por error y se corrige en el acto con una salida.
         $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
         $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
 
         // Los dos quedan: el tipo es distinto, así que no es una repetición.
@@ -651,7 +745,7 @@ class MarcajeTest extends TestCase
         $persona = $this->trabajador();
 
         $this->marcaje->registrar($persona, Movimiento::ENTRADA);
-        $this->travel(Marcaje::SEGUNDOS_ANTIDUPLICADO + 5)->seconds();
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
         $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
         $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS)->minutes();
         $this->marcaje->registrar($persona->fresh(), Movimiento::ENTRADA);
@@ -722,16 +816,54 @@ class MarcajeTest extends TestCase
         $this->assertNull($this->marcaje->puedeEntrarDesde($persona->fresh()));
     }
 
-    public function test_la_espera_no_estorba_a_la_salida(): void
+    /**
+     * Nadie entra y se va al minuto: un par de asientos pegados casi siempre es el carnet leído
+     * dos veces o el botón equivocado, y como los movimientos no se borran, se quedaría ahí.
+     */
+    public function test_no_se_le_puede_marcar_la_salida_a_quien_acaba_de_entrar(): void
     {
-        // Quien está dentro puede salir cuando quiera: la espera es solo para entrar.
         $persona = $this->trabajador();
 
         $this->marcaje->registrar($persona, Movimiento::ENTRADA);
-        $this->travel(Marcaje::SEGUNDOS_ANTIDUPLICADO + 5)->seconds();
+
+        // Recién entrado, la pantalla ya sabe que hay que esperar y hasta cuándo.
+        $this->assertNotNull($this->marcaje->puedeSalirDesde($persona->fresh()));
+
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA - 1)->minutes();
+
+        try {
+            $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
+            $this->fail('Se marcó la salida antes de que se cumpliera el plazo.');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('Se le puede marcar la salida', $e->getMessage());
+        }
+
+        $this->assertDatabaseCount('movimientos', 1);
+
+        // Cumplido el plazo, sale sin estorbo.
+        $this->travel(1)->minutes();
+
+        $this->assertNull($this->marcaje->puedeSalirDesde($persona->fresh()));
+
         $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
 
         $this->assertDatabaseCount('movimientos', 2);
+    }
+
+    public function test_la_espera_entre_entradas_no_estorba_a_la_salida(): void
+    {
+        // Son dos plazos distintos y no se confunden: la salida solo espera SU plazo —los cinco
+        // minutos desde la entrada—, no los diez que hay entre dos entradas.
+        $persona = $this->trabajador();
+
+        $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
+        $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
+
+        $this->assertDatabaseCount('movimientos', 2);
+
+        // Y a esa hora todavía faltan minutos para poder volver a entrar.
+        $this->assertNotNull($this->marcaje->puedeEntrarDesde($persona->fresh()));
     }
 
     public function test_la_espera_vale_igual_para_un_invitado(): void
@@ -739,7 +871,7 @@ class MarcajeTest extends TestCase
         $invitado = $this->marcaje->registrarInvitado('87654321', 'Carlos Pérez', 'Videoconferencia', '2-1');
 
         $this->marcaje->registrar($invitado, Movimiento::ENTRADA);
-        $this->travel(2)->minutes();
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
         $this->marcaje->registrar($invitado->fresh(), Movimiento::SALIDA);
         $this->travel(2)->minutes();
 

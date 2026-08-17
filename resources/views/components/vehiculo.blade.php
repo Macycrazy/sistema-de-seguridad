@@ -33,7 +33,7 @@
 
       · CON LISTA — la persona ya tiene vehículos anotados. Se SEÑALA cuál trae hoy, sin teclear
         nada. Es lo normal: quien tiene carro y moto viene en uno de los dos, y el vigilante solo
-        marca cuál. «A pie» y «Otro vehículo» son dos opciones más de la misma lista.
+        marca cuál. «Vino a pie» y «Otro…» son dos opciones más de la misma lista.
 
       · SIN LISTA — el alta de un invitado, o alguien que trae uno que no tenía anotado. Ahí sí
         se teclea, y al marcar se le suma a su ficha para que la próxima vez ya salga en la lista.
@@ -49,20 +49,31 @@
             «sr-only»: así funcionan con el teclado y con lector de pantalla, y el navegador se
             encarga de que solo uno pueda estar marcado. Lo que se ve es la etiqueta de cada uno.
         --}}
-        <p class="mb-1.5 font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
+        <p class="mb-2 font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
             ¿Qué trae hoy?
         </p>
 
-        <div class="flex flex-col gap-2" role="radiogroup" aria-label="Qué trae hoy">
+        {{--
+            En pastillas y en fila, no en renglones apilados: son pocas opciones y cortas —«a pie»
+            y una placa—, y así se ven todas de un golpe sin ocupar media pantalla del teléfono.
+            Lo que hay debajo de cada una sigue siendo un <input type="radio"> de verdad.
+        --}}
+        <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Qué trae hoy">
             {{-- Primero, porque es lo más común con diferencia: la mayoría de la gente entra
                  caminando. Lo que más se marca tiene que estar donde primero se mira. --}}
             <label class="cursor-pointer">
                 <input type="radio" name="traeHoy" value="{{ Marcar::A_PIE }}"
                        wire:model.live="traeHoy" class="peer sr-only">
-                <span class="block rounded border border-slate-300 px-4 py-3 text-sm text-slate-600
-                             peer-checked:border-slate-900 peer-checked:bg-slate-50 peer-checked:font-semibold
-                             peer-checked:text-slate-900
-                             peer-focus-visible:ring-4 peer-focus-visible:ring-slate-900/20">
+                {{-- «whitespace-nowrap» para que el rótulo no se parta en dos renglones cuando la
+                     fila se aprieta: un «A» arriba y un «pie» abajo no se lee, se descifra. --}}
+                <span class="block whitespace-nowrap rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-600
+                             peer-checked:border-parte1 peer-checked:bg-parte1-suave peer-checked:font-semibold
+                             peer-checked:text-parte1
+                             peer-focus-visible:ring-4 peer-focus-visible:ring-parte1/25">
+                    {{-- «Vino a pie» y no «A pie» a secas: esto último es una frase válida en
+                         inglés —«a pie», un pastel— y el traductor automático del navegador la
+                         detectaba como tal. En un teléfono se veía «Un pastel» donde tenía que
+                         decir que la persona venía caminando. --}}
                     Vino a pie
                 </span>
             </label>
@@ -71,19 +82,32 @@
                 <label class="cursor-pointer" wire:key="veh-{{ $v->id }}">
                     <input type="radio" name="traeHoy" value="{{ $v->placa }}"
                            wire:model.live="traeHoy" class="peer sr-only">
-                    <span class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded border border-slate-300 px-4 py-3
-                                 text-sm text-slate-600
-                                 peer-checked:border-slate-900 peer-checked:bg-slate-50 peer-checked:text-slate-900
-                                 peer-focus-visible:ring-4 peer-focus-visible:ring-slate-900/20">
-                        <span class="font-mono text-xs font-bold uppercase tracking-widest
-                                     {{ $v->esMoto() ? 'text-invitado' : 'text-parte1' }}">
-                            {{ $v->esMoto() ? 'Moto' : 'Carro' }}
+                    {{-- La clase y el COLOR encima, la placa debajo: es como se reconoce un
+                         vehículo de lejos —«la moto negra»— y es lo que el vigilante tiene
+                         delante cuando señala cuál trae hoy.
+
+                         El color no puede quedarse en el «title»: en un teléfono no hay puntero
+                         que pase por encima, así que ahí no lo vería nunca nadie. En el title se
+                         quedan marca y modelo, que sirven para desempatar dos del mismo tipo pero
+                         no caben en una pastilla.
+
+                         OJO: «peer-checked» solo alcanza a los HERMANOS del radio, no a lo que
+                         haya dentro de ellos. Por eso el marcado lo llevan el borde y el fondo de
+                         esta pastilla —que sí es hermana— y no los renglones de adentro, donde no
+                         se aplicaría nada. --}}
+                    <span title="{{ trim($v->marca.' '.$v->modelo) ?: 'Sin marca ni modelo anotados' }}"
+                          class="block whitespace-nowrap rounded-full border border-slate-300 px-4 py-1.5 text-center
+                                 peer-checked:border-parte1 peer-checked:bg-parte1-suave
+                                 peer-focus-visible:ring-4 peer-focus-visible:ring-parte1/25">
+                        <span class="block text-sm text-slate-700">
+                            <span class="font-semibold">{{ $v->esMoto() ? 'Moto' : 'Carro' }}</span>
+                            @if ($v->color)
+                                <span class="text-slate-500">· {{ $v->color }}</span>
+                            @endif
                         </span>
-                        <span class="font-semibold">{{ trim($v->marca.' '.$v->modelo) ?: 'Sin marca anotada' }}</span>
-                        @if ($v->color)
-                            <span class="text-slate-500">{{ $v->color }}</span>
-                        @endif
-                        <span class="ml-auto font-mono font-semibold tracking-wide">{{ $v->placa }}</span>
+                        <span class="block font-mono text-[0.625rem] uppercase tracking-widest text-slate-500">
+                            {{ $v->placa }}
+                        </span>
                     </span>
                 </label>
             @endforeach
@@ -92,17 +116,17 @@
             <label class="cursor-pointer">
                 <input type="radio" name="traeHoy" value="{{ Marcar::OTRO }}"
                        wire:model.live="traeHoy" class="peer sr-only">
-                <span class="block rounded border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-600
-                             peer-checked:border-solid peer-checked:border-slate-900 peer-checked:bg-slate-50
-                             peer-checked:font-semibold peer-checked:text-slate-900
-                             peer-focus-visible:ring-4 peer-focus-visible:ring-slate-900/20">
-                    Otro vehículo…
+                <span class="block rounded-full border border-dashed border-slate-300 px-4 py-2 text-sm text-slate-600
+                             peer-checked:border-solid peer-checked:border-parte1 peer-checked:bg-parte1-suave
+                             peer-checked:font-semibold peer-checked:text-parte1
+                             peer-focus-visible:ring-4 peer-focus-visible:ring-parte1/25">
+                    Otro…
                 </span>
             </label>
         </div>
     @endif
 
-    {{-- Las casillas de teclear. Con lista, solo salen si se marcó «Otro vehículo». --}}
+    {{-- Las casillas de teclear. Con lista, solo salen si se marcó «Otro…». --}}
     @if (! $tieneLista || $traeHoy === Marcar::OTRO)
         <div @class(['mt-4 border-t border-slate-100 pt-4' => $tieneLista])>
             @if ($tieneLista)
@@ -115,14 +139,14 @@
                 <p class="mb-1.5 font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
                     Tipo
                 </p>
-                <div class="flex gap-2">
+                <div class="flex flex-wrap gap-2">
                     @foreach ($tipos as $valor => $texto)
                         <label class="cursor-pointer">
                             <input type="radio" name="tipoVehiculo" value="{{ $valor }}"
                                    wire:model.live="tipoVehiculo" class="peer sr-only">
-                            <span class="block rounded border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600
-                                         peer-checked:border-slate-900 peer-checked:bg-slate-900 peer-checked:text-white
-                                         peer-focus-visible:ring-4 peer-focus-visible:ring-slate-900/20">
+                            <span class="block rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600
+                                         peer-checked:border-parte1 peer-checked:bg-parte1-suave peer-checked:text-parte1
+                                         peer-focus-visible:ring-4 peer-focus-visible:ring-parte1/25">
                                 {{ $texto }}
                             </span>
                         </label>

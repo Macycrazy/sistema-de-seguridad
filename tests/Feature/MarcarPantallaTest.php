@@ -100,7 +100,7 @@ class MarcarPantallaTest extends TestCase
             ->set('cedula', '31415926')
             ->call('buscar')
             ->assertSet('invitadoNuevo', true)
-            ->assertSee('Piso')
+            ->assertSee('¿A qué piso va?')
             ->set('nombre', 'Carlos Pérez')
             ->set('motivo', 'Videoconferencia')
             // Sin piso no pasa.
@@ -257,7 +257,7 @@ class MarcarPantallaTest extends TestCase
         Livewire::test(Marcar::class)
             ->set('cedula', '12345678')
             ->call('buscar')
-            ->assertSee('Otro vehículo')
+            ->assertSee('Otro…')
             ->set('traeHoy', Marcar::OTRO)
             ->set('tipoVehiculo', 'carro')
             ->set('marca', 'Ford')
@@ -533,6 +533,187 @@ class MarcarPantallaTest extends TestCase
         ]);
     }
 
+    /**
+     * El color se lee en la propia pastilla, no en un «title»: la pantalla se usa en un teléfono
+     * y ahí no hay puntero que pase por encima, así que un title no lo ve nunca nadie.
+     *
+     * Se comprueba con el punto de separación delante —«· Gris»— a propósito: «Gris» a secas
+     * también aparecería si el color volviera a esconderse en el title, y la prueba pasaría sin
+     * que se viera nada en pantalla.
+     */
+    public function test_la_pastilla_del_vehiculo_dice_de_que_color_es(): void
+    {
+        $this->conCarroYMoto($this->trabajador());
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSee('· Gris')
+            ->assertSee('· Negro');
+    }
+
+    /**
+     * Los pisos que se ofrecen como atajo NO son una lista escrita en el código: salen de las
+     * fichas que ya hay en la base, así que aparecen solos cuando se cargue el personal de verdad.
+     *
+     * Y no sustituyen a la casilla: un piso al que todavía no ha ido nadie no puede estar en la
+     * lista, y aun así tiene que poder anotarse.
+     */
+    public function test_el_piso_se_pregunta_primero_y_la_oficina_despues(): void
+    {
+        // El catálogo del edificio se fija aquí para que la prueba no dependa de cuántas oficinas
+        // tenga config/edificio.php el día que se lea.
+        config(['edificio.oficinas' => ['LOBBY', '1-2', '2-1', '2-2']]);
+
+        $this->trabajador(['piso' => '2-1', 'dependencia' => 'Tecnología']);
+        $this->trabajador(['cedula' => '22222222', 'piso' => '2-2', 'dependencia' => 'Planificación']);
+        $this->trabajador(['cedula' => '33333333', 'piso' => '1-2', 'dependencia' => 'Gestión Humana']);
+
+        $pantalla = Livewire::test(Marcar::class)
+            // Una cédula que no está: el alta de un invitado, que es donde se pregunta el piso.
+            ->set('cedula', '25375258')
+            ->call('buscar')
+            ->assertSet('invitadoNuevo', true)
+            ->assertSee('¿A qué piso va?')
+            // Todavía no se ha escogido piso, así que las oficinas no se ofrecen: es lo que evita
+            // la lista larga de un edificio entero.
+            ->assertDontSee('Tecnología')
+            ->assertDontSee('Planificación');
+
+        // Escogido el piso 2, salen sus oficinas con la gerencia de cada una — que es como el
+        // visitante dice a dónde va: no pregunta por el «2-1», pregunta por Tecnología.
+        $pantalla->call('elegirNivel', '2')
+            ->assertSee('¿A qué oficina?')
+            ->assertSee('2-1')
+            ->assertSee('Tecnología')
+            ->assertSee('2-2')
+            ->assertSee('Planificación')
+            // Las del otro piso siguen sin estorbar.
+            ->assertDontSee('Gestión Humana');
+
+        // Y una oficina donde todavía no labora nadie se puede anotar igual, escribiéndola.
+        $pantalla->set('nombre', 'Pedro Salazar Ruiz')
+            ->set('motivo', 'Videoconferencia')
+            ->set('piso', '9-9')
+            ->call('guardarInvitado')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('personas', ['cedula' => '25375258', 'piso' => '9-9']);
+    }
+
+    /**
+     * Un piso con UNA SOLA oficina queda anotado al escoger el piso: preguntar «¿a qué oficina?»
+     * para ofrecer una única respuesta es pedir un toque para nada.
+     *
+     * Se mira cuántas hay, no cómo se llaman: vale igual para «LOBBY» —que es el sitio entero—
+     * que para «PB-1» o «8-2», donde el código de la oficina ni siquiera se parece al del piso.
+     */
+    public function test_un_piso_con_una_sola_oficina_queda_anotado_de_un_toque(): void
+    {
+        config(['edificio.oficinas' => ['LOBBY', 'PB-1', '2-1', '2-2', '7']]);
+
+        $pantalla = Livewire::test(Marcar::class)
+            ->set('cedula', '25375258')
+            ->call('buscar');
+
+        // El sitio entero, sin guion.
+        $pantalla->call('elegirNivel', 'LOBBY')
+            ->assertSet('piso', 'LOBBY')
+            ->assertSee('Queda anotado')
+            ->assertDontSee('¿A qué oficina?');
+
+        $pantalla->call('elegirNivel', '7')->assertSet('piso', '7');
+
+        // Y la oficina única cuyo código no se parece al del piso: se anota ella, no el piso.
+        $pantalla->call('elegirNivel', 'PB')->assertSet('piso', 'PB-1');
+
+        // Un piso con varias sí pregunta, y deja el sitio en blanco hasta que se escoja.
+        $pantalla->call('elegirNivel', '2')
+            ->assertSet('piso', '')
+            ->assertSee('¿A qué oficina?');
+    }
+
+    /** El aviso de invitado se puede cerrar, y vuelve a salir con la cédula siguiente. */
+    public function test_el_aviso_de_invitado_se_puede_cerrar(): void
+    {
+        $pantalla = Livewire::test(Marcar::class)
+            ->set('cedula', '25375258')
+            ->call('buscar')
+            ->assertSet('invitadoNuevo', true)
+            ->assertSet('avisoInvitado', true)
+            ->assertSee('no está en el sistema');
+
+        $pantalla->set('avisoInvitado', false)
+            ->assertDontSee('no está en el sistema')
+            // Cerrarlo NO cancela el alta: las casillas siguen ahí.
+            ->assertSet('invitadoNuevo', true)
+            ->assertSee('Nombre y apellido')
+            ->assertSee('Motivo de visita');
+
+        // Otra cédula que tampoco está: el aviso vuelve, porque ahora es información.
+        $pantalla->set('cedula', '25375259')
+            ->assertSet('avisoInvitado', true)
+            ->assertSee('no está en el sistema');
+    }
+
+    /**
+     * El vigilante tiene que poder decir a qué hora quedó lo que acaba de marcar, sin ir al
+     * registro a comprobarlo. Vale igual para la entrada que para la salida.
+     */
+    public function test_la_confirmacion_dice_a_que_hora_quedo_el_movimiento(): void
+    {
+        $this->travelTo(now()->setTime(9, 6));
+
+        $this->trabajador();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('marcarEntrada')
+            ->assertSee('Entrada registrada a las 09:06');
+
+        $this->travelTo(now()->setTime(17, 42));
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('marcarSalida')
+            ->assertSee('Salida registrada a las 17:42');
+    }
+
+    /**
+     * La hora sale del asiento, no del reloj: ante una doble pulsación se devuelve el movimiento
+     * que ya existía, y la pantalla tiene que decir la hora de AQUEL. Si dijera la del segundo
+     * toque estaría enseñando una hora que no está guardada en ninguna parte.
+     */
+    public function test_la_doble_pulsacion_confirma_la_hora_del_movimiento_que_ya_existia(): void
+    {
+        // A cinco segundos de cambiar de minuto, a propósito: es lo que hace que la prueba
+        // distinga de verdad la hora del asiento de la del reloj.
+        $this->travelTo(now()->setTime(9, 6, 55));
+
+        $this->trabajador();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('marcarEntrada')
+            ->assertSee('Entrada registrada a las 09:06');
+
+        // Dentro de la ventana del antiduplicado, pero ya en el minuto siguiente.
+        $this->travel(Marcaje::SEGUNDOS_ANTIDUPLICADO - 1)->seconds();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('marcarEntrada')
+            // Las 09:06 del asiento que ya existía, no las 09:07 que marca el reloj.
+            ->assertSee('Entrada registrada a las 09:06')
+            ->assertDontSee('Entrada registrada a las 09:07');
+
+        $this->assertDatabaseCount('movimientos', 1);
+    }
+
     public function test_a_quien_ya_esta_dentro_la_pantalla_solo_le_deja_la_salida(): void
     {
         $persona = $this->trabajador();
@@ -542,10 +723,55 @@ class MarcarPantallaTest extends TestCase
             ->call('buscar')
             ->call('marcarEntrada');
 
+        // Recién entrado, la salida todavía no: hay que dejar pasar su plazo.
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
+
         Livewire::test(Marcar::class)
             ->set('cedula', '12345678')
             ->call('buscar')
             ->assertSee('solo se le puede marcar la salida');
+    }
+
+    /**
+     * Nadie entra y se va al minuto: un par de asientos pegados casi siempre es el carnet leído
+     * dos veces o el botón equivocado. Es un plazo distinto del que hay entre dos entradas, y por
+     * eso tiene su propia constante.
+     */
+    public function test_la_salida_no_se_puede_marcar_recien_entrado(): void
+    {
+        $this->travelTo(now()->setTime(9, 0));
+
+        $this->trabajador();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('marcarEntrada');
+
+        // Un minuto después: está dentro, pero la salida no toca todavía.
+        $this->travel(1)->minutes();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSee('Se le puede marcar la salida')
+            ->assertSee('09:05')
+            ->call('marcarSalida')
+            ->assertHasErrors('tipo');
+
+        $this->assertDatabaseCount('movimientos', 1);
+
+        // Cumplido el plazo, sale sin problema.
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('marcarSalida')
+            ->assertHasNoErrors()
+            ->assertSee('Salida registrada');
+
+        $this->assertDatabaseCount('movimientos', 2);
     }
 
     public function test_a_quien_ya_esta_dentro_no_se_le_puede_marcar_otra_entrada(): void
@@ -616,13 +842,15 @@ class MarcarPantallaTest extends TestCase
             ->call('buscar')
             ->call('marcarEntrada');
 
-        $this->travel(2)->minutes();
+        // Lo que haga falta para poder marcarle la salida.
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
 
         Livewire::test(Marcar::class)
             ->set('cedula', '12345678')
             ->call('buscar')
             ->call('marcarSalida');
 
+        // La espera de la ENTRADA se cuenta desde la entrada anterior, no desde esta salida.
         $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS)->minutes();
 
         Livewire::test(Marcar::class)
@@ -818,20 +1046,42 @@ class MarcarPantallaTest extends TestCase
         $this->assertDatabaseCount('movimientos', 0);
     }
 
-    public function test_el_contador_de_quienes_estan_dentro_se_ve_en_la_pantalla(): void
+    /**
+     * El contador va separado en trabajadores e invitados: en una emergencia no valen lo mismo,
+     * porque a los invitados no los conoce nadie y hay que ir a buscarlos al piso que visitaban.
+     */
+    public function test_el_contador_separa_a_los_trabajadores_de_los_invitados(): void
     {
-        $ana = $this->trabajador(['cedula' => '11111111', 'nombre' => 'Ana']);
+        $this->trabajador(['cedula' => '11111111', 'nombre' => 'Ana']);
         $this->trabajador(['cedula' => '22222222', 'nombre' => 'Luis']);
 
-        Livewire::test(Marcar::class)->assertSee('Dentro ahora');
+        Livewire::test(Marcar::class)
+            ->assertSee('Trabajadores')
+            ->assertSee('Invitados');
 
+        // Un trabajador entra…
         Livewire::test(Marcar::class)
             ->set('cedula', '11111111')
             ->call('buscar')
             ->call('marcarEntrada');
 
-        // Con una persona dentro, el contador lo dice.
-        $this->assertSame(1, app(Marcaje::class)->cuantosDentro());
+        // …y un invitado nuevo también.
+        Livewire::test(Marcar::class)
+            ->set('cedula', '25375258')
+            ->call('buscar')
+            ->set('nombre', 'Pedro Salazar Ruiz')
+            ->set('motivo', 'Videoconferencia')
+            ->set('piso', '2-2')
+            ->call('guardarInvitado')
+            ->call('marcarEntrada');
+
+        $this->assertSame(
+            ['trabajador' => 1, 'invitado' => 1],
+            app(Marcaje::class)->cuantosDentroPorTipo(),
+        );
+
+        // El total sigue siendo el mismo dato, sumado: la parte 2 lo usa así.
+        $this->assertSame(2, app(Marcaje::class)->cuantosDentro());
     }
 
     public function test_cancelar_devuelve_la_pantalla_a_su_estado_inicial(): void
