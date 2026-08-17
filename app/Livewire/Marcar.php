@@ -54,6 +54,15 @@ class Marcar extends Component
     /** El piso —solo el número— que se escogió primero, antes de elegir la oficina. */
     public string $nivel = '';
 
+    /**
+     * Si hay que escribir el sitio a mano, porque no está en la lista del edificio.
+     *
+     * Por omisión no: se toca el piso, se toca la oficina y ya está dicho. La casilla solo
+     * aparece cuando de verdad hace falta —un sitio que no consta— y no como una segunda forma de
+     * hacer lo que los botones acaban de hacer.
+     */
+    public bool $pisoAMano = false;
+
     /** Los dos campos obligatorios del formulario de invitado. */
     public string $nombre = '';
 
@@ -157,7 +166,7 @@ class Marcar extends Component
         $persona = $this->persona();
 
         return $persona
-            ? $this->marcaje->puedeEntrarDesde($persona)?->format('H:i')
+            ? $this->marcaje->puedeEntrarDesde($persona)?->format(Movimiento::FORMATO_HORA)
             : null;
     }
 
@@ -184,7 +193,7 @@ class Marcar extends Component
         $persona = $this->persona();
 
         return $persona
-            ? $this->marcaje->puedeSalirDesde($persona)?->format('H:i')
+            ? $this->marcaje->puedeSalirDesde($persona)?->format(Movimiento::FORMATO_HORA)
             : null;
     }
 
@@ -299,6 +308,10 @@ class Marcar extends Component
 
             // Para que la lista de oficinas salga ya abierta por el piso de la última visita.
             $this->nivel = self::nivelDe($this->piso);
+
+            // Si la última vez fue a un sitio que no consta en la lista —uno viejo, o tecleado a
+            // mano—, la casilla sale abierta con lo que hay: si no, el dato quedaría invisible.
+            $this->pisoAMano = $this->piso !== '' && ! $this->pisoEstaEnLaLista();
         }
 
         // Se propone lo mismo que trajo la última vez que entró, que casi siempre acierta. Si
@@ -359,10 +372,20 @@ class Marcar extends Component
                 return $lista;
             }, []);
 
+        // El respaldo para las oficinas donde todavía no labora nadie. Las claves se pasan a texto
+        // porque PHP convierte en número las que lo parecen: «9» llegaría aquí como int y no
+        // encontraría a su oficina, que es una cadena.
+        $nombres = [];
+
+        foreach ((array) config('edificio.nombres', []) as $codigo => $nombre) {
+            $nombres[(string) $codigo] = trim((string) $nombre);
+        }
+
         $mapa = [];
 
         foreach ($catalogo as $codigo) {
-            $mapa[self::nivelDe($codigo)][$codigo] = $gerencias[$codigo] ?? '';
+            // Manda la ficha; el nombre del catálogo solo se usa si no hay nadie anotado ahí.
+            $mapa[self::nivelDe($codigo)][$codigo] = ($gerencias[$codigo] ?? '') ?: ($nombres[$codigo] ?? '');
         }
 
         // Los pisos con nombre —LOBBY, PB— van primero: son la planta de abajo, por donde se
@@ -388,6 +411,48 @@ class Marcar extends Component
         return $mapa;
     }
 
+    /**
+     * El nombre con el que se conoce a un piso entero, para ponerlo en su botón.
+     *
+     *     ['9' => 'Presidencia']
+     *
+     * Solo lo tienen los pisos de UNA SOLA oficina —los que no llegan a enseñar la lista de
+     * oficinas, así que no tendrían dónde enseñar su nombre—, y solo si ese nombre está en el
+     * catálogo del edificio.
+     *
+     * Que venga del catálogo y no de las fichas no es un detalle: el catálogo nombra el SITIO
+     * —«el 9 es Presidencia», que es como se le llama antes que por su número— mientras que la
+     * ficha dice qué gerencia labora en una oficina. Poner gerencias en los botones de los pisos
+     * llenaría la fila de nombres que solo valen para un despacho.
+     *
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function nombresDePiso(): array
+    {
+        $delCatalogo = [];
+
+        foreach ((array) config('edificio.nombres', []) as $codigo => $nombre) {
+            $delCatalogo[(string) $codigo] = trim((string) $nombre);
+        }
+
+        $nombres = [];
+
+        foreach ($this->oficinasPorPiso() as $nivel => $oficinas) {
+            if (count($oficinas) !== 1) {
+                continue;
+            }
+
+            $nombre = $delCatalogo[array_key_first($oficinas)] ?? '';
+
+            if ($nombre !== '') {
+                $nombres[$nivel] = $nombre;
+            }
+        }
+
+        return $nombres;
+    }
+
     /** El piso al que pertenece un código de oficina: de «2-1» sale «2». */
     public static function nivelDe(?string $piso): string
     {
@@ -411,6 +476,36 @@ class Marcar extends Component
         $oficinas = array_keys($this->oficinasPorPiso()[$nivel] ?? []);
 
         $this->piso = count($oficinas) === 1 ? $oficinas[0] : '';
+
+        // Se escogió de la lista, así que la casilla de escribir deja de hacer falta.
+        $this->pisoAMano = false;
+    }
+
+    /** Se escogió una oficina de la lista: se anota y se cierra la casilla de escribir. */
+    public function elegirOficina(string $codigo): void
+    {
+        $this->piso = $codigo;
+        $this->pisoAMano = false;
+    }
+
+    /** El sitio no está en la lista del edificio: hay que teclearlo. */
+    public function escribirPisoAMano(): void
+    {
+        $this->pisoAMano = true;
+        $this->piso = '';
+        $this->nivel = '';
+    }
+
+    /** Si el sitio que hay puesto consta en la lista del edificio. */
+    public function pisoEstaEnLaLista(): bool
+    {
+        foreach ($this->oficinasPorPiso() as $oficinas) {
+            if (array_key_exists($this->piso, $oficinas)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Si se teclea el código a mano, el piso de arriba se pone al día solo. */
@@ -554,7 +649,8 @@ class Marcar extends Component
          * otro, y entonces la hora buena es la de aquel, no la de este segundo toque. Con now()
          * la pantalla diría una hora que no está guardada en ninguna parte.
          */
-        $confirmacion = "{$verbo} registrada a las {$movimiento->ocurrio_en->format('H:i')} · {$persona->nombre}";
+        $hora = $movimiento->ocurrio_en->format(Movimiento::FORMATO_HORA);
+        $confirmacion = "{$verbo} registrada a las {$hora} · {$persona->nombre}";
 
         $this->limpiar();
         $this->confirmacion = $confirmacion;
@@ -568,8 +664,8 @@ class Marcar extends Component
         // vigilante no se acordaría de que quedó en «E» del anterior—.
         $this->reset([
             'cedula', 'nacionalidad', 'personaId', 'invitadoNuevo', 'avisoInvitado', 'nombre',
-            'motivo', 'piso', 'nivel', 'confirmacion', 'traeHoy', 'tipoVehiculo', 'marca',
-            'modelo', 'color', 'placa',
+            'motivo', 'piso', 'nivel', 'pisoAMano', 'confirmacion', 'traeHoy', 'tipoVehiculo',
+            'marca', 'modelo', 'color', 'placa',
         ]);
         $this->resetValidation();
 

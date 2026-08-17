@@ -610,16 +610,22 @@ class MarcarPantallaTest extends TestCase
      */
     public function test_un_piso_con_una_sola_oficina_queda_anotado_de_un_toque(): void
     {
-        config(['edificio.oficinas' => ['LOBBY', 'PB-1', '2-1', '2-2', '7']]);
+        config([
+            'edificio.oficinas' => ['LOBBY', 'PB-1', '2-1', '2-2', '7', '9'],
+            'edificio.nombres' => ['9' => 'Presidencia'],
+        ]);
 
         $pantalla = Livewire::test(Marcar::class)
             ->set('cedula', '25375258')
-            ->call('buscar');
+            ->call('buscar')
+            // Un piso de una sola oficina no llega a enseñar su nombre en la lista de oficinas,
+            // porque esa lista no se dibuja. Si el sitio tiene nombre, va en el botón del piso.
+            ->assertSee('Presidencia');
 
         // El sitio entero, sin guion.
         $pantalla->call('elegirNivel', 'LOBBY')
             ->assertSet('piso', 'LOBBY')
-            ->assertSee('Queda anotado')
+            // Ni se pregunta la oficina ni se dice nada más: el botón marcado ya lo dice todo.
             ->assertDontSee('¿A qué oficina?');
 
         $pantalla->call('elegirNivel', '7')->assertSet('piso', '7');
@@ -631,6 +637,34 @@ class MarcarPantallaTest extends TestCase
         $pantalla->call('elegirNivel', '2')
             ->assertSet('piso', '')
             ->assertSee('¿A qué oficina?');
+    }
+
+    /**
+     * Una oficina donde todavía no labora nadie saldría como un código pelado. El catálogo puede
+     * ponerle nombre, y ese nombre cede en cuanto haya una ficha que diga otra cosa: la fuente de
+     * verdad sigue siendo el personal.
+     */
+    public function test_el_catalogo_pone_nombre_a_una_oficina_vacia_pero_manda_la_ficha(): void
+    {
+        config([
+            'edificio.oficinas' => ['9', '2-1'],
+            'edificio.nombres' => ['9' => 'Presidencia'],
+        ]);
+
+        // Se comprueba sobre el mapa y no sobre lo dibujado: dónde se enseñe el nombre es cosa de
+        // la maquetación, pero de dónde sale es la regla, y es esta la que no puede cambiar.
+        $this->assertSame(
+            ['9' => 'Presidencia'],
+            Livewire::test(Marcar::class)->instance()->oficinasPorPiso()['9'],
+        );
+
+        // Ahora sí hay alguien anotado en esa oficina, y lo que diga su ficha manda.
+        $this->trabajador(['cedula' => '44444444', 'piso' => '9', 'dependencia' => 'Despacho']);
+
+        $this->assertSame(
+            ['9' => 'Despacho'],
+            Livewire::test(Marcar::class)->instance()->oficinasPorPiso()['9'],
+        );
     }
 
     /** El aviso de invitado se puede cerrar, y vuelve a salir con la cédula siguiente. */
@@ -670,7 +704,7 @@ class MarcarPantallaTest extends TestCase
             ->set('cedula', '12345678')
             ->call('buscar')
             ->call('marcarEntrada')
-            ->assertSee('Entrada registrada a las 09:06');
+            ->assertSee('Entrada registrada a las 9:06am');
 
         $this->travelTo(now()->setTime(17, 42));
 
@@ -678,7 +712,8 @@ class MarcarPantallaTest extends TestCase
             ->set('cedula', '12345678')
             ->call('buscar')
             ->call('marcarSalida')
-            ->assertSee('Salida registrada a las 17:42');
+            // La tarde se dice como se dice aquí: «5:42pm», no «17:42».
+            ->assertSee('Salida registrada a las 5:42pm');
     }
 
     /**
@@ -698,7 +733,7 @@ class MarcarPantallaTest extends TestCase
             ->set('cedula', '12345678')
             ->call('buscar')
             ->call('marcarEntrada')
-            ->assertSee('Entrada registrada a las 09:06');
+            ->assertSee('Entrada registrada a las 9:06am');
 
         // Dentro de la ventana del antiduplicado, pero ya en el minuto siguiente.
         $this->travel(Marcaje::SEGUNDOS_ANTIDUPLICADO - 1)->seconds();
@@ -707,9 +742,9 @@ class MarcarPantallaTest extends TestCase
             ->set('cedula', '12345678')
             ->call('buscar')
             ->call('marcarEntrada')
-            // Las 09:06 del asiento que ya existía, no las 09:07 que marca el reloj.
-            ->assertSee('Entrada registrada a las 09:06')
-            ->assertDontSee('Entrada registrada a las 09:07');
+            // Las 9:06 del asiento que ya existía, no las 9:07 que marca el reloj.
+            ->assertSee('Entrada registrada a las 9:06am')
+            ->assertDontSee('Entrada registrada a las 9:07am');
 
         $this->assertDatabaseCount('movimientos', 1);
     }
@@ -755,7 +790,7 @@ class MarcarPantallaTest extends TestCase
             ->set('cedula', '12345678')
             ->call('buscar')
             ->assertSee('Se le puede marcar la salida')
-            ->assertSee('09:05')
+            ->assertSee('9:05am')
             ->call('marcarSalida')
             ->assertHasErrors('tipo');
 

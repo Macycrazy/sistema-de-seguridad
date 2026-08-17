@@ -317,7 +317,7 @@ class Marcaje
                 'tipo' => sprintf(
                     'Entró hace menos de %d minutos. Se le puede marcar la salida a partir de las %s.',
                     self::MINUTOS_ENTRE_ENTRADA_Y_SALIDA,
-                    $desde->format('H:i'),
+                    $desde->format(Movimiento::FORMATO_HORA),
                 ),
             ]);
         }
@@ -329,7 +329,7 @@ class Marcaje
                 'tipo' => sprintf(
                     'Entró hace menos de %d minutos. Se le puede marcar otra entrada a partir de las %s.',
                     self::MINUTOS_ENTRE_ENTRADAS,
-                    $desde->format('H:i'),
+                    $desde->format(Movimiento::FORMATO_HORA),
                 ),
             ]);
         }
