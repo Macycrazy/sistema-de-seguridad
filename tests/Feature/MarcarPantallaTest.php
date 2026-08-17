@@ -533,6 +533,64 @@ class MarcarPantallaTest extends TestCase
         ]);
     }
 
+    /**
+     * El vigilante tiene que poder decir a qué hora quedó lo que acaba de marcar, sin ir al
+     * registro a comprobarlo. Vale igual para la entrada que para la salida.
+     */
+    public function test_la_confirmacion_dice_a_que_hora_quedo_el_movimiento(): void
+    {
+        $this->travelTo(now()->setTime(9, 6));
+
+        $this->trabajador();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('marcarEntrada')
+            ->assertSee('Entrada registrada a las 09:06');
+
+        $this->travelTo(now()->setTime(17, 42));
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('marcarSalida')
+            ->assertSee('Salida registrada a las 17:42');
+    }
+
+    /**
+     * La hora sale del asiento, no del reloj: ante una doble pulsación se devuelve el movimiento
+     * que ya existía, y la pantalla tiene que decir la hora de AQUEL. Si dijera la del segundo
+     * toque estaría enseñando una hora que no está guardada en ninguna parte.
+     */
+    public function test_la_doble_pulsacion_confirma_la_hora_del_movimiento_que_ya_existia(): void
+    {
+        // A cinco segundos de cambiar de minuto, a propósito: es lo que hace que la prueba
+        // distinga de verdad la hora del asiento de la del reloj.
+        $this->travelTo(now()->setTime(9, 6, 55));
+
+        $this->trabajador();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('marcarEntrada')
+            ->assertSee('Entrada registrada a las 09:06');
+
+        // Dentro de la ventana del antiduplicado, pero ya en el minuto siguiente.
+        $this->travel(Marcaje::SEGUNDOS_ANTIDUPLICADO - 1)->seconds();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('marcarEntrada')
+            // Las 09:06 del asiento que ya existía, no las 09:07 que marca el reloj.
+            ->assertSee('Entrada registrada a las 09:06')
+            ->assertDontSee('Entrada registrada a las 09:07');
+
+        $this->assertDatabaseCount('movimientos', 1);
+    }
+
     public function test_a_quien_ya_esta_dentro_la_pantalla_solo_le_deja_la_salida(): void
     {
         $persona = $this->trabajador();

@@ -352,7 +352,7 @@ class Marcar extends Component
         $this->resetValidation();
 
         try {
-            $this->marcaje->registrar(
+            $movimiento = $this->marcaje->registrar(
                 persona: $persona,
                 tipo: $tipo,
                 // La parte 3 pondrá aquí el usuario que tiene la sesión abierta.
@@ -370,7 +370,14 @@ class Marcar extends Component
         }
 
         $verbo = $tipo === Movimiento::ENTRADA ? 'Entrada' : 'Salida';
-        $confirmacion = "{$verbo} registrada · {$persona->nombre}";
+
+        /*
+         * La hora sale del ASIENTO, no de now(). Parece lo mismo y no lo es: ante una doble
+         * pulsación, Marcaje::registrar() devuelve el movimiento que ya existía en vez de crear
+         * otro, y entonces la hora buena es la de aquel, no la de este segundo toque. Con now()
+         * la pantalla diría una hora que no está guardada en ninguna parte.
+         */
+        $confirmacion = "{$verbo} registrada a las {$movimiento->ocurrio_en->format('H:i')} · {$persona->nombre}";
 
         $this->limpiar();
         $this->confirmacion = $confirmacion;
