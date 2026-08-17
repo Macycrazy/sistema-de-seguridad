@@ -28,10 +28,12 @@ class PermisosTest extends TestCase
     public static function pantallas(): array
     {
         return [
-            'vigilante · inicio' => [Rol::VIGILANTE, '/', 200],
+            // El inicio del vigilante es marcar: al no ver el registro, «/» lo redirige (302) ahí.
+            'vigilante · inicio' => [Rol::VIGILANTE, '/', 302],
             'vigilante · marcar' => [Rol::VIGILANTE, '/marcar', 200],
             'vigilante · su clave' => [Rol::VIGILANTE, '/clave', 200],
             'vigilante · registro' => [Rol::VIGILANTE, '/registro', 403],
+            'vigilante · trabajadores' => [Rol::VIGILANTE, '/trabajadores', 403],
             'vigilante · usuarios' => [Rol::VIGILANTE, '/usuarios', 403],
             'vigilante · roles' => [Rol::VIGILANTE, '/roles', 403],
 
@@ -39,6 +41,7 @@ class PermisosTest extends TestCase
             'supervisor · marcar' => [Rol::SUPERVISOR, '/marcar', 200],
             'supervisor · su clave' => [Rol::SUPERVISOR, '/clave', 200],
             'supervisor · registro' => [Rol::SUPERVISOR, '/registro', 200],
+            'supervisor · trabajadores' => [Rol::SUPERVISOR, '/trabajadores', 403],
             'supervisor · usuarios' => [Rol::SUPERVISOR, '/usuarios', 200],
             'supervisor · roles' => [Rol::SUPERVISOR, '/roles', 403],
 
@@ -46,6 +49,7 @@ class PermisosTest extends TestCase
             'administrador · marcar' => [Rol::ADMINISTRADOR, '/marcar', 200],
             'administrador · su clave' => [Rol::ADMINISTRADOR, '/clave', 200],
             'administrador · registro' => [Rol::ADMINISTRADOR, '/registro', 200],
+            'administrador · trabajadores' => [Rol::ADMINISTRADOR, '/trabajadores', 200],
             'administrador · usuarios' => [Rol::ADMINISTRADOR, '/usuarios', 200],
             'administrador · roles' => [Rol::ADMINISTRADOR, '/roles', 200],
         ];
@@ -66,6 +70,7 @@ class PermisosTest extends TestCase
             'vigilante · ver-registro' => [Rol::VIGILANTE, 'ver-registro', false],
             'vigilante · exportar-registro' => [Rol::VIGILANTE, 'exportar-registro', false],
             'vigilante · gestionar-usuarios' => [Rol::VIGILANTE, 'gestionar-usuarios', false],
+            'vigilante · gestionar-personal' => [Rol::VIGILANTE, 'gestionar-personal', false],
             'vigilante · ver-auditoria' => [Rol::VIGILANTE, 'ver-auditoria', false],
             'vigilante · gestionar-permisos' => [Rol::VIGILANTE, 'gestionar-permisos', false],
             'vigilante · ver-foto' => [Rol::VIGILANTE, 'ver-foto', true],
@@ -73,6 +78,7 @@ class PermisosTest extends TestCase
             'supervisor · ver-registro' => [Rol::SUPERVISOR, 'ver-registro', true],
             'supervisor · exportar-registro' => [Rol::SUPERVISOR, 'exportar-registro', true],
             'supervisor · gestionar-usuarios' => [Rol::SUPERVISOR, 'gestionar-usuarios', true],
+            'supervisor · gestionar-personal' => [Rol::SUPERVISOR, 'gestionar-personal', false],
             'supervisor · ver-auditoria' => [Rol::SUPERVISOR, 'ver-auditoria', false],
             'supervisor · gestionar-permisos' => [Rol::SUPERVISOR, 'gestionar-permisos', false],
             'supervisor · ver-foto' => [Rol::SUPERVISOR, 'ver-foto', true],
@@ -80,6 +86,7 @@ class PermisosTest extends TestCase
             'administrador · ver-registro' => [Rol::ADMINISTRADOR, 'ver-registro', true],
             'administrador · exportar-registro' => [Rol::ADMINISTRADOR, 'exportar-registro', true],
             'administrador · gestionar-usuarios' => [Rol::ADMINISTRADOR, 'gestionar-usuarios', true],
+            'administrador · gestionar-personal' => [Rol::ADMINISTRADOR, 'gestionar-personal', true],
             'administrador · ver-auditoria' => [Rol::ADMINISTRADOR, 'ver-auditoria', true],
             'administrador · gestionar-permisos' => [Rol::ADMINISTRADOR, 'gestionar-permisos', true],
             'administrador · ver-foto' => [Rol::ADMINISTRADOR, 'ver-foto', true],

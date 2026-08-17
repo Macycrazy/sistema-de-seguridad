@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\FotoPersonaController;
 use App\Http\Controllers\SalirController;
+use App\Services\Marcaje;
 use Illuminate\Support\Facades\Route;
 
 // La puerta del sistema: lo único que se ve sin haber entrado.
@@ -17,8 +18,18 @@ Route::view('/ingresar', 'ingresar')->middleware('guest')->name('ingresar');
 Route::middleware('auth')->group(function () {
     Route::post('/salir', SalirController::class)->name('salir');
 
-    // Lo que abre cualquiera que haya entrado.
-    Route::view('/', 'inicio')->name('inicio');
+    // El inicio reparte por rol: quien no ve el registro —el vigilante— no tiene un tablero que
+    // ofrecer, su turno entero es marcar, así que entra directo ahí. El supervisor y el
+    // administrador llegan al inicio con el pulso del edificio y los accesos a lo suyo.
+    Route::get('/', function () {
+        if (! auth()->user()->can('ver-registro')) {
+            return redirect()->route('marcar');
+        }
+
+        return view('inicio', ['dentro' => app(Marcaje::class)->cuantosDentro()]);
+    })->name('inicio');
+
+    // Herramienta del equipo, no del puesto: no cuelga del inicio ni del menú, pero sigue viva.
     Route::view('/diseno', 'diseno')->name('diseno');
 
     // La propia clave. Es lo único que se abre con una clave sin cambiar todavía.
@@ -44,6 +55,10 @@ Route::middleware('auth')->group(function () {
 
     // Parte 2 · el registro es la lista completa del personal, con el histórico de cada quien.
     Route::view('/registro', 'registro')->middleware('can:ver-registro')->name('registro');
+
+    // Meter la nómina: alta manual e importación por Excel, mientras la asociación con el sistema
+    // de carnets no la traiga sola.
+    Route::view('/trabajadores', 'trabajadores')->middleware('can:gestionar-personal')->name('trabajadores');
 
     /*
      * Parte 3 · dar de alta, desactivar y cambiar claves y roles.

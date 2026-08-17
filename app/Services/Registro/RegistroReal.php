@@ -29,18 +29,16 @@ final class RegistroReal implements FuenteDelRegistro
         ?TipoDePersona $tipo = null,
         ?Ente $ente = null,
     ): Collection {
-        // La tabla `personas` aún no tiene ente: nadie pertenece a uno, así que pedir un ente
-        // concreto no puede devolver a nadie. Es honesto —no hay ese dato— hasta que se agregue.
-        if ($ente !== null) {
-            return collect();
-        }
-
         return MovimientoModel::query()
             ->with(['persona', 'usuario'])
             ->whereDate('ocurrio_en', $fecha->toDateString())
             ->when(
                 $tipo,
                 fn ($q) => $q->whereHas('persona', fn ($p) => $p->where('tipo', $tipo->value)),
+            )
+            ->when(
+                $ente,
+                fn ($q) => $q->whereHas('persona', fn ($p) => $p->where('ente', $ente->value)),
             )
             ->orderByDesc('ocurrio_en')
             ->orderByDesc('id')
@@ -127,15 +125,18 @@ final class RegistroReal implements FuenteDelRegistro
 
         return new Persona(
             id: (string) $persona->id,
-            cedula: $persona->cedula,
-            // La tabla real guarda el nombre en un solo campo. Se pone el mismo valor en
-            // apellidos y en nombres: el value object, al verlos iguales, lo muestra una sola
-            // vez, en vez de dejar una coma colgando. El día que el listado traiga apellidos y
-            // nombres por separado, el corte se hace aquí.
+            cedula: $this->documentoConPuntos($persona->cedula),
+            // La tabla real guarda el nombre en un solo campo. Va entero en `apellidos`, y
+            // `nombres` queda vacío: así el nombre se muestra completo y NO se dispara el aviso
+            // de «ficha mal cargada» (que salta cuando nombres repite a apellidos), ni el Excel
+            // duplica el nombre en sus dos columnas. El día que el listado de personal traiga
+            // apellidos y nombres por separado, el corte se hace aquí.
             apellidos: $persona->nombre,
-            nombres: $persona->nombre,
+            nombres: '',
             tipo: TipoDePersona::from($persona->tipo),
-            ente: null,
+            // Un invitado no pertenece a ningún ente; un trabajador puede venir de una carga que
+            // aún no lo traiga, y entonces queda null (la columna y el filtro lo toleran).
+            ente: $persona->ente ? Ente::from($persona->ente) : null,
             dependencia: $esInvitado ? null : $persona->dependencia,
             piso: $esInvitado ? null : $persona->piso,
             cargo: null,
@@ -144,6 +145,22 @@ final class RegistroReal implements FuenteDelRegistro
             // dos (ver la nota de `motivo` en docs/esquema.md).
             visitaA: null,
         );
+    }
+
+    /**
+     * La cédula con puntos, como en la pantalla de marcar, para que se lea igual en las dos.
+     * Solo se le ponen puntos si es numérica; un pasaporte (RD…, FZ…) se deja como viene, y
+     * la búsqueda igual lo encuentra porque normaliza antes de comparar.
+     */
+    private function documentoConPuntos(?string $cedula): ?string
+    {
+        $cedula = trim((string) $cedula);
+
+        if ($cedula === '') {
+            return null;
+        }
+
+        return ctype_digit($cedula) ? number_format((int) $cedula, 0, ',', '.') : $cedula;
     }
 
     /** «perez» encuentra a «Pérez» y «12345678» encuentra a «V-12.345.678». */

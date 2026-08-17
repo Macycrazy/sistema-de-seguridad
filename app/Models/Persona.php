@@ -23,6 +23,16 @@ class Persona extends Model
     public const INVITADO = 'invitado';
 
     /**
+     * Los tres entes que comparten el edificio. Los valores coinciden con el enum
+     * App\Services\Registro\Ente, que es lo que entiende el filtro del registro.
+     */
+    public const ENTE_CIIP = 'ciip';
+
+    public const ENTE_MARCA_PAIS = 'marca-pais';
+
+    public const ENTE_VENAPP = 'venapp';
+
+    /**
      * Carpeta de las fotos, dentro del disco «local» (storage/app/private).
      *
      * A propósito NO va en storage/app/public ni en public/: ahí cualquiera con la URL vería la
@@ -36,6 +46,7 @@ class Persona extends Model
     protected $fillable = [
         'cedula',
         'tipo',
+        'ente',
         'nombre',
         'dependencia',
         // Dónde labora el trabajador, o a dónde se dirige el invitado. Ver la migración.

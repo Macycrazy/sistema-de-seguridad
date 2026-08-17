@@ -12,10 +12,7 @@
 
     <div class="mb-6">
         <h1 class="text-3xl font-bold tracking-tight">Roles y permisos</h1>
-        <p class="mt-2 max-w-3xl text-sm text-slate-600">
-            Marca lo que abre cada rol. Vale desde que se guarda, sin que nadie tenga que volver a
-            entrar.
-        </p>
+        <p class="mt-2 text-sm text-slate-600">Marca lo que abre cada rol.</p>
     </div>
 
     @if ($confirmacion !== '')

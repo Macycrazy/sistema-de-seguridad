@@ -165,6 +165,44 @@ class RegistroRealTest extends TestCase
     }
 
     #[Test]
+    public function una_persona_real_no_dispara_el_aviso_de_ficha_mal_cargada(): void
+    {
+        // El nombre real va en un solo campo. No es una ficha con los apellidos repetidos en el
+        // campo de nombres, así que el panel no debe mostrar ese aviso.
+        $ana = $this->trabajador(['nombre' => 'ANA RODRÍGUEZ PEÑA']);
+
+        $persona = $this->fuente->persona((string) $ana->id);
+
+        $this->assertFalse($persona->nombresRepitenApellidos());
+        $this->assertSame('ANA RODRÍGUEZ PEÑA', $persona->nombre());
+    }
+
+    #[Test]
+    public function el_nombre_no_se_duplica_entre_apellidos_y_nombres(): void
+    {
+        // El Excel escribe apellidos y nombres en columnas separadas. Con el nombre en un solo
+        // campo, va entero en apellidos y nombres queda vacío: nunca repetido en las dos.
+        $ana = $this->trabajador(['nombre' => 'ANA RODRÍGUEZ PEÑA']);
+
+        $persona = $this->fuente->persona((string) $ana->id);
+
+        $this->assertSame('ANA RODRÍGUEZ PEÑA', $persona->apellidos);
+        $this->assertSame('', $persona->nombres);
+    }
+
+    #[Test]
+    public function la_cedula_se_muestra_con_puntos_como_en_marcar(): void
+    {
+        // Consistencia entre pantallas: marcar muestra la cédula con puntos; el registro también.
+        $ana = $this->trabajador(['cedula' => '28443995']);
+
+        $this->assertSame('28.443.995', $this->fuente->persona((string) $ana->id)->documento());
+        // Y se sigue encontrando, se busque con puntos o sin ellos.
+        $this->assertCount(1, $this->fuente->buscarPersonas('28443995'));
+        $this->assertCount(1, $this->fuente->buscarPersonas('28.443.995'));
+    }
+
+    #[Test]
     public function persona_devuelve_el_value_object_o_null(): void
     {
         $ana = $this->trabajador();
@@ -194,13 +232,28 @@ class RegistroRealTest extends TestCase
     }
 
     #[Test]
-    public function pedir_un_ente_no_devuelve_nada_porque_la_tabla_aun_no_lo_guarda(): void
+    public function el_filtro_por_ente_deja_solo_ese_ente(): void
     {
-        $ana = $this->trabajador();
-        $this->anotar($ana, MovimientoModel::ENTRADA, CarbonImmutable::today()->setTime(8, 0));
+        $hoy = CarbonImmutable::today();
+        $ciip = $this->trabajador(['cedula' => '111', 'nombre' => 'DE CIIP', 'ente' => PersonaModel::ENTE_CIIP]);
+        $venapp = $this->trabajador(['cedula' => '222', 'nombre' => 'DE VENAPP', 'ente' => PersonaModel::ENTE_VENAPP]);
 
-        // Comportamiento documentado: sin columna de ente, filtrar por uno no puede devolver a nadie.
-        $this->assertCount(0, $this->fuente->movimientosDelDia(CarbonImmutable::today(), null, Ente::Ciip));
+        $this->anotar($ciip, MovimientoModel::ENTRADA, $hoy->setTime(8, 0));
+        $this->anotar($venapp, MovimientoModel::ENTRADA, $hoy->setTime(9, 0));
+
+        $soloCiip = $this->fuente->movimientosDelDia($hoy, null, Ente::Ciip);
+
+        $this->assertCount(1, $soloCiip);
+        $this->assertSame('DE CIIP', $soloCiip->first()->persona->nombre());
+        $this->assertSame(Ente::Ciip, $soloCiip->first()->persona->ente);
+    }
+
+    #[Test]
+    public function el_invitado_no_pertenece_a_ningun_ente(): void
+    {
+        $invitado = $this->trabajador(['cedula' => '333', 'tipo' => PersonaModel::INVITADO, 'nombre' => 'VISITA', 'ente' => null, 'dependencia' => null, 'piso' => null]);
+
+        $this->assertNull($this->fuente->persona((string) $invitado->id)->ente);
     }
 
     #[Test]

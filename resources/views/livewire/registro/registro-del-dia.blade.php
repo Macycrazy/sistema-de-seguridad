@@ -71,13 +71,16 @@
                             <button
                                 type="button"
                                 wire:click="abrirPanel('{{ $persona->id }}')"
+                                title="{{ $persona->nombre() }}"
                                 class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-slate-50"
                             >
-                                <span>
-                                    <span class="font-medium">{{ $persona->nombre() }}</span>
-                                    <span class="block font-mono text-xs text-slate-500">{{ $persona->documento() }}</span>
+                                {{-- min-w-0 deja que el nombre largo se trunque en vez de partirse
+                                     en dos líneas y amontonarse con la etiqueta. --}}
+                                <span class="min-w-0 flex-1">
+                                    <span class="block truncate font-medium">{{ $persona->nombre() }}</span>
+                                    <span class="block truncate font-mono text-xs text-slate-500">{{ $persona->documento() }}</span>
                                 </span>
-                                <x-etiqueta :tipo="$persona->tipo->value" />
+                                <x-etiqueta :tipo="$persona->tipo->value" class="shrink-0" />
                             </button>
                         </li>
                     @endforeach
@@ -140,8 +143,11 @@
                     wire:target="{{ $recalcula }}"
                 >
                     {{-- table-fixed: sin esto un nombre largo empuja la tabla al scroll
-                         horizontal y las columnas bailan entre página y página. --}}
-                    <table class="w-full table-fixed text-sm">
+                         horizontal y las columnas bailan entre página y página.
+                         min-w: en un teléfono los anchos fijos no caben y la columna «Persona»
+                         se aplastaba a cero —el ente se corría a su sitio y el encabezado se
+                         encimaba—. Con un ancho mínimo, el contenedor desplaza en vez de aplastar. --}}
+                    <table class="w-full min-w-[40rem] table-fixed text-sm">
                         <caption class="sr-only">
                             Movimientos del {{ $this->diaElegido()->format('d/m/Y') }}, del más reciente al más antiguo.
                         </caption>
