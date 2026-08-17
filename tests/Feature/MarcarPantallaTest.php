@@ -206,14 +206,14 @@ class MarcarPantallaTest extends TestCase
             ->set('traeHoy', 'AC456DF')
             ->call('marcarEntrada');
 
-        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS)->minutes();
+        $this->travel(Marcaje::MINUTOS_ENTRE_SALIDA_Y_ENTRADA)->minutes();
 
         Livewire::test(Marcar::class)
             ->set('cedula', '12345678')
             ->call('buscar')
             ->call('marcarSalida');
 
-        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS)->minutes();
+        $this->travel(Marcaje::MINUTOS_ENTRE_SALIDA_Y_ENTRADA)->minutes();
 
         Livewire::test(Marcar::class)
             ->set('cedula', '12345678')
@@ -888,7 +888,7 @@ class MarcarPantallaTest extends TestCase
             ->call('marcarSalida');
 
         // La espera de la ENTRADA se cuenta desde la entrada anterior, no desde esta salida.
-        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS)->minutes();
+        $this->travel(Marcaje::MINUTOS_ENTRE_SALIDA_Y_ENTRADA)->minutes();
 
         Livewire::test(Marcar::class)
             ->set('cedula', '12345678')

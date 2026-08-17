@@ -30,18 +30,6 @@ class Marcaje
     public const SEGUNDOS_ANTIDUPLICADO = 10;
 
     /**
-     * Cuánto tiene que pasar entre dos entradas de la misma persona.
-     *
-     * Se cuenta desde su ENTRADA anterior, haya salido en el medio o no: es lo que evita que
-     * alguien que entra y sale a cada rato llene el histórico de movimientos.
-     *
-     * Efecto que hay que conocer: a quien baje un momento a la calle y vuelva no se le podrá
-     * marcar el regreso hasta que se cumplan estos minutos. La pantalla le dice al vigilante la
-     * hora exacta a partir de la cual puede.
-     */
-    public const MINUTOS_ENTRE_ENTRADAS = 10;
-
-    /**
      * Cuánto tiene que pasar entre la entrada de alguien y su salida.
      *
      * Nadie entra y se va al minuto: un par de asientos separados por segundos casi siempre es el
@@ -49,8 +37,6 @@ class Marcaje
      * histórico sin que nadie se entere. Con cinco minutos, la salida de verdad pasa siempre y la
      * equivocada se ataja.
      *
-     * NO es lo mismo que MINUTOS_ENTRE_ENTRADAS y no tienen por qué valer igual: aquel evita que
-     * alguien llene el registro entrando a cada rato; este evita el asiento que no ocurrió.
      *
      * Si de verdad hubo que sacar a alguien antes de los cinco minutos, se corrige como todo en
      * este sistema: con un movimiento nuevo cuando se pueda, nunca editando el anterior.
@@ -60,10 +46,10 @@ class Marcaje
     /**
      * Cuánto tiene que pasar entre la salida de alguien y su siguiente entrada.
      *
-     * Hace falta aparte de MINUTOS_ENTRE_ENTRADAS, y este es el hueco que tapa: aquel plazo se
-     * cuenta desde la ENTRADA anterior, así que a quien lleva toda la mañana dentro ya se le
-     * cumplió hace rato. Salía y se le podía marcar la entrada en el mismo segundo — que es
-     * justo la doble pulsación que se quiere atajar.
+     * Se cuenta desde la SALIDA, y esa es la clave. Hubo antes un plazo que se contaba desde la
+     * entrada anterior, y dejaba pasar justo lo que se quería atajar: a quien llevaba toda la
+     * mañana dentro ya se le había cumplido hacía rato, así que salía y se le podía marcar la
+     * entrada en el mismo segundo.
      *
      * Con este, después de una salida siempre hay que esperar, sea la hora que sea.
      */
@@ -404,14 +390,7 @@ class Marcaje
      */
     public function puedeEntrarDesde(Persona $persona): ?CarbonInterface
     {
-        // Dos plazos, y manda el que termine más tarde: hay que cumplir los dos.
-        $desde = null;
-
-        foreach ([$this->desdeLaEntrada($persona), $this->desdeLaSalida($persona)] as $momento) {
-            if ($momento && (! $desde || $momento->greaterThan($desde))) {
-                $desde = $momento;
-            }
-        }
+        $desde = $this->desdeLaSalida($persona);
 
         return $desde?->isFuture() ? $desde : null;
     }
@@ -419,9 +398,9 @@ class Marcaje
     /**
      * Por qué no se le puede marcar la entrada todavía, ya redactado. Null si puede entrar.
      *
-     * La frase se arma aquí y no en la pantalla porque los dos plazos se parecen y sus motivos
-     * no: uno dice «entró hace poco» y el otro «salió hace poco». Con el texto en la pantalla,
-     * el vigilante leería el motivo equivocado la mitad de las veces.
+     * La frase se arma aquí y no en la pantalla por la misma razón que las demás: el texto que se
+     * le enseña al vigilante depende de una regla, y las reglas viven en este servicio. Escrito
+     * en la vista, se quedaría desfasado la primera vez que la regla cambie — como ya pasó.
      */
     public function motivoDeLaEsperaParaEntrar(Persona $persona): ?string
     {
@@ -431,24 +410,11 @@ class Marcaje
             return null;
         }
 
-        $porLaSalida = $this->desdeLaSalida($persona);
-
-        [$minutos, $verbo] = $porLaSalida && $porLaSalida->equalTo($desde)
-            ? [self::MINUTOS_ENTRE_SALIDA_Y_ENTRADA, 'Salió']
-            : [self::MINUTOS_ENTRE_ENTRADAS, 'Entró'];
-
         return sprintf(
-            '%s hace menos de %d minutos. Se le puede marcar otra entrada a partir de las %s.',
-            $verbo,
-            $minutos,
+            'Salió hace menos de %d minutos. Se le puede marcar otra entrada a partir de las %s.',
+            self::MINUTOS_ENTRE_SALIDA_Y_ENTRADA,
             $desde->format(Movimiento::FORMATO_HORA),
         );
-    }
-
-    /** Cuándo se cumple el plazo que se cuenta desde su entrada anterior. */
-    private function desdeLaEntrada(Persona $persona): ?CarbonInterface
-    {
-        return $persona->ultimaEntrada()?->ocurrio_en->copy()->addMinutes(self::MINUTOS_ENTRE_ENTRADAS);
     }
 
     /** Cuándo se cumple el plazo que se cuenta desde su última salida. */
