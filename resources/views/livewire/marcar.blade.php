@@ -49,7 +49,7 @@
             <x-campo
                 etiqueta="Cédula"
                 nombre="cedula"
-                tamano="grande"
+                tamano="puerta"
                 placeholder="Solo números"
                 autofocus
                 autocomplete="off"
@@ -80,99 +80,130 @@
         @endphp
 
         <x-tarjeta class="mt-5" wire:key="persona-{{ $persona->id }}">
-            <div class="flex items-start gap-5">
+            {{-- Dónde está y desde cuándo. No se guarda en ninguna columna: sale del último
+                 asiento, que es la única fuente de verdad de dónde está alguien.
+
+                 Los minutos solo se dicen si entró HOY. A quien se le quedó la entrada de ayer
+                 sin salida —el caso que avisa exigirQueElMovimientoTengaSentido— un «lleva 940
+                 minutos dentro» no le dice nada a nadie: lo que hace falta ver es la fecha, para
+                 caer en cuenta de que falta marcarle la salida. --}}
+            @php
+                $ultimo = $persona->ultimoMovimiento();
+                $estaDentroAhora = $persona->estaDentro();
+                $dentroDeHoy = $estaDentroAhora && $ultimo?->ocurrio_en->isToday();
+            @endphp
+
+            <div class="flex items-start gap-4 sm:gap-5">
 
                 {{-- La foto sale por su ruta, no de una carpeta pública. Si no hay, las
-                     iniciales: no se piden imágenes a Internet. --}}
-                <div class="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-slate-100">
+                     iniciales: no se piden imágenes a Internet.
+
+                     Redonda y sobre el azul de la parte 1: en el teléfono es lo primero que se
+                     mira, y un cuadro gris se confundía con un hueco por rellenar. --}}
+                <div class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full
+                            border-2 border-slate-200 bg-parte1-suave">
                     @if ($persona->tieneFoto())
                         <img src="{{ route('persona.foto', $persona) }}"
                              alt="Foto de {{ $persona->nombre }}"
                              class="h-full w-full object-cover">
                     @else
-                        <span class="font-mono text-2xl font-bold text-slate-400">
+                        <span class="font-mono text-xl font-bold text-parte1">
                             {{ $persona->iniciales() }}
                         </span>
                     @endif
                 </div>
 
                 <div class="min-w-0 flex-1">
-                    <div class="flex flex-wrap items-center gap-3">
-                        <p class="text-2xl font-bold tracking-tight">{{ $persona->nombre }}</p>
+                    <p class="text-2xl font-bold leading-tight tracking-tight">{{ $persona->nombre }}</p>
+                    <p class="mt-0.5 font-mono text-sm text-slate-500">{{ $persona->cedulaConPuntos() }}</p>
+
+                    {{-- Quién es y dónde está, en una sola fila de etiquetas: es justo lo que se
+                         mira antes de pulsar, y así no hay que leer ningún renglón entero. --}}
+                    <div class="mt-2 flex flex-wrap items-center gap-2">
                         <x-etiqueta :tipo="$persona->tipo" />
+
                         @unless ($persona->activo)
                             <x-etiqueta tipo="inactivo" />
                         @endunless
+
+                        @if ($dentroDeHoy)
+                            <x-etiqueta tipo="entrada">
+                                Dentro · {{ (int) abs(now()->diffInMinutes($ultimo->ocurrio_en)) }} min
+                            </x-etiqueta>
+                        @elseif ($estaDentroAhora)
+                            {{-- Se le quedó la entrada de otro día sin salida. Va en rojo porque
+                                 es algo que hay que arreglar, no un estado normal. --}}
+                            <x-etiqueta tipo="inactivo">
+                                Dentro desde el {{ $ultimo->ocurrio_en->format('d/m') }}
+                            </x-etiqueta>
+                        @elseif ($ultimo)
+                            <x-etiqueta tipo="salida">Fuera</x-etiqueta>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            @if ($persona->esTrabajador())
+                {{-- Toda la ficha en una rejilla rotulada y a lo ancho de la tarjeta. Cada dato
+                     con su título encima: un renglón gris sin rótulo no se lee, se adivina, y en
+                     la puerta se marca de pie y apurado.
+
+                     En la base la columna se llama «dependencia»; aquí se rotula «Gerencia», que
+                     es como se dice en el CIIP. Renombrar la columna es un cambio de esquema, y
+                     eso se habla con las otras dos partes. --}}
+                <dl class="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded border border-slate-200 bg-slate-200">
+                    <div class="col-span-2 bg-white px-3 py-2">
+                        <dt class="font-mono text-[0.625rem] font-semibold uppercase tracking-widest text-slate-500">
+                            Gerencia
+                        </dt>
+                        <dd class="mt-0.5 font-semibold text-slate-900">
+                            {{ $persona->dependencia ?: 'Sin gerencia asignada' }}
+                        </dd>
                     </div>
 
-                    <p class="mt-1 font-mono text-sm text-slate-500">{{ $persona->cedulaConPuntos() }}</p>
+                    {{-- El piso del trabajador es fijo —viene de su ficha— así que se muestra,
+                         no se pregunta. --}}
+                    <div class="bg-white px-3 py-2">
+                        <dt class="font-mono text-[0.625rem] font-semibold uppercase tracking-widest text-slate-500">
+                            Piso
+                        </dt>
+                        <dd class="mt-0.5 font-mono font-semibold tracking-wide text-slate-900">
+                            {{ $persona->piso ?: '—' }}
+                        </dd>
+                    </div>
 
-                    {{-- Dónde está y desde cuándo. No se guarda en ninguna columna: sale del
-                         último asiento, que es la única fuente de verdad de dónde está alguien.
+                    <div class="bg-white px-3 py-2">
+                        <dt class="font-mono text-[0.625rem] font-semibold uppercase tracking-widest text-slate-500">
+                            Estado
+                        </dt>
+                        <dd class="mt-0.5 font-semibold {{ $persona->activo ? 'text-slate-900' : 'text-alto' }}">
+                            {{ $persona->activo ? 'Activo' : 'Inactivo' }}
+                        </dd>
+                    </div>
 
-                         Los minutos solo se dicen si entró HOY. A quien se le quedó la entrada
-                         de ayer sin salida —el caso que avisa exigirQueElMovimientoTengaSentido—
-                         un «lleva 940 minutos dentro» no le dice nada a nadie: lo que hace falta
-                         ver es la fecha, para caer en cuenta de que falta marcarle la salida. --}}
-                    @php
-                        $ultimo = $persona->ultimoMovimiento();
-                        $estaDentroAhora = $persona->estaDentro();
-                    @endphp
+                    <div class="col-span-2 bg-white px-3 py-2">
+                        <dt class="font-mono text-[0.625rem] font-semibold uppercase tracking-widest text-slate-500">
+                            Último movimiento
+                        </dt>
+                        <dd class="mt-0.5 text-slate-900">
+                            @if (! $ultimo)
+                                Sin movimientos: es la primera vez que se le marca.
+                            @else
+                                <span class="font-semibold capitalize">{{ $ultimo->tipo }}</span>
+                                ·
+                                {{ $ultimo->ocurrio_en->isToday() ? 'hoy' : 'el '.$ultimo->ocurrio_en->format('d/m') }}
+                                a las {{ $ultimo->ocurrio_en->format('H:i') }}
 
-                    <p class="mt-2 text-sm text-slate-600">
-                        @if (! $ultimo)
-                            Sin movimientos registrados: es la primera vez.
-                        @elseif ($estaDentroAhora && $ultimo->ocurrio_en->isToday())
-                            <span class="font-semibold text-ok">Dentro</span>
-                            desde las {{ $ultimo->ocurrio_en->format('H:i') }},
-                            hace {{ (int) abs(now()->diffInMinutes($ultimo->ocurrio_en)) }} min.
-                        @elseif ($estaDentroAhora)
-                            <span class="font-semibold text-invitado">
-                                Dentro desde el {{ $ultimo->ocurrio_en->format('d/m') }}
-                                a las {{ $ultimo->ocurrio_en->format('H:i') }}.
-                            </span>
-                            <span class="block text-slate-500">
-                                Quedó sin marcar la salida: márcasela y ya podrá entrar.
-                            </span>
-                        @else
-                            Fuera. Último movimiento:
-                            {{ $ultimo->tipo }}
-                            {{ $ultimo->ocurrio_en->isToday() ? 'hoy' : 'el '.$ultimo->ocurrio_en->format('d/m') }}
-                            a las {{ $ultimo->ocurrio_en->format('H:i') }}.
-                        @endif
-                    </p>
-
-                    @if ($persona->esTrabajador())
-                        {{-- La gerencia va rotulada y no como un texto suelto: el vigilante
-                             tiene que poder decir de un vistazo de dónde es quien tiene delante,
-                             y un renglón gris sin título no se lee, se adivina.
-
-                             En la base la columna se llama «dependencia»; aquí se rotula
-                             «Gerencia», que es como se dice en el CIIP. Renombrar la columna es
-                             un cambio de esquema, y eso se habla con las otras dos partes. --}}
-                        {{-- Gerencia y piso van juntos: son las dos cosas que el vigilante
-                             necesita saber de quien labora aquí. El piso del trabajador es fijo
-                             —viene de su ficha— así que se muestra, no se pregunta. --}}
-                        <div class="mt-3 flex flex-wrap gap-x-10 gap-y-3">
-                            <div>
-                                <p class="font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
-                                    Gerencia
-                                </p>
-                                <p class="mt-0.5 text-lg font-semibold text-slate-900">
-                                    {{ $persona->dependencia ?: 'Sin gerencia asignada' }}
-                                </p>
-                            </div>
-
-                            <div>
-                                <p class="font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
-                                    Piso
-                                </p>
-                                <p class="mt-0.5 font-mono text-lg font-semibold tracking-wide text-slate-900">
-                                    {{ $persona->piso ?: '—' }}
-                                </p>
-                            </div>
-                        </div>
-                    @else
+                                @if ($estaDentroAhora && ! $dentroDeHoy)
+                                    <span class="mt-1 block text-sm font-semibold text-alto">
+                                        Quedó sin marcar la salida: márcasela y ya podrá entrar.
+                                    </span>
+                                @endif
+                            @endif
+                        </dd>
+                    </div>
+                </dl>
+            @else
                         {{-- Del invitado que vuelve se corrigen el motivo y el piso de hoy: la
                              vez anterior pudo venir a otra cosa y a otro sitio. Al invitado el
                              piso se le pregunta SIEMPRE, no se da por sabido.
@@ -185,33 +216,21 @@
                              OJO: ese «oninput» va pegado a los demás atributos. Un comentario
                              de Blade metido entre los atributos de un <x-...> rompe el análisis
                              de la etiqueta y se come en silencio lo que venga detrás. --}}
-                        <div class="mt-3 flex flex-wrap items-start gap-4">
-                            <div class="min-w-0 flex-1 basis-64">
-                                <x-campo
-                                    etiqueta="Motivo de visita"
-                                    nombre="motivo"
-                                    wire:model="motivo"
-                                    :error="$errors->first('motivo')"
-                                />
-                            </div>
+                <div class="mt-4 space-y-4">
+                    <x-campo
+                        etiqueta="Motivo de visita"
+                        nombre="motivo"
+                        wire:model="motivo"
+                        :error="$errors->first('motivo')"
+                    />
 
-                            <div class="w-28 shrink-0">
-                                <x-campo
-                                    etiqueta="Piso"
-                                    nombre="piso"
-                                    wire:model="piso"
-                                    autocomplete="off"
-                                    placeholder="ej. 2-1"
-                                    class="font-mono"
-                                    maxlength="{{ \App\Models\Persona::LARGO_PISO }}"
-                                    oninput="this.value = this.value.toUpperCase().replace(/\s+/g, '')"
-                                    :error="$errors->first('piso')"
-                                />
-                            </div>
-                        </div>
-                    @endif
+                    <x-piso
+                        :pisos="$this->pisosConocidos"
+                        :piso="$piso"
+                        :error="$errors->first('piso')"
+                    />
                 </div>
-            </div>
+            @endif
 
             {{-- El vehículo con el que llega, sea invitado o trabajador: el personal también
                  estaciona aquí. Sale ya escrito el de la última vez, que casi siempre es el
@@ -348,32 +367,19 @@
                     {{-- El piso al que va es obligatorio, igual que el motivo: es lo que
                          permite saber quién hay en cada piso, que es media razón de ser de
                          este registro. --}}
-                    <div class="flex flex-wrap items-start gap-4">
-                        <div class="min-w-0 flex-1 basis-56">
-                            <x-campo
-                                etiqueta="Motivo de visita"
-                                nombre="motivo"
-                                wire:model="motivo"
-                                autocomplete="off"
-                                :error="$errors->first('motivo')"
-                            />
-                        </div>
+                    <x-campo
+                        etiqueta="Motivo de visita"
+                        nombre="motivo"
+                        wire:model="motivo"
+                        autocomplete="off"
+                        :error="$errors->first('motivo')"
+                    />
 
-                        <div class="w-28 shrink-0">
-                            <x-campo
-                                etiqueta="Piso"
-                                nombre="piso"
-                                wire:model="piso"
-                                autocomplete="off"
-                                placeholder="ej. 2-1"
-                                class="font-mono"
-                                maxlength="{{ \App\Models\Persona::LARGO_PISO }}"
-                                oninput="this.value = this.value.toUpperCase().replace(/\s+/g, '')"
-                                ayuda="A dónde va."
-                                :error="$errors->first('piso')"
-                            />
-                        </div>
-                    </div>
+                    <x-piso
+                        :pisos="$this->pisosConocidos"
+                        :piso="$piso"
+                        :error="$errors->first('piso')"
+                    />
                 </div>
 
                 {{-- En el alta no hay nada anotado todavía, así que la clase se elige libre. --}}

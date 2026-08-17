@@ -34,6 +34,9 @@ class Marcar extends Component
     /** Se enciende cuando la cédula no está en el sistema: hay que dar de alta un invitado. */
     public bool $invitadoNuevo = false;
 
+    /** Cuántos pisos se ofrecen como atajo antes de dejarlo solo en la casilla de escribir. */
+    public const PISOS_COMO_MUCHO = 12;
+
     /** Los dos campos obligatorios del formulario de invitado. */
     public string $nombre = '';
 
@@ -241,6 +244,29 @@ class Marcar extends Component
     public function vehiculos(): Collection
     {
         return $this->persona()?->vehiculos ?? collect();
+    }
+
+    /**
+     * Los pisos que ya se usan en el edificio, para ofrecerlos como atajos.
+     *
+     * NO son una lista fija en el código: salen de las fichas que hay en la base. Hoy son pocos
+     * porque los datos son de prueba; cuando se cargue el personal de verdad, la lista aparece
+     * sola y sin tocar nada. Por eso tampoco sustituyen a la casilla de escribir: un piso al que
+     * nadie ha ido todavía no está en la lista, y aun así tiene que poder anotarse.
+     *
+     * El tope está para que un dato sucio no llene la pantalla de botones: si algún día hay más
+     * de estos, se teclea y ya.
+     */
+    #[Computed]
+    public function pisosConocidos(): Collection
+    {
+        return Persona::query()
+            ->whereNotNull('piso')
+            ->where('piso', '!=', '')
+            ->distinct()
+            ->orderBy('piso')
+            ->limit(self::PISOS_COMO_MUCHO)
+            ->pluck('piso');
     }
 
     /**

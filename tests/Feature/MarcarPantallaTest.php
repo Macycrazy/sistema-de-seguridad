@@ -534,6 +534,35 @@ class MarcarPantallaTest extends TestCase
     }
 
     /**
+     * Los pisos que se ofrecen como atajo NO son una lista escrita en el código: salen de las
+     * fichas que ya hay en la base, así que aparecen solos cuando se cargue el personal de verdad.
+     *
+     * Y no sustituyen a la casilla: un piso al que todavía no ha ido nadie no puede estar en la
+     * lista, y aun así tiene que poder anotarse.
+     */
+    public function test_los_pisos_que_ya_se_usan_se_ofrecen_como_atajo(): void
+    {
+        $this->trabajador(['piso' => '2-1']);
+        $this->trabajador(['cedula' => '22222222', 'piso' => '1-2']);
+
+        Livewire::test(Marcar::class)
+            // Una cédula que no está: el alta de un invitado, que es donde se pregunta el piso.
+            ->set('cedula', '25375258')
+            ->call('buscar')
+            ->assertSet('invitadoNuevo', true)
+            ->assertSee('2-1')
+            ->assertSee('1-2')
+            // Un piso que no usa nadie todavía se puede anotar igual.
+            ->set('nombre', 'Pedro Salazar Ruiz')
+            ->set('motivo', 'Videoconferencia')
+            ->set('piso', '9-9')
+            ->call('guardarInvitado')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('personas', ['cedula' => '25375258', 'piso' => '9-9']);
+    }
+
+    /**
      * El vigilante tiene que poder decir a qué hora quedó lo que acaba de marcar, sin ir al
      * registro a comprobarlo. Vale igual para la entrada que para la salida.
      */
