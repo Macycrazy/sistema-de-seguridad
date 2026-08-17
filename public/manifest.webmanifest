@@ -1,0 +1,15 @@
+{
+    "name": "Registro de Entradas y Salidas · CIIP",
+    "short_name": "Registro CIIP",
+    "description": "Registro de entradas y salidas del puesto de vigilancia del CIIP.",
+    "lang": "es",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#004090",
+    "theme_color": "#004090",
+    "icons": [
+        { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+        { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    ]
+}
