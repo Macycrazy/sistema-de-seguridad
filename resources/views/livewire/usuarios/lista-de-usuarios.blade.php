@@ -13,9 +13,6 @@
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
             <h1 class="text-3xl font-bold tracking-tight">Usuarios</h1>
-            <p class="mt-1 text-sm text-slate-600">
-                Quién puede entrar al sistema y con qué alcance.
-            </p>
         </div>
 
         @unless ($creando)
@@ -49,7 +46,6 @@
                         autofocus
                         autocomplete="off"
                         maxlength="40"
-                        ayuda="Con lo que entra: letras, números, punto, guion o guion bajo."
                         wire:model="usuario"
                         :error="$errors->first('usuario')"
                     />
@@ -70,7 +66,7 @@
                         inputmode="numeric"
                         maxlength="9"
                         oninput="this.value = this.value.replace(/[^0-9]/g, '')"
-                        ayuda="Opcional: no todo el que opera el sistema pasa por la puerta."
+                        ayuda="Opcional."
                         wire:model="cedula"
                         :error="$errors->first('cedula')"
                     />
@@ -88,7 +84,7 @@
                         nombre="clave"
                         type="password"
                         autocomplete="new-password"
-                        ayuda="Mínimo {{ \App\Services\GestionDeUsuarios::MINIMO_DE_LA_CLAVE }} caracteres. Se la dictas a su dueño."
+                        ayuda="Mínimo {{ \App\Services\GestionDeUsuarios::MINIMO_DE_LA_CLAVE }} caracteres."
                         wire:model="clave"
                         :error="$errors->first('clave')"
                     />
@@ -200,7 +196,7 @@
                                                 type="password"
                                                 autofocus
                                                 autocomplete="new-password"
-                                                ayuda="Mínimo {{ \App\Services\GestionDeUsuarios::MINIMO_DE_LA_CLAVE }} caracteres. Con esa entra desde ahora."
+                                                ayuda="Mínimo {{ \App\Services\GestionDeUsuarios::MINIMO_DE_LA_CLAVE }} caracteres."
                                                 wire:model="claveNueva"
                                                 :error="$errors->first('claveNueva')"
                                             />
