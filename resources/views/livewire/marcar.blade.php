@@ -261,40 +261,12 @@
                     $claseSalida = $ancho.($estaDentro ? ' '.$realce : '');
                 @endphp
 
-                {{-- Qué se puede hacer y por qué. Va FUERA de la barra de los botones: en el
-                     teléfono esa barra queda pegada al borde de abajo, y un párrafo dentro la
-                     haría crecer hasta comerse media pantalla. --}}
-                <p class="mt-6 text-sm {{ $espera ? 'font-semibold text-invitado' : 'text-slate-500' }}">
-                    @if ($estaDentro)
-                        Ya tiene la entrada marcada: solo se le puede marcar la salida.
-                    @elseif ($espera)
-                        Entró hace menos de {{ $this->minutosEntreEntradas() }} minutos.
-                        Se le puede marcar otra entrada <strong>a partir de las {{ $espera }}</strong>.
-                        {{-- El porqué, en pequeño: sin esta frase el vigilante cree que el
-                             sistema está fallando. --}}
-                        <span class="mt-1 block font-normal text-slate-500">
-                            El plazo se cuenta desde su entrada anterior, no desde la salida.
-                        </span>
-                    @else
-                        No está dentro: solo se le puede marcar la entrada.
-                    @endif
-                </p>
-
                 {{-- LOS DOS BOTONES.
 
-                     En el teléfono esta barra queda PEGADA al borde de abajo mientras la ficha
-                     se desplaza por detrás. Es lo que permite que arriba quepa todo —los datos,
-                     el vehículo, y en el alta seis casillas más— sin que el botón se vaya de
-                     donde alcanza el pulgar: se sostiene el teléfono con una mano, porque la
-                     otra tiene el carnet.
-
-                     Los márgenes negativos son para que la barra llegue a los bordes de la
-                     tarjeta, que lleva p-5. Desde tableta en adelante no hace falta nada de
-                     esto y vuelve a ser una fila normal. --}}
-                <div class="sticky bottom-0 z-10 -mx-5 mt-4 flex flex-col gap-3 border-t border-slate-200
-                            bg-white px-5 pb-5 pt-4
-                            sm:static sm:mx-0 sm:mt-5 sm:flex-row sm:flex-wrap sm:items-center
-                            sm:border-slate-100 sm:px-0 sm:pb-0 sm:pt-5">
+                     Se desplazan con la ficha, como todo lo demás: NO van pegados al borde de
+                     abajo. Se probó pegándolos y en el teléfono estorba — la barra tapa lo que
+                     hay debajo mientras se desliza, que es justo lo que se está leyendo. --}}
+                <div class="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:flex-wrap sm:items-center">
                     <x-boton
                         variante="entrada"
                         tamano="grande"
@@ -312,6 +284,23 @@
                         wire:loading.attr="disabled"
                         :disabled="! $estaDentro"
                     >SALIDA</x-boton>
+
+                    <p class="text-sm sm:ml-auto sm:max-w-[16rem] sm:text-right
+                              {{ $espera ? 'font-semibold text-invitado' : 'text-slate-500' }}">
+                        @if ($estaDentro)
+                            Ya tiene la entrada marcada: solo se le puede marcar la salida.
+                        @elseif ($espera)
+                            Entró hace menos de {{ $this->minutosEntreEntradas() }} minutos.
+                            Se le puede marcar otra entrada <strong>a partir de las {{ $espera }}</strong>.
+                            {{-- El porqué, en pequeño: sin esta frase el vigilante cree que el
+                                 sistema está fallando. --}}
+                            <span class="mt-1 block font-normal text-slate-500">
+                                El plazo se cuenta desde su entrada anterior, no desde la salida.
+                            </span>
+                        @else
+                            No está dentro: solo se le puede marcar la entrada.
+                        @endif
+                    </p>
                 </div>
 
                 @error('tipo')
@@ -394,16 +383,9 @@
                 />
 
                 {{-- En el teléfono, uno debajo del otro y a todo el ancho: en fila, «Guardar y
-                     continuar» se parte en dos líneas.
-
-                     Y pegada abajo, igual que la barra de los botones de la puerta y por la misma
-                     razón — aquí hace todavía más falta, porque encima hay seis casillas: nombre,
-                     motivo, piso y las del vehículo. Sin esto hay que desplazar hasta el final
-                     para dar de alta a cada invitado. --}}
-                <div class="sticky bottom-0 z-10 -mx-5 flex flex-col gap-3 border-t border-slate-200
-                            bg-white px-5 pb-5 pt-4
-                            sm:static sm:mx-0 sm:flex-row sm:items-center
-                            sm:border-0 sm:px-0 sm:pb-0 sm:pt-0">
+                     continuar» se parte en dos líneas. Se desplazan con el formulario, igual que
+                     los botones de la puerta. --}}
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
                     <x-boton type="submit" class="w-full sm:w-auto" wire:loading.attr="disabled">
                         Guardar y continuar
                     </x-boton>
