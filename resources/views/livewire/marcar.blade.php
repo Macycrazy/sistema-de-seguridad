@@ -7,13 +7,27 @@
 --}}
 <div class="mx-auto max-w-3xl">
 
-    {{-- Cuántos están dentro. Es el dato que el vigilante mira de reojo. --}}
-    <div class="mb-6 flex items-baseline justify-between">
+    {{-- Quién hay dentro. Es el dato que el vigilante mira de reojo, y va separado en
+         trabajadores e invitados porque en una emergencia no valen lo mismo: a los de casa se
+         les localiza por su dependencia, y a los invitados no los conoce nadie —hay que ir a
+         buscarlos al piso que visitaban—.
+
+         Cada uno con el color que ya significa lo suyo en todo el sistema: el azul de la parte 1
+         para el personal, el ámbar para el invitado. --}}
+    <div class="mb-6 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
         <h1 class="text-3xl font-bold tracking-tight">Marcar</h1>
-        <p class="font-mono text-xs uppercase tracking-widest text-slate-500">
-            Dentro ahora:
-            <span class="text-base font-bold text-slate-900">{{ $this->dentro }}</span>
-        </p>
+
+        <dl class="flex items-baseline gap-5">
+            <div class="flex items-baseline gap-2">
+                <dt class="font-mono text-xs uppercase tracking-widest text-slate-500">Trabajadores</dt>
+                <dd class="text-xl font-bold text-parte1">{{ $this->dentroPorTipo['trabajador'] }}</dd>
+            </div>
+
+            <div class="flex items-baseline gap-2">
+                <dt class="font-mono text-xs uppercase tracking-widest text-slate-500">Invitados</dt>
+                <dd class="text-xl font-bold text-invitado">{{ $this->dentroPorTipo['invitado'] }}</dd>
+            </div>
+        </dl>
     </div>
 
     {{-- Confirmación del último marcaje. Se va sola en cuanto se teclea la siguiente cédula. --}}
@@ -50,7 +64,6 @@
                 etiqueta="Cédula"
                 nombre="cedula"
                 tamano="puerta"
-                placeholder="Solo números"
                 autofocus
                 autocomplete="off"
                 inputmode="numeric"
@@ -59,7 +72,7 @@
                 oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, {{ $this->maximoDigitos() }})"
                 wire:model.live.debounce.400ms="cedula"
                 :error="$errors->first('cedula')"
-                ayuda="Teclea la cédula o pasa el carnet: los datos salen solos."
+                ayuda="Introduce la cédula"
             />
             <button type="submit" class="sr-only">Buscar</button>
 

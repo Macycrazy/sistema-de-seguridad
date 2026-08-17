@@ -359,14 +359,38 @@ class Marcaje
     /** Cuántas personas están dentro en este momento: su último movimiento fue una entrada. */
     public function cuantosDentro(): int
     {
+        return array_sum($this->cuantosDentroPorTipo());
+    }
+
+    /**
+     * Lo mismo, pero separado en trabajadores e invitados.
+     *
+     * No es un adorno del contador: en una emergencia, «hay 47 personas dentro» no sirve igual
+     * que «41 trabajadores y 6 invitados». A los de casa se les localiza por su dependencia; a
+     * los invitados no los conoce nadie y hay que ir a buscarlos al piso que visitaban.
+     *
+     * Devuelve SIEMPRE las dos claves, aunque alguna esté en cero: quien lo use no tiene por qué
+     * comprobar si existen.
+     *
+     * @return array{trabajador: int, invitado: int}
+     */
+    public function cuantosDentroPorTipo(): array
+    {
         $ultimos = DB::table('movimientos')
             ->selectRaw('persona_id, max(id) as ultimo_id')
             ->groupBy('persona_id');
 
-        return DB::table('movimientos')
+        $cuenta = DB::table('movimientos')
             ->joinSub($ultimos, 'u', fn ($union) => $union->on('movimientos.id', '=', 'u.ultimo_id'))
+            ->join('personas', 'personas.id', '=', 'movimientos.persona_id')
             ->where('movimientos.tipo', Movimiento::ENTRADA)
-            ->count();
+            ->groupBy('personas.tipo')
+            ->pluck(DB::raw('count(*)'), 'personas.tipo');
+
+        return [
+            Persona::TRABAJADOR => (int) $cuenta->get(Persona::TRABAJADOR, 0),
+            Persona::INVITADO => (int) $cuenta->get(Persona::INVITADO, 0),
+        ];
     }
 
     /**

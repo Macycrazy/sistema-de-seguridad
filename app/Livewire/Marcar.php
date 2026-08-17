@@ -118,6 +118,17 @@ class Marcar extends Component
     }
 
     /**
+     * Quién hay dentro, separado en trabajadores e invitados.
+     *
+     * @return array{trabajador: int, invitado: int}
+     */
+    #[Computed]
+    public function dentroPorTipo(): array
+    {
+        return $this->marcaje->cuantosDentroPorTipo();
+    }
+
+    /**
      * A qué hora se le podrá volver a marcar la entrada, si es que hay que esperar.
      *
      * Null cuando puede entrar ya. Se muestra en pantalla para que el vigilante sepa hasta

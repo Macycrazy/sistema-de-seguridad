@@ -924,20 +924,42 @@ class MarcarPantallaTest extends TestCase
         $this->assertDatabaseCount('movimientos', 0);
     }
 
-    public function test_el_contador_de_quienes_estan_dentro_se_ve_en_la_pantalla(): void
+    /**
+     * El contador va separado en trabajadores e invitados: en una emergencia no valen lo mismo,
+     * porque a los invitados no los conoce nadie y hay que ir a buscarlos al piso que visitaban.
+     */
+    public function test_el_contador_separa_a_los_trabajadores_de_los_invitados(): void
     {
-        $ana = $this->trabajador(['cedula' => '11111111', 'nombre' => 'Ana']);
+        $this->trabajador(['cedula' => '11111111', 'nombre' => 'Ana']);
         $this->trabajador(['cedula' => '22222222', 'nombre' => 'Luis']);
 
-        Livewire::test(Marcar::class)->assertSee('Dentro ahora');
+        Livewire::test(Marcar::class)
+            ->assertSee('Trabajadores')
+            ->assertSee('Invitados');
 
+        // Un trabajador entra…
         Livewire::test(Marcar::class)
             ->set('cedula', '11111111')
             ->call('buscar')
             ->call('marcarEntrada');
 
-        // Con una persona dentro, el contador lo dice.
-        $this->assertSame(1, app(Marcaje::class)->cuantosDentro());
+        // …y un invitado nuevo también.
+        Livewire::test(Marcar::class)
+            ->set('cedula', '25375258')
+            ->call('buscar')
+            ->set('nombre', 'Pedro Salazar Ruiz')
+            ->set('motivo', 'Videoconferencia')
+            ->set('piso', '2-2')
+            ->call('guardarInvitado')
+            ->call('marcarEntrada');
+
+        $this->assertSame(
+            ['trabajador' => 1, 'invitado' => 1],
+            app(Marcaje::class)->cuantosDentroPorTipo(),
+        );
+
+        // El total sigue siendo el mismo dato, sumado: la parte 2 lo usa así.
+        $this->assertSame(2, app(Marcaje::class)->cuantosDentro());
     }
 
     public function test_cancelar_devuelve_la_pantalla_a_su_estado_inicial(): void
