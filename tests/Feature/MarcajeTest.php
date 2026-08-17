@@ -52,6 +52,92 @@ class MarcajeTest extends TestCase
         return $persona->fresh();
     }
 
+    /**
+     * El mismo número con otra letra es OTRA persona.
+     *
+     * Antes de guardar la letra, «V-12345678» y «E-12345678» eran la misma ficha: al segundo que
+     * llegara le salía el nombre, la foto y la dependencia del primero, y se le marcaba la entrada
+     * a otro. En un sistema que existe para probar quién estuvo dónde, eso no se sostiene.
+     */
+    public function test_el_mismo_numero_con_otra_letra_es_otra_persona(): void
+    {
+        $venezolana = $this->trabajador([
+            'cedula' => '12345678',
+            'nacionalidad' => Persona::VENEZOLANO,
+            'nombre' => 'Ana Rodríguez Peña',
+        ]);
+
+        $extranjero = $this->trabajador([
+            'cedula' => '12345678',
+            'nacionalidad' => Persona::EXTRANJERO,
+            'nombre' => 'John Smith',
+        ]);
+
+        $this->assertNotSame($venezolana->id, $extranjero->id);
+
+        $this->assertSame(
+            $venezolana->id,
+            $this->marcaje->buscarPorCedula('12345678', Persona::VENEZOLANO)?->id,
+        );
+
+        $this->assertSame(
+            $extranjero->id,
+            $this->marcaje->buscarPorCedula('12345678', Persona::EXTRANJERO)?->id,
+        );
+
+        // Sin decir la letra se busca como venezolano, que es lo que se daba por sentado antes.
+        $this->assertSame($venezolana->id, $this->marcaje->buscarPorCedula('12345678')?->id);
+    }
+
+    /** La misma cédula ENTERA sí sigue sin poder repetirse. */
+    public function test_no_se_puede_dar_de_alta_a_un_invitado_con_una_cedula_que_ya_existe(): void
+    {
+        $this->trabajador(['cedula' => '12345678', 'nacionalidad' => Persona::VENEZOLANO]);
+
+        $this->expectException(ValidationException::class);
+
+        $this->marcaje->registrarInvitado(
+            cedula: '12345678',
+            nombre: 'John Smith',
+            motivo: 'Videoconferencia',
+            piso: '2-2',
+            nacionalidad: Persona::VENEZOLANO,
+        );
+    }
+
+    /** Pero con otra letra sí, porque es otra persona. */
+    public function test_un_invitado_extranjero_puede_tener_el_numero_de_un_trabajador(): void
+    {
+        $this->trabajador(['cedula' => '12345678', 'nacionalidad' => Persona::VENEZOLANO]);
+
+        $invitado = $this->marcaje->registrarInvitado(
+            cedula: '12345678',
+            nombre: 'John Smith',
+            motivo: 'Videoconferencia',
+            piso: '2-2',
+            nacionalidad: Persona::EXTRANJERO,
+        );
+
+        $this->assertSame(Persona::EXTRANJERO, $invitado->nacionalidad);
+        $this->assertSame('E-12.345.678', $invitado->cedulaCompleta());
+    }
+
+    /**
+     * La jurídica admite un dígito más, porque su número es un RIF. Va por letra y no subiendo el
+     * máximo de todas: una cédula V de diez dígitos no existe.
+     */
+    public function test_la_juridica_admite_diez_digitos_y_la_venezolana_no(): void
+    {
+        $this->assertSame(
+            '4101234567',
+            $this->marcaje->exigirCedulaValida('4101234567', Persona::JURIDICO),
+        );
+
+        $this->expectException(ValidationException::class);
+
+        $this->marcaje->exigirCedulaValida('4101234567', Persona::VENEZOLANO);
+    }
+
     public function test_la_cedula_se_encuentra_aunque_se_teclee_con_puntos_o_con_la_letra(): void
     {
         $this->trabajador(['cedula' => '12345678']);

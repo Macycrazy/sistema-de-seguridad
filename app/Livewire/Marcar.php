@@ -28,6 +28,14 @@ class Marcar extends Component
     /** Lo único que el vigilante teclea. */
     public string $cedula = '';
 
+    /**
+     * La letra de la cédula: V, E o J. Se escoge en un desplegable, no se teclea.
+     *
+     * Empieza en «V» porque es lo que se presenta en la puerta el noventa y tantos por ciento de
+     * las veces. Cambiarla vuelve a buscar: el mismo número con otra letra es otra persona.
+     */
+    public string $nacionalidad = Persona::VENEZOLANO;
+
     /** La persona encontrada, si ya se buscó. */
     public ?int $personaId = null;
 
@@ -150,10 +158,26 @@ class Marcar extends Component
         return Marcaje::MINUTOS_ENTRE_ENTRADAS;
     }
 
-    /** Cuántos dígitos deja teclear el campo. Lo decide el servicio, no la pantalla. */
+    /**
+     * Cuántos dígitos deja teclear el campo. Lo decide el servicio, no la pantalla, y depende de
+     * la letra: la jurídica admite uno más porque su número es un RIF.
+     */
     public function maximoDigitos(): int
     {
-        return Marcaje::DIGITOS_MAXIMOS;
+        return Marcaje::digitosMaximos($this->nacionalidad);
+    }
+
+    /**
+     * Cambiar la letra vuelve a buscar con lo que ya está tecleado.
+     *
+     * Sin esto, escoger «E» después de teclear el número dejaría en pantalla la ficha del
+     * venezolano: el vigilante creería que es esa persona y le marcaría la entrada a otro.
+     */
+    public function updatedNacionalidad(): void
+    {
+        $this->nacionalidad = Persona::normalizarNacionalidad($this->nacionalidad);
+
+        $this->updatedCedula();
     }
 
     /**
@@ -175,7 +199,7 @@ class Marcar extends Component
 
         // Fuera del rango de una cédula no se busca. Por arriba tampoco: el campo ya no deja
         // teclear de más, pero esto no depende de que el navegador se porte bien.
-        if ($digitos < Marcaje::DIGITOS_MINIMOS || $digitos > Marcaje::DIGITOS_MAXIMOS) {
+        if ($digitos < Marcaje::DIGITOS_MINIMOS || $digitos > $this->maximoDigitos()) {
             $this->olvidarPersona();
 
             return;
@@ -198,7 +222,7 @@ class Marcar extends Component
         $this->olvidarPersona();
 
         try {
-            $cedula = $this->marcaje->exigirCedulaValida($this->cedula);
+            $cedula = $this->marcaje->exigirCedulaValida($this->cedula, $this->nacionalidad);
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
 
@@ -211,7 +235,7 @@ class Marcar extends Component
     /** A quién pertenece esta cédula, y qué se le muestra al vigilante. */
     protected function localizar(string $cedula): void
     {
-        $persona = $this->marcaje->buscarPorCedula($cedula);
+        $persona = $this->marcaje->buscarPorCedula($cedula, $this->nacionalidad);
 
         if (! $persona) {
             // No está en la lista del personal: es un invitado.
@@ -341,6 +365,7 @@ class Marcar extends Component
                 $this->motivo,
                 $this->piso,
                 $vehiculo,
+                $this->nacionalidad,
             );
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
@@ -423,9 +448,12 @@ class Marcar extends Component
     /** Vuelve al estado inicial: campo vacío y listo para teclear. */
     public function limpiar(): void
     {
+        // La letra vuelve a «V» como todo lo demás: la pantalla queda igual para el siguiente, y
+        // el siguiente casi siempre es venezolano. Dejarla puesta sería peor que reiniciarla —el
+        // vigilante no se acordaría de que quedó en «E» del anterior—.
         $this->reset([
-            'cedula', 'personaId', 'invitadoNuevo', 'nombre', 'motivo', 'piso', 'confirmacion',
-            'traeHoy', 'tipoVehiculo', 'marca', 'modelo', 'color', 'placa',
+            'cedula', 'nacionalidad', 'personaId', 'invitadoNuevo', 'nombre', 'motivo', 'piso',
+            'confirmacion', 'traeHoy', 'tipoVehiculo', 'marca', 'modelo', 'color', 'placa',
         ]);
         $this->resetValidation();
         unset($this->persona, $this->sugerido, $this->dentro, $this->vehiculos, $this->esperaHasta);

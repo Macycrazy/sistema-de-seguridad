@@ -50,10 +50,26 @@ class Marcaje
     public const DIGITOS_MAXIMOS = 9;
 
     /**
+     * La persona jurídica admite un dígito más: su número es un RIF, y esos llegan a diez.
+     *
+     * Va por letra y no subiendo el máximo de todas, porque una cédula V de diez dígitos no
+     * existe y dejarla pasar sería abrir la puerta a un error de tecleo que nadie atajaría.
+     */
+    public const DIGITOS_MAXIMOS_JURIDICO = 10;
+
+    /** Cuántos dígitos admite cada letra. */
+    public static function digitosMaximos(?string $nacionalidad = null): int
+    {
+        return Persona::normalizarNacionalidad($nacionalidad) === Persona::JURIDICO
+            ? self::DIGITOS_MAXIMOS_JURIDICO
+            : self::DIGITOS_MAXIMOS;
+    }
+
+    /**
      * Busca a quién pertenece una cédula. Devuelve null si no está en el sistema, que es la
      * señal de que estamos ante un invitado nuevo.
      */
-    public function buscarPorCedula(string $cedula): ?Persona
+    public function buscarPorCedula(string $cedula, ?string $nacionalidad = null): ?Persona
     {
         $cedula = Persona::normalizarCedula($cedula);
 
@@ -61,7 +77,12 @@ class Marcaje
             return null;
         }
 
-        return Persona::where('cedula', $cedula)->first();
+        // La letra va SIEMPRE en la búsqueda, aunque no la manden: sin ella, «E-12345678» le
+        // sacaría al vigilante la ficha del venezolano con ese número. Quien no la pase se lleva
+        // «V», que es lo que se daba por sentado antes de preguntarla.
+        return Persona::where('cedula', $cedula)
+            ->where('nacionalidad', Persona::normalizarNacionalidad($nacionalidad))
+            ->first();
     }
 
     /**
@@ -89,14 +110,16 @@ class Marcaje
         string $motivo,
         ?string $piso = null,
         ?DatosVehiculo $vehiculo = null,
+        ?string $nacionalidad = null,
     ): Persona {
         $cedula = Persona::normalizarCedula($cedula);
+        $nacionalidad = Persona::normalizarNacionalidad($nacionalidad);
         $nombre = trim($nombre);
         $motivo = trim($motivo);
         $piso = Persona::normalizarPiso($piso);
         $vehiculo ??= DatosVehiculo::desde();
 
-        $this->exigirCedulaValida($cedula);
+        $this->exigirCedulaValida($cedula, $nacionalidad);
 
         if ($nombre === '') {
             throw ValidationException::withMessages([
@@ -121,16 +144,18 @@ class Marcaje
         // Un vehículo a medias no se guarda: o no hay carro, o al menos se sabe la placa.
         $vehiculo->exigirValido();
 
-        if (Persona::where('cedula', $cedula)->exists()) {
+        // La pareja entera, no solo el número: el mismo número con otra letra es otra persona.
+        if (Persona::where('cedula', $cedula)->where('nacionalidad', $nacionalidad)->exists()) {
             throw ValidationException::withMessages([
                 'cedula' => 'Esa cédula ya está registrada en el sistema.',
             ]);
         }
 
         // La ficha y su vehículo se crean juntos o no se crea ninguno.
-        return DB::transaction(function () use ($cedula, $nombre, $motivo, $piso, $vehiculo) {
+        return DB::transaction(function () use ($cedula, $nacionalidad, $nombre, $motivo, $piso, $vehiculo) {
             $persona = Persona::create([
                 'cedula' => $cedula,
+                'nacionalidad' => $nacionalidad,
                 'tipo' => Persona::INVITADO,
                 'nombre' => $nombre,
                 'motivo' => $motivo,
@@ -400,9 +425,10 @@ class Marcaje
      *
      * @throws ValidationException
      */
-    public function exigirCedulaValida(string $cedula): string
+    public function exigirCedulaValida(string $cedula, ?string $nacionalidad = null): string
     {
         $cedula = Persona::normalizarCedula($cedula);
+        $maximo = self::digitosMaximos($nacionalidad);
 
         if ($cedula === '') {
             throw ValidationException::withMessages([
@@ -410,12 +436,12 @@ class Marcaje
             ]);
         }
 
-        if (strlen($cedula) < self::DIGITOS_MINIMOS || strlen($cedula) > self::DIGITOS_MAXIMOS) {
+        if (strlen($cedula) < self::DIGITOS_MINIMOS || strlen($cedula) > $maximo) {
             throw ValidationException::withMessages([
                 'cedula' => sprintf(
                     'Esa cédula no parece válida: debe tener entre %d y %d dígitos.',
                     self::DIGITOS_MINIMOS,
-                    self::DIGITOS_MAXIMOS,
+                    $maximo,
                 ),
             ]);
         }

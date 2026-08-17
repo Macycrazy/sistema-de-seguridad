@@ -23,6 +23,24 @@ class Persona extends Model
     public const INVITADO = 'invitado';
 
     /**
+     * La letra de la cédula. Se guarda aparte del número porque «V-12345678» y «E-12345678» son
+     * dos personas distintas: lo único en la tabla es la pareja (nacionalidad, cedula).
+     */
+    public const VENEZOLANO = 'V';
+
+    public const EXTRANJERO = 'E';
+
+    /** Persona jurídica: una empresa. Su número es un RIF y admite un dígito más. */
+    public const JURIDICO = 'J';
+
+    /** Las tres, con el nombre que se le enseña al vigilante en el desplegable. */
+    public const NACIONALIDADES = [
+        self::VENEZOLANO => 'Venezolano',
+        self::EXTRANJERO => 'Extranjero',
+        self::JURIDICO => 'Jurídico',
+    ];
+
+    /**
      * Carpeta de las fotos, dentro del disco «local» (storage/app/private).
      *
      * A propósito NO va en storage/app/public ni en public/: ahí cualquiera con la URL vería la
@@ -35,6 +53,7 @@ class Persona extends Model
 
     protected $fillable = [
         'cedula',
+        'nacionalidad',
         'tipo',
         'nombre',
         'dependencia',
@@ -56,12 +75,29 @@ class Persona extends Model
     }
 
     /**
-     * Deja la cédula en solo dígitos, para que «12.345.678», «12345678» y «V-12.345.678»
-     * sean siempre la misma persona. Se usa igual al guardar y al buscar.
+     * Deja el NÚMERO de la cédula en solo dígitos, para que «12.345.678» y «12345678» sean
+     * siempre el mismo. Se usa igual al guardar y al buscar.
+     *
+     * La letra no sale de aquí: se pregunta aparte y se guarda en «nacionalidad». Si se teclea
+     * «V-12.345.678», esta función devuelve «12345678» y la V se pierde —a propósito—, porque
+     * quien manda es el desplegable de la pantalla y no lo que venga pegado al número.
      */
     public static function normalizarCedula(?string $cedula): string
     {
         return preg_replace('/\D/', '', (string) $cedula) ?? '';
+    }
+
+    /**
+     * Deja la letra en una de las tres, en mayúscula.
+     *
+     * Lo que no reconozca se convierte en «V»: es lo que se venía dando por sentado cuando no se
+     * preguntaba, y dejarlo en nulo obligaría a comprobarlo en cada sitio que la use.
+     */
+    public static function normalizarNacionalidad(?string $nacionalidad): string
+    {
+        $letra = mb_strtoupper(trim((string) $nacionalidad));
+
+        return isset(self::NACIONALIDADES[$letra]) ? $letra : self::VENEZOLANO;
     }
 
     /**
@@ -168,6 +204,12 @@ class Persona extends Model
     public function cedulaConPuntos(): string
     {
         return number_format((int) $this->cedula, 0, ',', '.');
+    }
+
+    /** La cédula entera, como está en el documento: V-12.345.678 */
+    public function cedulaCompleta(): string
+    {
+        return self::normalizarNacionalidad($this->nacionalidad).'-'.$this->cedulaConPuntos();
     }
 
     /**

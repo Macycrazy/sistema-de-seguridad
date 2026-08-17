@@ -60,6 +60,32 @@
                 en Marcaje::exigirCedulaValida(), porque cualquiera puede enviar lo que quiera sin
                 pasar por esta pantalla.
             --}}
+            {{--
+                La letra va DELANTE del número, como en el documento y como se dice en voz alta:
+                «uve doce millones…». Es un desplegable y no algo que se teclee, para que el
+                vigilante solo escoja.
+
+                Cambiarla vuelve a buscar: el mismo número con otra letra es otra persona, así que
+                la ficha que hubiera en pantalla deja de valer en cuanto se toca.
+            --}}
+            <div class="flex items-end gap-3">
+                <div class="w-28 shrink-0">
+                    <label for="nacionalidad"
+                           class="mb-1.5 block font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
+                        Letra
+                    </label>
+
+                    <select id="nacionalidad" name="nacionalidad" wire:model.live="nacionalidad"
+                            class="block w-full rounded border-2 border-parte1 bg-white px-3 py-3 text-center
+                                   font-mono text-2xl font-semibold text-slate-900
+                                   focus:border-parte1 focus:outline-none focus:ring-4 focus:ring-parte1/25">
+                        @foreach (\App\Models\Persona::NACIONALIDADES as $letra => $nombre)
+                            <option value="{{ $letra }}" title="{{ $nombre }}">{{ $letra }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="min-w-0 flex-1">
             <x-campo
                 etiqueta="Cédula"
                 nombre="cedula"
@@ -74,6 +100,9 @@
                 :error="$errors->first('cedula')"
                 ayuda="Introduce la cédula"
             />
+                </div>
+            </div>
+
             <button type="submit" class="sr-only">Buscar</button>
 
             {{-- Señal de que el sistema está mirando. Sin esto, el rato entre dejar de teclear
@@ -128,7 +157,9 @@
 
                 <div class="min-w-0 flex-1">
                     <p class="text-2xl font-bold leading-tight tracking-tight">{{ $persona->nombre }}</p>
-                    <p class="mt-0.5 font-mono text-sm text-slate-500">{{ $persona->cedulaConPuntos() }}</p>
+                    {{-- Con su letra delante, como en el documento: es lo que el vigilante tiene
+                         en la mano para comprobar que es quien dice ser. --}}
+                    <p class="mt-0.5 font-mono text-sm text-slate-500">{{ $persona->cedulaCompleta() }}</p>
 
                     {{-- Quién es y dónde está, en una sola fila de etiquetas: es justo lo que se
                          mira antes de pulsar, y así no hay que leer ningún renglón entero. --}}

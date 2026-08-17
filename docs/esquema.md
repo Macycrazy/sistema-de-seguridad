@@ -18,7 +18,8 @@ nadie es trabajador e invitado a la vez.
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | bigint | |
-| `cedula` | varchar(20), **única** | **Solo dígitos**, sin puntos ni letra. Ver «la cédula» abajo. |
+| `cedula` | varchar(20), indexada | **Solo el número**, sin puntos ni letra. Ver «la cédula» abajo. |
+| `nacionalidad` | char(1), por omisión `V` | La letra: `V`, `E` o `J`. **Única junto a `cedula`.** |
 | `tipo` | varchar(20), indexada | `trabajador` o `invitado` |
 | `nombre` | varchar(120) | |
 | `dependencia` | varchar(120), nula | Solo trabajador. Viene del sistema de carnets. En pantalla se rotula «Gerencia». |
@@ -30,6 +31,13 @@ nadie es trabajador e invitado a la vez.
 
 Las columnas que solo aplican a un tipo van **nulas** en el otro. Del invitado se guarda lo mínimo:
 nombre y **motivo de la visita**. Nada de foto del documento, teléfono ni dirección.
+
+> **AVISO A LAS PARTES 2 Y 3 · lo único de `personas` cambió.** Ya no es `cedula` a secas, sino la
+> pareja **`(nacionalidad, cedula)`**. Antes la letra se tiraba al normalizar, y eso hacía que
+> `V-12345678` y `E-12345678` fueran la misma ficha: al segundo que llegara le salían el nombre, la
+> foto y la dependencia del primero. Si buscáis por cédula, hay que llevar también la letra o
+> quedaros con el valor por omisión `V` —que es lo que se venía dando por sentado—. Las fichas que
+> ya estaban quedaron todas en `V`; si alguna era de un extranjero, se corrige a mano.
 
 > **El vehículo ya NO está aquí.** Estuvo en cinco columnas de esta tabla, y eso daba por sentado
 > que cada quien tiene uno solo. No es cierto —hay quien viene en carro unos días y en moto
@@ -341,14 +349,33 @@ de una entrada equivocada pasa siempre, porque el tipo es distinto.
 
 ## La cédula
 
-Se guarda y se busca **siempre normalizada a solo dígitos**, con
-`Persona::normalizarCedula($cedula)`. Así `12345678`, `12.345.678` y `V-12.345.678` son la misma
-persona. Si escribes una consulta por cédula, normaliza antes o no encontrarás nada.
+Son **dos datos, no uno**: el número y la letra.
+
+El **número** se guarda y se busca siempre normalizado a solo dígitos, con
+`Persona::normalizarCedula($cedula)`. Así `12345678` y `12.345.678` son el mismo. Si escribes una
+consulta por cédula, normaliza antes o no encontrarás nada.
+
+La **letra** —`V` venezolano, `E` extranjero, `J` jurídico— va aparte, en `nacionalidad`, y se
+escoge en un desplegable: no se teclea pegada al número. `Persona::normalizarNacionalidad()` la
+deja en mayúscula y convierte en `V` cualquier cosa que no reconozca, que es lo que se daba por
+sentado cuando no se preguntaba.
+
+**Los dos juntos identifican a la persona.** `V-12345678` y `E-12345678` son dos fichas distintas,
+y por eso lo único de la tabla es la pareja `(nacionalidad, cedula)` y no el número solo. Buscar
+por número sin la letra devuelve al venezolano: es lo que hace `buscarPorCedula()` cuando no se le
+pasa nada, para no romper a quien ya la llamaba con un solo argumento.
+
+Para mostrarla entera se usa `Persona::cedulaCompleta()` — `V-12.345.678` —, que es como está en el
+documento que el vigilante tiene en la mano.
 
 Cuántos dígitos puede tener lo dicen `Marcaje::DIGITOS_MINIMOS` (6) y `Marcaje::DIGITOS_MAXIMOS`
-(9). **Es la única definición**: la usa el servidor para validar en `exigirCedulaValida()` y la
-pantalla para el `maxlength` del campo, así no se pueden desajustar. Si el rango cambia, se cambia
-ahí y ya.
+(9), **salvo la jurídica**, que llega a `Marcaje::DIGITOS_MAXIMOS_JURIDICO` (10) porque su número es
+un RIF. El rango de cada letra sale de `Marcaje::digitosMaximos($nacionalidad)`. **Es la única
+definición**: la usa el servidor para validar en `exigirCedulaValida()` y la pantalla para el
+`maxlength` del campo, así no se pueden desajustar.
+
+Va por letra y no subiendo el máximo de todas a diez: una cédula `V` de diez dígitos no existe, y
+dejarla pasar sería abrir la puerta a un error de tecleo que después nadie atajaría.
 
 El campo de la cédula **solo admite dígitos**: `maxlength` corta por longitud y un `oninput` borra
 al instante cualquier cosa que no sea un número, también lo que se pegue. Ojo con no confundirse:
@@ -382,6 +409,7 @@ todo a este servicio:
 | `registrarInvitado(string $cedula, string $nombre, string $motivo, ?string $piso, ?DatosVehiculo $vehiculo): Persona` | Da de alta un invitado. El piso es **obligatorio**. |
 | `puedeEntrarDesde(Persona): ?CarbonInterface` | Desde qué hora se le puede volver a marcar la entrada, o `null` si ya. |
 | `cuantosDentro(): int` | **Le sirve a la parte 2** para su contador de quién está dentro. |
+| `cuantosDentroPorTipo(): array` | Lo mismo, separado en `trabajador` e `invitado`. Devuelve siempre las dos claves. |
 
 En el modelo `Persona`: `estaDentro()`, `ultimoMovimiento()`, `esInvitado()`, `esTrabajador()`,
 `tieneFoto()`, `rutaFotoSegura()`, `iniciales()` (para el hueco de la foto, sin pedir imágenes a
