@@ -295,7 +295,7 @@ se borran. Por eso se ataja antes de escribirlo y no después.
 ### Y hay que esperar entre dos entradas
 
 Además, **entre dos entradas de la misma persona tienen que pasar
-`Marcaje::MINUTOS_ENTRE_ENTRADAS` (20 min)**, haya salido en el medio o no. Es lo que evita que
+`Marcaje::MINUTOS_ENTRE_ENTRADAS` (10 min)**, haya salido en el medio o no. Es lo que evita que
 alguien que entra y sale a cada rato llene el histórico de movimientos.
 
 **Se cuenta desde la ENTRADA anterior, no desde la salida.** Si se contara desde la salida
@@ -308,14 +308,14 @@ puede marcar la entrada — no un «no se puede» a secas.
 | Hora | Qué pasa |
 |---|---|
 | 09:00 | Entrada · ✅ |
-| 09:05 | Salida · ✅ (la espera no estorba a la salida) |
-| 09:08 | Entrada · ❌ «a partir de las 09:20» |
-| 09:20 | Entrada · ✅ |
+| 09:03 | Salida · ✅ (la espera no estorba a la salida) |
+| 09:06 | Entrada · ❌ «a partir de las 09:10» |
+| 09:10 | Entrada · ✅ |
 
 `Marcaje::puedeEntrarDesde(Persona)` devuelve esa hora, o `null` si puede entrar ya. **A la
 parte 2 le sirve** si quiere avisar de lo mismo en su pantalla.
 
-> Efecto que hay que conocer: a quien baje diez minutos a la calle y vuelva **no se le podrá
+> Efecto que hay que conocer: a quien baje un momento a la calle y vuelva **no se le podrá
 > marcar el regreso** hasta que se cumpla el plazo. Es a propósito, pero conviene tenerlo claro
 > antes de que pase en la puerta.
 

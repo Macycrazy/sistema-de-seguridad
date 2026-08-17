@@ -35,11 +35,11 @@ class Marcaje
      * Se cuenta desde su ENTRADA anterior, haya salido en el medio o no: es lo que evita que
      * alguien que entra y sale a cada rato llene el histórico de movimientos.
      *
-     * Efecto que hay que conocer: a quien baje diez minutos a la calle y vuelva no se le podrá
+     * Efecto que hay que conocer: a quien baje un momento a la calle y vuelva no se le podrá
      * marcar el regreso hasta que se cumplan estos minutos. La pantalla le dice al vigilante la
      * hora exacta a partir de la cual puede.
      */
-    public const MINUTOS_ENTRE_ENTRADAS = 20;
+    public const MINUTOS_ENTRE_ENTRADAS = 10;
 
     /**
      * Cuántos dígitos puede tener una cédula. Es la única definición: la pantalla la usa para
