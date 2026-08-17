@@ -28,7 +28,8 @@ class PermisosTest extends TestCase
     public static function pantallas(): array
     {
         return [
-            'vigilante · inicio' => [Rol::VIGILANTE, '/', 200],
+            // El inicio del vigilante es marcar: al no ver el registro, «/» lo redirige (302) ahí.
+            'vigilante · inicio' => [Rol::VIGILANTE, '/', 302],
             'vigilante · marcar' => [Rol::VIGILANTE, '/marcar', 200],
             'vigilante · su clave' => [Rol::VIGILANTE, '/clave', 200],
             'vigilante · registro' => [Rol::VIGILANTE, '/registro', 403],

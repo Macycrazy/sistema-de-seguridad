@@ -55,7 +55,7 @@ class RegistroDelDiaTest extends TestCase
     {
         $this->get(route('registro'))
             ->assertOk()
-            ->assertSee('El registro');
+            ->assertSee('Registro');
     }
 
     #[Test]
@@ -218,14 +218,16 @@ class RegistroDelDiaTest extends TestCase
     }
 
     #[Test]
-    public function la_pantalla_se_identifica_como_parte_2(): void
+    public function la_pantalla_lleva_el_color_del_registro_y_no_el_de_otro_modulo(): void
     {
-        // El color de cada parte identifica el módulo. Si esta pantalla apareciera con el
-        // azul de la parte 1 o el verde de la parte 3, el sistema se leería mal.
+        // El teal identifica al registro. Ya no hay una etiqueta «Parte 2» —eso es lenguaje de
+        // equipo, no de usuario—, pero el color sigue: lo lleva el contador de «dentro ahora».
+        // Si esta pantalla apareciera con el azul de la parte 1 o el verde de la parte 3, el
+        // sistema se leería mal.
         $html = $this->get(route('registro'))->getContent();
 
-        $this->assertStringContainsString('bg-parte2-suave', $html);
         $this->assertStringContainsString('text-parte2', $html);
+        $this->assertStringContainsString('border-parte2', $html);
         $this->assertStringNotContainsString('text-parte3', $html);
         $this->assertStringNotContainsString('border-parte1', $html);
     }

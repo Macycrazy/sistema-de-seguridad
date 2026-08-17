@@ -50,26 +50,43 @@
                 --}}
                 @auth
                     @php
-                        $modulos = collect([
-                            ['ruta' => 'marcar', 'texto' => 'Marcar'],
+                        $puede = fn ($permiso) => ! $permiso || auth()->user()->can($permiso);
+
+                        // Dos oficios distintos, de gente distinta: el turno y la administración.
+                        // Se dibujan como dos grupos con una línea entre ellos; cada entrada sigue
+                        // apareciendo solo a quien tiene el permiso, y el grupo entero desaparece
+                        // si no queda ninguna.
+                        $operacion = collect([
+                            ['ruta' => 'marcar', 'texto' => 'Marcar', 'permiso' => null],
                             ['ruta' => 'registro', 'texto' => 'Registro', 'permiso' => 'ver-registro'],
+                        ])->filter(fn ($m) => $puede($m['permiso']));
+
+                        $administracion = collect([
                             ['ruta' => 'usuarios', 'texto' => 'Usuarios', 'permiso' => 'gestionar-usuarios'],
                             ['ruta' => 'roles', 'texto' => 'Roles', 'permiso' => 'gestionar-permisos'],
-                        ])->filter(fn ($m) => ! isset($m['permiso']) || auth()->user()->can($m['permiso']));
+                        ])->filter(fn ($m) => $puede($m['permiso']));
+
+                        $grupos = collect([$operacion, $administracion])->filter->isNotEmpty()->values();
                     @endphp
 
                     <nav class="flex shrink-0 items-center gap-1 font-mono text-xs font-semibold uppercase tracking-widest sm:text-sm sm:tracking-wide"
                          aria-label="Módulos">
-                        @foreach ($modulos as $m)
-                            @php $activo = request()->routeIs($m['ruta']); @endphp
-                            <a href="{{ route($m['ruta']) }}"
-                               @if ($activo) aria-current="page" @endif
-                               class="rounded px-3 py-2 transition
-                                      {{ $activo
-                                           ? 'bg-white text-marca'
-                                           : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
-                                {{ $m['texto'] }}
-                            </a>
+                        @foreach ($grupos as $i => $grupo)
+                            @if ($i > 0)
+                                <span class="mx-1.5 h-5 w-px bg-white/25" aria-hidden="true"></span>
+                            @endif
+
+                            @foreach ($grupo as $m)
+                                @php $activo = request()->routeIs($m['ruta']); @endphp
+                                <a href="{{ route($m['ruta']) }}"
+                                   @if ($activo) aria-current="page" @endif
+                                   class="rounded px-3 py-2 transition
+                                          {{ $activo
+                                               ? 'bg-white text-marca'
+                                               : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
+                                    {{ $m['texto'] }}
+                                </a>
+                            @endforeach
                         @endforeach
                     </nav>
 
