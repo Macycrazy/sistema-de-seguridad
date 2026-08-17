@@ -12,6 +12,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -51,6 +52,19 @@ class RegistroDelDia extends Component
      * documento registrado, así que la cédula no sirve para identificar a nadie.
      */
     public ?string $personaEnPanel = null;
+
+    /**
+     * El permiso se revisa aquí además de en la ruta.
+     *
+     * Va en «boot» y no en «mount» a propósito: «mount» corre una sola vez, en la primera carga.
+     * Livewire manda cada acción posterior a su propia ruta, y ahí el componente se rehidrata sin
+     * volver a montarse — un permiso comprobado solo al montar dejaría todas las acciones
+     * siguientes sin revisar. «boot» corre en todas.
+     */
+    public function boot(): void
+    {
+        Gate::authorize('ver-registro');
+    }
 
     public function mount(): void
     {
@@ -93,6 +107,10 @@ class RegistroDelDia extends Component
 
     public function exportar(): BinaryFileResponse
     {
+        // Su propio permiso, aparte de «ver-registro»: sacar el día entero a un archivo que se
+        // lleva en un pendrive no es lo mismo que mirarlo en pantalla.
+        Gate::authorize('exportar-registro');
+
         // Se lleva lo que está viendo, no todo el histórico.
         $archivo = 'registro-'.$this->diaElegido()->toDateString().'.xlsx';
 

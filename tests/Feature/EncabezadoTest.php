@@ -18,6 +18,15 @@ class EncabezadoTest extends TestCase
     // La pantalla de marcar consulta cuántos están dentro, así que necesita las tablas.
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Desde la parte 3 estas pantallas están detrás del ingreso. Aquí se mira el encabezado,
+        // no los permisos: basta con que haya alguien dentro.
+        $this->entrandoComo();
+    }
+
     /** Las páginas que llevan el encabezado. */
     public static function paginas(): array
     {
@@ -75,6 +84,47 @@ class EncabezadoTest extends TestCase
                 $propio,
                 $host,
                 "«{$enlace}» sale a un servidor de fuera, y el servidor de producción no tiene Internet.",
+            );
+        }
+    }
+
+    /**
+     * El marcado del layout cierra.
+     *
+     * Esto está aquí por un defecto que se coló y duró: el merge que juntó los encabezados hechos
+     * en paralelo por las partes 1 y 2 dejó DOS <header>, y el primero no cerraba ninguna de sus
+     * etiquetas. La pantalla no se veía rota del todo —el navegador recompone el marcado por su
+     * cuenta—, pero el sistema entero quedaba dentro de un <a> sin cerrar: todo encimado y sin
+     * poder pulsar nada.
+     *
+     * Las comprobaciones de arriba no lo cazaron porque miran que ciertos textos y rutas estén
+     * presentes, nunca que las etiquetas cierren. Un <header> de más las pasa todas.
+     */
+    #[DataProvider('paginas')]
+    public function test_el_marcado_de_cada_pantalla_cierra(string $url): void
+    {
+        $this->exigirMarcadoCerrado($this->get($url)->assertOk()->getContent());
+    }
+
+    public function test_el_marcado_de_la_pantalla_de_ingreso_tambien_cierra(): void
+    {
+        // La puerta se ve sin sesión, y hereda este mismo layout.
+        auth()->logout();
+
+        $this->exigirMarcadoCerrado($this->get('/ingresar')->assertOk()->getContent());
+    }
+
+    /** Cada etiqueta de bloque abre tantas veces como cierra. */
+    private function exigirMarcadoCerrado(string $html): void
+    {
+        foreach (['header', 'main', 'form', 'div', 'a', 'span'] as $etiqueta) {
+            $abre = preg_match_all('~<'.$etiqueta.'(?=[\s>])~i', $html);
+            $cierra = preg_match_all('~</'.$etiqueta.'\s*>~i', $html);
+
+            $this->assertSame(
+                $abre,
+                $cierra,
+                "«<{$etiqueta}>» abre {$abre} veces y cierra {$cierra}: el marcado no cuadra.",
             );
         }
     }

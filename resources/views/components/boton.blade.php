@@ -2,6 +2,10 @@
     'variante' => 'primario',
     'tamano' => 'normal',
     'type' => 'button',
+    // Va como propiedad y no como atributo suelto a propósito: el atributo «disabled» apaga el
+    // botón por el solo hecho de estar presente, aunque valga «false». Pasándolo así, quien usa
+    // el componente puede escribir :disabled="$condicion" sin miedo.
+    'disabled' => false,
 ])
 
 @php
@@ -27,6 +31,6 @@
                 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900
                 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50
                 $colores $medidas",
-]) }}>
+]) }} @disabled($disabled)>
     {{ $slot }}
 </button>

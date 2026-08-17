@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\DatosVehiculo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -37,10 +38,15 @@ class Persona extends Model
         'tipo',
         'nombre',
         'dependencia',
+        // Dónde labora el trabajador, o a dónde se dirige el invitado. Ver la migración.
+        'piso',
         'foto_ruta',
         'motivo',
         'activo',
     ];
+
+    /** Cuánto cabe en la columna «piso». Ver la migración. */
+    public const LARGO_PISO = 10;
 
     protected function casts(): array
     {
@@ -58,6 +64,19 @@ class Persona extends Model
         return preg_replace('/\D/', '', (string) $cedula) ?? '';
     }
 
+    /**
+     * Deja el piso sin espacios y en mayúsculas, para que «2-1» y «2 - 1» no acaben siendo dos
+     * pisos distintos al buscar. Misma idea que la cédula y que la placa.
+     *
+     * Vacío se convierte en nulo: es como se guarda «no consta».
+     */
+    public static function normalizarPiso(?string $piso): ?string
+    {
+        $piso = mb_strtoupper(preg_replace('/\s+/u', '', (string) $piso) ?? '');
+
+        return $piso === '' ? null : mb_substr($piso, 0, self::LARGO_PISO);
+    }
+
     public function movimientos(): HasMany
     {
         return $this->hasMany(Movimiento::class);
@@ -67,6 +86,21 @@ class Persona extends Model
     public function ultimoMovimiento(): ?Movimiento
     {
         return $this->movimientos()
+            ->orderByDesc('ocurrio_en')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /**
+     * La última entrada registrada, haya salido después o no.
+     *
+     * No sirve «ultimoMovimiento()» para esto: quien entró y ya salió tiene una salida como
+     * último movimiento, y la entrada que interesa está debajo.
+     */
+    public function ultimaEntrada(): ?Movimiento
+    {
+        return $this->movimientos()
+            ->where('tipo', Movimiento::ENTRADA)
             ->orderByDesc('ocurrio_en')
             ->orderByDesc('id')
             ->first();
@@ -134,5 +168,40 @@ class Persona extends Model
     public function cedulaConPuntos(): string
     {
         return number_format((int) $this->cedula, 0, ',', '.');
+    }
+
+    /**
+     * Los vehículos que tiene anotados. Pueden ser varios: carro y moto, por ejemplo.
+     *
+     * Se ordenan por placa para que la lista de la puerta salga siempre igual. Si cambiara de
+     * orden entre una visita y otra, el vigilante acabaría marcando el equivocado.
+     */
+    public function vehiculos(): HasMany
+    {
+        return $this->hasMany(Vehiculo::class)->orderBy('placa');
+    }
+
+    public function tieneVehiculos(): bool
+    {
+        return $this->vehiculos()->exists();
+    }
+
+    /** El vehículo de esta persona con esa placa, si lo tiene. */
+    public function vehiculoConPlaca(?string $placa): ?Vehiculo
+    {
+        $placa = DatosVehiculo::normalizarPlaca($placa);
+
+        return $placa ? $this->vehiculos()->where('placa', $placa)->first() : null;
+    }
+
+    /**
+     * En qué llegó la última vez que entró, si en algo.
+     *
+     * Se saca del asiento y no de la ficha: el asiento dice lo que trajo ESE día. Sirve para que
+     * la pantalla proponga lo mismo cuando vuelve, que casi siempre acierta.
+     */
+    public function placaDeLaUltimaEntrada(): ?string
+    {
+        return $this->ultimaEntrada()?->placa;
     }
 }

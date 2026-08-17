@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Movimiento;
 use App\Models\Persona;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -27,6 +28,18 @@ class Marcaje
      * diez segundos.
      */
     public const SEGUNDOS_ANTIDUPLICADO = 10;
+
+    /**
+     * Cuánto tiene que pasar entre dos entradas de la misma persona.
+     *
+     * Se cuenta desde su ENTRADA anterior, haya salido en el medio o no: es lo que evita que
+     * alguien que entra y sale a cada rato llene el histórico de movimientos.
+     *
+     * Efecto que hay que conocer: a quien baje diez minutos a la calle y vuelva no se le podrá
+     * marcar el regreso hasta que se cumplan estos minutos. La pantalla le dice al vigilante la
+     * hora exacta a partir de la cual puede.
+     */
+    public const MINUTOS_ENTRE_ENTRADAS = 20;
 
     /**
      * Cuántos dígitos puede tener una cédula. Es la única definición: la pantalla la usa para
@@ -64,13 +77,24 @@ class Marcaje
      * Dos personas distintas nunca comparten cédula, así que un invitado nuevo se crea aquí
      * con lo mínimo: nombre y motivo de la visita.
      *
+     * @param  DatosVehiculo|null  $vehiculo  El vehículo en el que llegó, si llegó en uno. Va
+     *                                        aparte de los otros datos porque es opcional de
+     *                                        verdad: quien entra caminando lo deja vacío.
+     *
      * @throws ValidationException si la cédula ya pertenece a alguien
      */
-    public function registrarInvitado(string $cedula, string $nombre, string $motivo): Persona
-    {
+    public function registrarInvitado(
+        string $cedula,
+        string $nombre,
+        string $motivo,
+        ?string $piso = null,
+        ?DatosVehiculo $vehiculo = null,
+    ): Persona {
         $cedula = Persona::normalizarCedula($cedula);
         $nombre = trim($nombre);
         $motivo = trim($motivo);
+        $piso = Persona::normalizarPiso($piso);
+        $vehiculo ??= DatosVehiculo::desde();
 
         $this->exigirCedulaValida($cedula);
 
@@ -86,19 +110,40 @@ class Marcaje
             ]);
         }
 
+        // Al invitado se le pregunta SIEMPRE a dónde va: es lo que permite saber quién hay en
+        // cada piso, que es media razón de ser de este registro.
+        if ($piso === null) {
+            throw ValidationException::withMessages([
+                'piso' => 'Hace falta el piso al que se dirige.',
+            ]);
+        }
+
+        // Un vehículo a medias no se guarda: o no hay carro, o al menos se sabe la placa.
+        $vehiculo->exigirValido();
+
         if (Persona::where('cedula', $cedula)->exists()) {
             throw ValidationException::withMessages([
                 'cedula' => 'Esa cédula ya está registrada en el sistema.',
             ]);
         }
 
-        return Persona::create([
-            'cedula' => $cedula,
-            'tipo' => Persona::INVITADO,
-            'nombre' => $nombre,
-            'motivo' => $motivo,
-            'activo' => true,
-        ]);
+        // La ficha y su vehículo se crean juntos o no se crea ninguno.
+        return DB::transaction(function () use ($cedula, $nombre, $motivo, $piso, $vehiculo) {
+            $persona = Persona::create([
+                'cedula' => $cedula,
+                'tipo' => Persona::INVITADO,
+                'nombre' => $nombre,
+                'motivo' => $motivo,
+                'piso' => $piso,
+                'activo' => true,
+            ]);
+
+            if (! $vehiculo->vacio()) {
+                $persona->vehiculos()->create($vehiculo->paraGuardarEnLaTabla());
+            }
+
+            return $persona;
+        });
     }
 
     /**
@@ -106,6 +151,14 @@ class Marcaje
      *
      * @param  string|null  $motivo  El motivo de la visita, si es un invitado que vuelve y lo
      *                               actualiza. Si va nulo se conserva el que ya tenía.
+     * @param  DatosVehiculo|null  $vehiculo  En qué llegó HOY, sea invitado o trabajador. Nulo y
+     *                                        vacío significan lo mismo aquí —que no trajo
+     *                                        ninguno—, porque el asiento anota lo de ESTE día y
+     *                                        no arrastra nada del anterior.
+     *
+     *                                        Si el vehículo no está entre los suyos, se le suma
+     *                                        a la ficha para que la próxima vez ya salga en la
+     *                                        lista y no haya que teclearlo otra vez.
      *
      * @throws ValidationException si el tipo no es entrada ni salida, o la persona está inactiva
      */
@@ -114,6 +167,8 @@ class Marcaje
         string $tipo,
         ?int $usuarioId = null,
         ?string $motivo = null,
+        ?string $piso = null,
+        ?DatosVehiculo $vehiculo = null,
     ): Movimiento {
         if (! in_array($tipo, [Movimiento::ENTRADA, Movimiento::SALIDA], true)) {
             throw ValidationException::withMessages([
@@ -127,9 +182,15 @@ class Marcaje
             ]);
         }
 
+        $vehiculo ??= DatosVehiculo::desde();
+        $vehiculo->exigirValido();
+        $this->exigirQueElVehiculoNoCambieDeClase($persona, $vehiculo);
+
         // La ficha y el asiento se guardan juntos o no se guarda ninguno: si falla la
         // actualización del invitado, no queremos un movimiento suelto apuntando a un dato viejo.
-        return DB::transaction(function () use ($persona, $tipo, $usuarioId, $motivo) {
+        $piso = Persona::normalizarPiso($piso);
+
+        return DB::transaction(function () use ($persona, $tipo, $usuarioId, $motivo, $piso, $vehiculo) {
             // Doble pulsación del botón, o el lector de carnets leyendo dos veces el mismo
             // carnet: se devuelve el asiento que ya existe en vez de crear otro igual.
             // Como los movimientos no se borran, un duplicado se quedaría en el histórico
@@ -138,10 +199,26 @@ class Marcaje
                 return $repetido;
             }
 
+            // Va DESPUÉS del antiduplicado a propósito: una doble pulsación no es un error del
+            // vigilante y no debe sacarle un aviso en pantalla, se resuelve sola arriba.
+            $this->exigirQueElMovimientoTengaSentido($persona, $tipo);
+
             $motivo = $motivo !== null ? trim($motivo) : null;
 
             if ($persona->esInvitado() && $motivo !== null && $motivo !== '') {
                 $persona->update(['motivo' => $motivo]);
+            }
+
+            // El piso del invitado cambia de una visita a otra: se le pregunta y se guarda. El
+            // del trabajador es fijo y viene de su ficha, así que no se toca.
+            if ($persona->esInvitado() && $piso !== null) {
+                $persona->update(['piso' => $piso]);
+            }
+
+            // Si trajo uno que no tenía anotado, se le suma a la ficha: la próxima vez ya sale
+            // en la lista y el vigilante solo lo señala en vez de teclearlo entero.
+            if (! $vehiculo->vacio() && ! $persona->vehiculoConPlaca($vehiculo->placa)) {
+                $persona->vehiculos()->create($vehiculo->paraGuardarEnLaTabla());
             }
 
             return Movimiento::create([
@@ -151,8 +228,92 @@ class Marcaje
                 'usuario_id' => $usuarioId,
                 // El asiento de un trabajador no lleva motivo: viene a trabajar.
                 'motivo' => $persona->esInvitado() ? $persona->motivo : null,
+                // El piso sí lo llevan los dos: el suyo si labora aquí, aquel al que va si visita.
+                'piso' => $persona->piso,
+                // Copia congelada de lo que trajo HOY, no un enlace a la tabla: el asiento tiene
+                // que seguir diciendo la verdad de ese día aunque el vehículo se corrija o se
+                // borre después.
+                ...$vehiculo->paraGuardar(),
             ]);
         });
+    }
+
+    /**
+     * No se entra dos veces seguidas, ni se sale sin haber entrado.
+     *
+     * Quien ya está dentro no puede volver a entrar: sería un asiento que no ocurrió, y como los
+     * movimientos no se borran, se quedaría en el histórico para siempre. Lo mismo al revés.
+     *
+     * La pantalla ya apaga el botón que no toca, pero eso es comodidad: cualquiera puede enviar
+     * una petición sin pasar por ahí.
+     *
+     * OJO si alguien se queda «dentro» de un día para otro porque olvidó marcar la salida: el
+     * botón de entrada le aparecerá apagado. Se arregla como cualquier otro error en este
+     * sistema, con un movimiento nuevo — se le marca la salida que faltaba y ya puede entrar.
+     *
+     * @throws ValidationException
+     */
+    protected function exigirQueElMovimientoTengaSentido(Persona $persona, string $tipo): void
+    {
+        $dentro = $persona->estaDentro();
+
+        if ($tipo === Movimiento::ENTRADA && $dentro) {
+            throw ValidationException::withMessages([
+                'tipo' => 'Ya tiene la entrada marcada: lo que toca es la salida.',
+            ]);
+        }
+
+        if ($tipo === Movimiento::SALIDA && ! $dentro) {
+            throw ValidationException::withMessages([
+                'tipo' => 'No tiene la entrada marcada: no se le puede marcar la salida.',
+            ]);
+        }
+
+        // Ya salió, pero entró hace muy poco. Se cuenta desde la entrada anterior, no desde la
+        // salida: si no, entrar y salir a cada rato seguiría llenando el histórico.
+        if ($tipo === Movimiento::ENTRADA && $desde = $this->puedeEntrarDesde($persona)) {
+            throw ValidationException::withMessages([
+                'tipo' => sprintf(
+                    'Entró hace menos de %d minutos. Se le puede marcar otra entrada a partir de las %s.',
+                    self::MINUTOS_ENTRE_ENTRADAS,
+                    $desde->format('H:i'),
+                ),
+            ]);
+        }
+    }
+
+    /**
+     * Un vehículo no cambia de clase: la moto de José es una moto todos los días.
+     *
+     * El tipo va pegado a la PLACA, no al día. Mientras siga siendo el mismo vehículo, marcar
+     * «carro» sobre una moto solo puede ser un error de tecleo, y un error así ensucia el
+     * histórico sin que nadie se entere. Si de verdad llegó en otra cosa, es otro vehículo: con
+     * poner la placa nueva, el tipo se vuelve a poder elegir.
+     *
+     * La pantalla ya apaga el botón que no toca, pero eso es comodidad: esconder un botón no es
+     * seguridad, y cualquiera puede enviar una petición sin pasar por ahí.
+     *
+     * @throws ValidationException
+     */
+    protected function exigirQueElVehiculoNoCambieDeClase(Persona $persona, DatosVehiculo $vehiculo): void
+    {
+        if ($vehiculo->vacio()) {
+            return;
+        }
+
+        $anotado = $persona->vehiculoConPlaca($vehiculo->placa);
+
+        if (! $anotado || $anotado->tipo === $vehiculo->tipo) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'tipoVehiculo' => sprintf(
+                'La placa %s ya está anotada como %s. Si hoy llegó en otro vehículo, cambia la placa.',
+                $anotado->placa,
+                mb_strtolower($anotado->datos()->etiquetaTipo()),
+            ),
+        ]);
     }
 
     /**
@@ -173,6 +334,26 @@ class Marcaje
         return $ultimo->ocurrio_en->diffInSeconds(now()) < self::SEGUNDOS_ANTIDUPLICADO
             ? $ultimo
             : null;
+    }
+
+    /**
+     * A partir de qué hora se le puede volver a marcar la entrada.
+     *
+     * Devuelve null cuando puede entrar ya —que es lo normal—, y la hora exacta cuando todavía
+     * hay que esperar. La pantalla la usa para decírselo al vigilante en vez de dejarle pulsar
+     * un botón que va a fallar.
+     */
+    public function puedeEntrarDesde(Persona $persona): ?CarbonInterface
+    {
+        $ultima = $persona->ultimaEntrada();
+
+        if (! $ultima) {
+            return null;
+        }
+
+        $desde = $ultima->ocurrio_en->copy()->addMinutes(self::MINUTOS_ENTRE_ENTRADAS);
+
+        return $desde->isFuture() ? $desde : null;
     }
 
     /** Cuántas personas están dentro en este momento: su último movimiento fue una entrada. */

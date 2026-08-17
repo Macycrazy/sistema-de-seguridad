@@ -1,0 +1,19 @@
+#!/bin/sh
+#
+# Se ejecuta al cambiar de rama con «git checkout» o «git switch».
+#
+# Misma razón que post-merge: cada rama puede traer sus propias migraciones, y saltar de una a
+# otra deja la base a medias sin que nadie lo diga. Ver ese archivo para el porqué y para cómo
+# activar los hooks.
+#
+# Git le pasa tres argumentos: la referencia anterior, la nueva, y si fue un cambio de rama (1)
+# o de archivos sueltos (0). Solo interesa el cambio de rama.
+
+[ "$3" = "1" ] || exit 0
+
+command -v php >/dev/null 2>&1 || exit 0
+[ -f artisan ] || exit 0
+
+php artisan migraciones:pendientes 2>/dev/null
+
+exit 0

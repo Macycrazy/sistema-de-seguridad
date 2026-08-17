@@ -17,16 +17,50 @@
             </a>
         </x-tarjeta>
 
-        <a href="{{ route('registro') }}" class="block transition hover:shadow-md">
+        {{--
+            El registro es la lista completa del personal, así que el vigilante no lo abre. La
+            tarjeta se le muestra igual, sin enlace: esconderla del todo haría parecer que al
+            sistema le falta algo. Esto es cortesía, no seguridad — quien teclee la dirección a
+            mano se topa con un 403.
+        --}}
+        @can('ver-registro')
+            <a href="{{ route('registro') }}" class="block transition hover:shadow-md">
+                <x-tarjeta parte="2" titulo="Parte 2" class="h-full">
+                    <p class="text-lg font-semibold">El registro</p>
+                    <p class="mt-1 text-sm text-parte2">Ver la pantalla &rarr;</p>
+                </x-tarjeta>
+            </a>
+        @else
             <x-tarjeta parte="2" titulo="Parte 2" class="h-full">
                 <p class="text-lg font-semibold">El registro</p>
-                <p class="mt-1 text-sm text-parte2">Ver la pantalla &rarr;</p>
+                <p class="mt-1 text-sm text-slate-500">Lo ve el supervisor</p>
             </x-tarjeta>
-        </a>
+        @endcan
 
-        <x-tarjeta parte="3" titulo="Parte 3">
+        {{--
+            La tarjeta no va envuelta en un enlace porque lleva dos dentro, y un enlace dentro de
+            otro no es marcado válido. Cada quien ve los que le abren.
+        --}}
+        <x-tarjeta parte="3" titulo="Parte 3" class="h-full">
             <p class="text-lg font-semibold">Usuarios y roles</p>
-            <p class="mt-1 text-sm text-slate-600">Pendiente</p>
+
+            <div class="mt-1 space-y-1 text-sm">
+                @can('gestionar-usuarios')
+                    <a href="{{ route('usuarios') }}" class="block font-semibold text-parte3 underline">
+                        Gestionar los usuarios
+                    </a>
+                @endcan
+
+                @can('gestionar-permisos')
+                    <a href="{{ route('roles') }}" class="block font-semibold text-parte3 underline">
+                        Roles y permisos
+                    </a>
+                @endcan
+
+                @cannot('gestionar-usuarios')
+                    <p class="text-slate-500">Los gestiona el supervisor</p>
+                @endcannot
+            </div>
         </x-tarjeta>
     </div>
 

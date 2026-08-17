@@ -20,6 +20,11 @@ class FotoPersonaTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // La ruta de las fotos está detrás del ingreso desde la parte 3. El permiso por rol
+        // —quién puede ver la cara de quién— es el bloque B y aún no está.
+        $this->entrandoComo();
+
         // Disco de mentira: las pruebas no escriben en storage/app/private de verdad.
         Storage::fake('local');
     }
