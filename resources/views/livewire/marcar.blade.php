@@ -179,8 +179,12 @@
                         @endunless
 
                         @if ($dentroDeHoy)
+                            {{-- La hora a la que entró, no los minutos que lleva. Un «54 min» hay
+                                 que restarlo mentalmente para saber de cuándo se habla; «08:12»
+                                 se compara de un vistazo con el reloj de la pared. En 24 h, como
+                                 el resto del sistema. --}}
                             <x-etiqueta tipo="entrada">
-                                Dentro · {{ (int) abs(now()->diffInMinutes($ultimo->ocurrio_en)) }} min
+                                Dentro · {{ $ultimo->ocurrio_en->format(\App\Models\Movimiento::FORMATO_HORA) }}
                             </x-etiqueta>
                         @elseif ($estaDentroAhora)
                             {{-- Se le quedó la entrada de otro día sin salida. Va en rojo porque
@@ -265,7 +269,7 @@
                                             {{ $ultimaEntrada->ocurrio_en->isToday()
                                                 ? 'hoy'
                                                 : 'el '.$ultimaEntrada->ocurrio_en->format('d/m') }}
-                                            a las {{ $ultimaEntrada->ocurrio_en->format('H:i') }}
+                                            a las {{ $ultimaEntrada->ocurrio_en->format(\App\Models\Movimiento::FORMATO_HORA) }}
                                         @else
                                             <span class="text-slate-400">sin registrar</span>
                                         @endif
@@ -281,7 +285,7 @@
                                             {{ $ultimaSalida->ocurrio_en->isToday()
                                                 ? 'hoy'
                                                 : 'el '.$ultimaSalida->ocurrio_en->format('d/m') }}
-                                            a las {{ $ultimaSalida->ocurrio_en->format('H:i') }}
+                                            a las {{ $ultimaSalida->ocurrio_en->format(\App\Models\Movimiento::FORMATO_HORA) }}
                                         @else
                                             <span class="text-slate-400">sin registrar</span>
                                         @endif
@@ -320,8 +324,10 @@
 
                     <x-piso
                         :mapa="$this->oficinasPorPiso"
+                        :nombres="$this->nombresDePiso"
                         :nivel="$nivel"
                         :piso="$piso"
+                        :a-mano="$pisoAMano"
                         :error="$errors->first('piso')"
                     />
                 </div>
@@ -506,8 +512,10 @@
 
                     <x-piso
                         :mapa="$this->oficinasPorPiso"
+                        :nombres="$this->nombresDePiso"
                         :nivel="$nivel"
                         :piso="$piso"
+                        :a-mano="$pisoAMano"
                         :error="$errors->first('piso')"
                     />
                 </div>

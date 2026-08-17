@@ -40,6 +40,7 @@ return [
         '2-5',
         '2-6',
         '2-7',
+        '2-9',
         '3-1',
         '3-2',
         '3-3',
@@ -56,6 +57,33 @@ return [
         '4-9',
         '7',
         '8-2',
+        '9',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | El nombre de una oficina donde todavía no labora nadie
+    |--------------------------------------------------------------------------
+    |
+    | Normalmente el nombre no se escribe: sale de las fichas del personal que labora en cada
+    | oficina, y así nunca puede contradecirlas. Pero una oficina sin nadie asignado saldría como
+    | un código pelado —«9»—, y hay sitios que se conocen por su nombre antes que por su número.
+    |
+    | Lo de aquí es solo un RESPALDO: en cuanto haya una ficha con esa oficina, manda la ficha.
+    |
+    | La clave es el código de la OFICINA, no el del piso. En el 7 y el 9 coinciden —son el sitio
+    | entero—, pero el piso 8 es «8-2», y es ahí donde va su nombre.
+    |
+    | En la pantalla, estos nombres salen en el botón del PISO, y solo cuando ese piso tiene una
+    | sola oficina: son los que no llegan a enseñar la lista de oficinas y no tendrían dónde decir
+    | cómo se llaman.
+    |
+    */
+
+    'nombres' => [
+        '7' => 'Venapp',
+        '8-2' => 'Despacho',
+        '9' => 'Presidencia',
     ],
 
 ];
