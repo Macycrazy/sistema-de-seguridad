@@ -184,7 +184,7 @@
                                  se compara de un vistazo con el reloj de la pared. En 24 h, como
                                  el resto del sistema. --}}
                             <x-etiqueta tipo="entrada">
-                                Dentro · {{ $ultimo->ocurrio_en->format('H:i') }}
+                                Dentro · {{ $ultimo->ocurrio_en->format(\App\Models\Movimiento::FORMATO_HORA) }}
                             </x-etiqueta>
                         @elseif ($estaDentroAhora)
                             {{-- Se le quedó la entrada de otro día sin salida. Va en rojo porque
@@ -269,7 +269,7 @@
                                             {{ $ultimaEntrada->ocurrio_en->isToday()
                                                 ? 'hoy'
                                                 : 'el '.$ultimaEntrada->ocurrio_en->format('d/m') }}
-                                            a las {{ $ultimaEntrada->ocurrio_en->format('H:i') }}
+                                            a las {{ $ultimaEntrada->ocurrio_en->format(\App\Models\Movimiento::FORMATO_HORA) }}
                                         @else
                                             <span class="text-slate-400">sin registrar</span>
                                         @endif
@@ -285,7 +285,7 @@
                                             {{ $ultimaSalida->ocurrio_en->isToday()
                                                 ? 'hoy'
                                                 : 'el '.$ultimaSalida->ocurrio_en->format('d/m') }}
-                                            a las {{ $ultimaSalida->ocurrio_en->format('H:i') }}
+                                            a las {{ $ultimaSalida->ocurrio_en->format(\App\Models\Movimiento::FORMATO_HORA) }}
                                         @else
                                             <span class="text-slate-400">sin registrar</span>
                                         @endif

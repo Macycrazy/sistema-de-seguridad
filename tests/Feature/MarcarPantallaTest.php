@@ -704,7 +704,7 @@ class MarcarPantallaTest extends TestCase
             ->set('cedula', '12345678')
             ->call('buscar')
             ->call('marcarEntrada')
-            ->assertSee('Entrada registrada a las 09:06');
+            ->assertSee('Entrada registrada a las 9:06am');
 
         $this->travelTo(now()->setTime(17, 42));
 
@@ -712,7 +712,8 @@ class MarcarPantallaTest extends TestCase
             ->set('cedula', '12345678')
             ->call('buscar')
             ->call('marcarSalida')
-            ->assertSee('Salida registrada a las 17:42');
+            // La tarde se dice como se dice aquí: «5:42pm», no «17:42».
+            ->assertSee('Salida registrada a las 5:42pm');
     }
 
     /**
@@ -732,7 +733,7 @@ class MarcarPantallaTest extends TestCase
             ->set('cedula', '12345678')
             ->call('buscar')
             ->call('marcarEntrada')
-            ->assertSee('Entrada registrada a las 09:06');
+            ->assertSee('Entrada registrada a las 9:06am');
 
         // Dentro de la ventana del antiduplicado, pero ya en el minuto siguiente.
         $this->travel(Marcaje::SEGUNDOS_ANTIDUPLICADO - 1)->seconds();
@@ -741,9 +742,9 @@ class MarcarPantallaTest extends TestCase
             ->set('cedula', '12345678')
             ->call('buscar')
             ->call('marcarEntrada')
-            // Las 09:06 del asiento que ya existía, no las 09:07 que marca el reloj.
-            ->assertSee('Entrada registrada a las 09:06')
-            ->assertDontSee('Entrada registrada a las 09:07');
+            // Las 9:06 del asiento que ya existía, no las 9:07 que marca el reloj.
+            ->assertSee('Entrada registrada a las 9:06am')
+            ->assertDontSee('Entrada registrada a las 9:07am');
 
         $this->assertDatabaseCount('movimientos', 1);
     }
@@ -789,7 +790,7 @@ class MarcarPantallaTest extends TestCase
             ->set('cedula', '12345678')
             ->call('buscar')
             ->assertSee('Se le puede marcar la salida')
-            ->assertSee('09:05')
+            ->assertSee('9:05am')
             ->call('marcarSalida')
             ->assertHasErrors('tipo');
 

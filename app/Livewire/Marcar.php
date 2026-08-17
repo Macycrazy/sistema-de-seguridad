@@ -166,7 +166,7 @@ class Marcar extends Component
         $persona = $this->persona();
 
         return $persona
-            ? $this->marcaje->puedeEntrarDesde($persona)?->format('H:i')
+            ? $this->marcaje->puedeEntrarDesde($persona)?->format(Movimiento::FORMATO_HORA)
             : null;
     }
 
@@ -193,7 +193,7 @@ class Marcar extends Component
         $persona = $this->persona();
 
         return $persona
-            ? $this->marcaje->puedeSalirDesde($persona)?->format('H:i')
+            ? $this->marcaje->puedeSalirDesde($persona)?->format(Movimiento::FORMATO_HORA)
             : null;
     }
 
@@ -649,7 +649,8 @@ class Marcar extends Component
          * otro, y entonces la hora buena es la de aquel, no la de este segundo toque. Con now()
          * la pantalla diría una hora que no está guardada en ninguna parte.
          */
-        $confirmacion = "{$verbo} registrada a las {$movimiento->ocurrio_en->format('H:i')} · {$persona->nombre}";
+        $hora = $movimiento->ocurrio_en->format(Movimiento::FORMATO_HORA);
+        $confirmacion = "{$verbo} registrada a las {$hora} · {$persona->nombre}";
 
         $this->limpiar();
         $this->confirmacion = $confirmacion;
