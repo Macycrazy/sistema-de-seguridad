@@ -54,9 +54,6 @@ class Marcar extends Component
     /** El piso —solo el número— que se escogió primero, antes de elegir la oficina. */
     public string $nivel = '';
 
-    /** Cuántos pisos se ofrecen como atajo antes de dejarlo solo en la casilla de escribir. */
-    public const PISOS_COMO_MUCHO = 12;
-
     /** Los dos campos obligatorios del formulario de invitado. */
     public string $nombre = '';
 
@@ -321,29 +318,6 @@ class Marcar extends Component
     }
 
     /**
-     * Los pisos que ya se usan en el edificio, para ofrecerlos como atajos.
-     *
-     * NO son una lista fija en el código: salen de las fichas que hay en la base. Hoy son pocos
-     * porque los datos son de prueba; cuando se cargue el personal de verdad, la lista aparece
-     * sola y sin tocar nada. Por eso tampoco sustituyen a la casilla de escribir: un piso al que
-     * nadie ha ido todavía no está en la lista, y aun así tiene que poder anotarse.
-     *
-     * El tope está para que un dato sucio no llene la pantalla de botones: si algún día hay más
-     * de estos, se teclea y ya.
-     */
-    #[Computed]
-    public function pisosConocidos(): Collection
-    {
-        return Persona::query()
-            ->whereNotNull('piso')
-            ->where('piso', '!=', '')
-            ->distinct()
-            ->orderBy('piso')
-            ->limit(self::PISOS_COMO_MUCHO)
-            ->pluck('piso');
-    }
-
-    /**
      * Las oficinas del edificio agrupadas por piso, con la gerencia que hay en cada una.
      *
      *     ['2' => ['2-1' => 'Tecnología', '2-2' => 'Planificación y Presupuesto'], ...]
@@ -362,31 +336,56 @@ class Marcar extends Component
     #[Computed]
     public function oficinasPorPiso(): array
     {
-        $fichas = Persona::query()
+        // La LISTA sale del catálogo del edificio (config/edificio.php): hay sitios donde no
+        // labora nadie —el LOBBY— y aun así se va de visita a ellos.
+        $catalogo = collect(config('edificio.oficinas', []))
+            ->map(fn ($codigo) => Persona::normalizarPiso($codigo))
+            ->filter()
+            ->unique();
+
+        // La GERENCIA sale de las fichas del personal, que es donde ya consta quién labora dónde.
+        // Así no puede contradecirlas, y una oficina vacía se ofrece igual, solo que sin nombre.
+        $gerencias = Persona::query()
             ->where('tipo', Persona::TRABAJADOR)
             ->whereNotNull('piso')
             ->where('piso', '!=', '')
             ->orderBy('piso')
-            ->get(['piso', 'dependencia']);
+            ->get(['piso', 'dependencia'])
+            // Si dos fichas de la misma oficina dicen gerencias distintas, se queda la primera:
+            // aquí no se arregla un dato mal puesto, solo se pone un nombre debajo de un botón.
+            ->reduce(function (array $lista, Persona $ficha) {
+                $lista[(string) $ficha->piso] ??= trim((string) $ficha->dependencia);
+
+                return $lista;
+            }, []);
 
         $mapa = [];
 
-        foreach ($fichas as $ficha) {
-            $codigo = (string) $ficha->piso;
-
-            // Si dos fichas de la misma oficina dicen gerencias distintas, se queda la primera:
-            // aquí no se arregla un dato mal puesto, solo se ofrece un atajo.
-            $mapa[self::nivelDe($codigo)][$codigo] ??= trim((string) $ficha->dependencia);
+        foreach ($catalogo as $codigo) {
+            $mapa[self::nivelDe($codigo)][$codigo] = $gerencias[$codigo] ?? '';
         }
 
-        ksort($mapa, SORT_NATURAL);
+        // Los pisos con nombre —LOBBY, PB— van primero: son la planta de abajo, por donde se
+        // entra. Después los numerados, en orden de verdad: sin esto, «10» iría antes que «7».
+        uksort($mapa, function ($uno, $otro) {
+            $unoEsNumero = ctype_digit((string) $uno);
+            $otroEsNumero = ctype_digit((string) $otro);
+
+            if ($unoEsNumero !== $otroEsNumero) {
+                return $unoEsNumero <=> $otroEsNumero;
+            }
+
+            return $unoEsNumero
+                ? (int) $uno <=> (int) $otro
+                : strcmp((string) $uno, (string) $otro);
+        });
 
         foreach ($mapa as $nivel => $oficinas) {
             ksort($oficinas, SORT_NATURAL);
             $mapa[$nivel] = $oficinas;
         }
 
-        return array_slice($mapa, 0, self::PISOS_COMO_MUCHO, preserve_keys: true);
+        return $mapa;
     }
 
     /** El piso al que pertenece un código de oficina: de «2-1» sale «2». */
@@ -395,11 +394,19 @@ class Marcar extends Component
         return explode('-', (string) $piso, 2)[0];
     }
 
-    /** Se escogió el piso: falta la oficina, así que el código anterior deja de valer. */
+    /**
+     * Se escogió el piso: falta la oficina, así que el código anterior deja de valer.
+     *
+     * Salvo cuando el piso ES el sitio —«LOBBY», «7»: no llevan guion ni tienen oficinas dentro—.
+     * Ahí pedir un segundo toque sería pedirlo para nada, así que queda escogido de una vez.
+     */
     public function elegirNivel(string $nivel): void
     {
         $this->nivel = $nivel;
-        $this->piso = '';
+
+        $oficinas = array_keys($this->oficinasPorPiso()[$nivel] ?? []);
+
+        $this->piso = $oficinas === [$nivel] ? $nivel : '';
     }
 
     /** Si se teclea el código a mano, el piso de arriba se pone al día solo. */

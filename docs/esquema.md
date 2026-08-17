@@ -131,6 +131,25 @@ En `movimientos` va la copia congelada del piso al que fue **ese día** —para 
 misma lógica que el motivo y el vehículo. Está indexada: «¿quién subió al 2-1 hoy?» es una pregunta
 de la puerta, y **le sirve a la parte 2**.
 
+### La lista de oficinas vive en `config/edificio.php`
+
+El catálogo de sitios —`LOBBY`, `PB-1`, `2-1`… `8-2`— está ahí y no en la base de datos: es la
+lista del edificio, no un dato del sistema. Cuando alguien se muda de oficina, se edita ese
+archivo.
+
+Tampoco se saca de las fichas del personal, aunque el código ya conste en ellas: **hay sitios donde
+no labora nadie** —el LOBBY, un piso recién desocupado— y aun así se va de visita a ellos.
+
+La **gerencia** de cada oficina sí sale de las fichas, así que no puede contradecirlas. Una oficina
+sin nadie asignado se ofrece igual, solo que sin nombre debajo.
+
+En la pantalla se pregunta en **dos pasos** —primero el piso, después la oficina— porque una lista
+de treinta códigos delante de alguien que espera de pie no se lee, se busca. Los códigos sin guion
+(`LOBBY`, `7`) son un sitio entero: se escogen de un toque, sin segundo paso.
+
+Nada de esto valida: el vigilante puede escribir a mano un código que no esté en la lista. **Son
+atajos, no una reja.**
+
 ### Se guarda normalizado
 
 Sin espacios y en mayúsculas, con `Persona::normalizarPiso()`. Así `2-1` y `2 - 1` no acaban siendo

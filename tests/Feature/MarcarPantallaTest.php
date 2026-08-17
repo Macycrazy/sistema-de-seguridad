@@ -100,7 +100,7 @@ class MarcarPantallaTest extends TestCase
             ->set('cedula', '31415926')
             ->call('buscar')
             ->assertSet('invitadoNuevo', true)
-            ->assertSee('Piso')
+            ->assertSee('¿A qué piso va?')
             ->set('nombre', 'Carlos Pérez')
             ->set('motivo', 'Videoconferencia')
             // Sin piso no pasa.
@@ -561,6 +561,10 @@ class MarcarPantallaTest extends TestCase
      */
     public function test_el_piso_se_pregunta_primero_y_la_oficina_despues(): void
     {
+        // El catálogo del edificio se fija aquí para que la prueba no dependa de cuántas oficinas
+        // tenga config/edificio.php el día que se lea.
+        config(['edificio.oficinas' => ['LOBBY', '1-2', '2-1', '2-2']]);
+
         $this->trabajador(['piso' => '2-1', 'dependencia' => 'Tecnología']);
         $this->trabajador(['cedula' => '22222222', 'piso' => '2-2', 'dependencia' => 'Planificación']);
         $this->trabajador(['cedula' => '33333333', 'piso' => '1-2', 'dependencia' => 'Gestión Humana']);
@@ -595,6 +599,24 @@ class MarcarPantallaTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('personas', ['cedula' => '25375258', 'piso' => '9-9']);
+    }
+
+    /**
+     * Hay sitios que no tienen oficinas dentro —«LOBBY», «7»: no llevan guion—. Ahí el piso ES el
+     * sitio, así que pedir un segundo toque sería pedirlo para nada.
+     */
+    public function test_un_sitio_sin_oficinas_queda_escogido_de_un_toque(): void
+    {
+        config(['edificio.oficinas' => ['LOBBY', '2-1', '2-2']]);
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '25375258')
+            ->call('buscar')
+            ->call('elegirNivel', 'LOBBY')
+            ->assertSet('piso', 'LOBBY')
+            // Y un piso que sí tiene oficinas deja el sitio en blanco hasta que se escoja una.
+            ->call('elegirNivel', '2')
+            ->assertSet('piso', '');
     }
 
     /** El aviso de invitado se puede cerrar, y vuelve a salir con la cédula siguiente. */
