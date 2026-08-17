@@ -232,13 +232,28 @@ class RegistroRealTest extends TestCase
     }
 
     #[Test]
-    public function pedir_un_ente_no_devuelve_nada_porque_la_tabla_aun_no_lo_guarda(): void
+    public function el_filtro_por_ente_deja_solo_ese_ente(): void
     {
-        $ana = $this->trabajador();
-        $this->anotar($ana, MovimientoModel::ENTRADA, CarbonImmutable::today()->setTime(8, 0));
+        $hoy = CarbonImmutable::today();
+        $ciip = $this->trabajador(['cedula' => '111', 'nombre' => 'DE CIIP', 'ente' => PersonaModel::ENTE_CIIP]);
+        $venapp = $this->trabajador(['cedula' => '222', 'nombre' => 'DE VENAPP', 'ente' => PersonaModel::ENTE_VENAPP]);
 
-        // Comportamiento documentado: sin columna de ente, filtrar por uno no puede devolver a nadie.
-        $this->assertCount(0, $this->fuente->movimientosDelDia(CarbonImmutable::today(), null, Ente::Ciip));
+        $this->anotar($ciip, MovimientoModel::ENTRADA, $hoy->setTime(8, 0));
+        $this->anotar($venapp, MovimientoModel::ENTRADA, $hoy->setTime(9, 0));
+
+        $soloCiip = $this->fuente->movimientosDelDia($hoy, null, Ente::Ciip);
+
+        $this->assertCount(1, $soloCiip);
+        $this->assertSame('DE CIIP', $soloCiip->first()->persona->nombre());
+        $this->assertSame(Ente::Ciip, $soloCiip->first()->persona->ente);
+    }
+
+    #[Test]
+    public function el_invitado_no_pertenece_a_ningun_ente(): void
+    {
+        $invitado = $this->trabajador(['cedula' => '333', 'tipo' => PersonaModel::INVITADO, 'nombre' => 'VISITA', 'ente' => null, 'dependencia' => null, 'piso' => null]);
+
+        $this->assertNull($this->fuente->persona((string) $invitado->id)->ente);
     }
 
     #[Test]

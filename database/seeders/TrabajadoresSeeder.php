@@ -42,24 +42,27 @@ class TrabajadoresSeeder extends Seeder
         // tres se ven las dos clases.
         // El piso va con el código del edificio: «2-1», «2-2» y así. La gente de una misma
         // gerencia comparte piso, que es como está repartido el edificio de verdad.
+        // El ente reparte al personal entre los tres organismos del edificio. La mayoría es de
+        // CIIP; se siembran un par de Marca País y VENAPP para que el filtro del registro se vea
+        // funcionando con las tres opciones.
         $trabajadores = [
-            ['cedula' => '11111111', 'nombre' => 'Ana Rodríguez Peña', 'gerencia' => self::GESTION_HUMANA, 'piso' => '3-1'],
-            ['cedula' => '22222222', 'nombre' => 'Luis Hernández Mora', 'gerencia' => self::TECNOLOGIA, 'piso' => '2-1', 'vehiculos' => [
+            ['cedula' => '11111111', 'nombre' => 'Ana Rodríguez Peña', 'ente' => Persona::ENTE_CIIP, 'gerencia' => self::GESTION_HUMANA, 'piso' => '3-1'],
+            ['cedula' => '22222222', 'nombre' => 'Luis Hernández Mora', 'ente' => Persona::ENTE_CIIP, 'gerencia' => self::TECNOLOGIA, 'piso' => '2-1', 'vehiculos' => [
                 [DatosVehiculo::CARRO, 'Toyota', 'Corolla', 'Gris', 'AB123CD'],
                 [DatosVehiculo::MOTO, 'Empire', 'Horse', 'Rojo', 'AE321JK'],
             ]],
-            ['cedula' => '33333333', 'nombre' => 'Carmen Díaz Silva', 'gerencia' => self::PLANIFICACION, 'piso' => '2-2'],
-            ['cedula' => '44444444', 'nombre' => 'José Martínez Rojas', 'gerencia' => self::JURIDICA, 'piso' => '4-1', 'vehiculos' => [
+            ['cedula' => '33333333', 'nombre' => 'Carmen Díaz Silva', 'ente' => Persona::ENTE_CIIP, 'gerencia' => self::PLANIFICACION, 'piso' => '2-2'],
+            ['cedula' => '44444444', 'nombre' => 'José Martínez Rojas', 'ente' => Persona::ENTE_CIIP, 'gerencia' => self::JURIDICA, 'piso' => '4-1', 'vehiculos' => [
                 [DatosVehiculo::MOTO, 'Bera', 'BR-150', 'Negro', 'AC456DF'],
             ]],
-            ['cedula' => '55555555', 'nombre' => 'María Fernández Ruiz', 'gerencia' => self::PLANIFICACION, 'piso' => '2-2'],
-            ['cedula' => '66666666', 'nombre' => 'Pedro Gómez Alvarado', 'gerencia' => self::TECNOLOGIA, 'piso' => '2-1'],
-            ['cedula' => '77777777', 'nombre' => 'Rosa Blanco Ceballos', 'gerencia' => self::GESTION_HUMANA, 'piso' => '3-1'],
-            ['cedula' => '88888888', 'nombre' => 'Miguel Suárez Lugo', 'gerencia' => self::TECNOLOGIA, 'piso' => '2-1'],
-            ['cedula' => '12345678', 'nombre' => 'Daniela Paredes Ortiz', 'gerencia' => self::JURIDICA, 'piso' => '4-1', 'vehiculos' => [
+            ['cedula' => '55555555', 'nombre' => 'María Fernández Ruiz', 'ente' => Persona::ENTE_CIIP, 'gerencia' => self::PLANIFICACION, 'piso' => '2-2'],
+            ['cedula' => '66666666', 'nombre' => 'Pedro Gómez Alvarado', 'ente' => Persona::ENTE_CIIP, 'gerencia' => self::TECNOLOGIA, 'piso' => '2-1'],
+            ['cedula' => '77777777', 'nombre' => 'Rosa Blanco Ceballos', 'ente' => Persona::ENTE_MARCA_PAIS, 'gerencia' => self::GESTION_HUMANA, 'piso' => '3-1'],
+            ['cedula' => '88888888', 'nombre' => 'Miguel Suárez Lugo', 'ente' => Persona::ENTE_MARCA_PAIS, 'gerencia' => self::TECNOLOGIA, 'piso' => '2-1'],
+            ['cedula' => '12345678', 'nombre' => 'Daniela Paredes Ortiz', 'ente' => Persona::ENTE_VENAPP, 'gerencia' => self::JURIDICA, 'piso' => '4-1', 'vehiculos' => [
                 [DatosVehiculo::CARRO, 'Chevrolet', 'Aveo', 'Azul', 'AD789GH'],
             ]],
-            ['cedula' => '87654321', 'nombre' => 'Rafael Montero Vega', 'gerencia' => self::PLANIFICACION, 'piso' => '2-2'],
+            ['cedula' => '87654321', 'nombre' => 'Rafael Montero Vega', 'ente' => Persona::ENTE_VENAPP, 'gerencia' => self::PLANIFICACION, 'piso' => '2-2'],
         ];
 
         foreach ($trabajadores as $trabajador) {
@@ -67,6 +70,7 @@ class TrabajadoresSeeder extends Seeder
                 ['cedula' => $trabajador['cedula']],
                 [
                     'tipo' => Persona::TRABAJADOR,
+                    'ente' => $trabajador['ente'],
                     'nombre' => $trabajador['nombre'],
                     // La columna se sigue llamando «dependencia» en la base: renombrarla es un
                     // cambio de esquema que hay que hablar con las otras dos partes. En pantalla

@@ -29,18 +29,16 @@ final class RegistroReal implements FuenteDelRegistro
         ?TipoDePersona $tipo = null,
         ?Ente $ente = null,
     ): Collection {
-        // La tabla `personas` aún no tiene ente: nadie pertenece a uno, así que pedir un ente
-        // concreto no puede devolver a nadie. Es honesto —no hay ese dato— hasta que se agregue.
-        if ($ente !== null) {
-            return collect();
-        }
-
         return MovimientoModel::query()
             ->with(['persona', 'usuario'])
             ->whereDate('ocurrio_en', $fecha->toDateString())
             ->when(
                 $tipo,
                 fn ($q) => $q->whereHas('persona', fn ($p) => $p->where('tipo', $tipo->value)),
+            )
+            ->when(
+                $ente,
+                fn ($q) => $q->whereHas('persona', fn ($p) => $p->where('ente', $ente->value)),
             )
             ->orderByDesc('ocurrio_en')
             ->orderByDesc('id')
@@ -136,7 +134,9 @@ final class RegistroReal implements FuenteDelRegistro
             apellidos: $persona->nombre,
             nombres: '',
             tipo: TipoDePersona::from($persona->tipo),
-            ente: null,
+            // Un invitado no pertenece a ningún ente; un trabajador puede venir de una carga que
+            // aún no lo traiga, y entonces queda null (la columna y el filtro lo toleran).
+            ente: $persona->ente ? Ente::from($persona->ente) : null,
             dependencia: $esInvitado ? null : $persona->dependencia,
             piso: $esInvitado ? null : $persona->piso,
             cargo: null,
