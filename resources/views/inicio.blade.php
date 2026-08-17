@@ -5,10 +5,7 @@
 
 @section('contenido')
     <div class="flex flex-wrap items-end justify-between gap-5">
-        <div>
-            <h1 class="text-3xl font-bold tracking-tight">Hola, {{ auth()->user()->nombreCorto() }}</h1>
-            <p class="mt-2 text-slate-600">Registro de entradas y salidas del edificio.</p>
-        </div>
+        <h1 class="text-3xl font-bold tracking-tight">Hola, {{ auth()->user()->nombreCorto() }}</h1>
 
         {{-- El pulso del edificio, de un vistazo. Es el mismo número que gobierna marcar y el
              registro: se reusa el contador, sin tocar esos módulos. --}}
@@ -21,14 +18,12 @@
         <a href="{{ route('marcar') }}" class="block transition hover:shadow-md">
             <x-tarjeta parte="1" class="h-full">
                 <p class="text-lg font-semibold">Marcar</p>
-                <p class="mt-1 text-sm text-slate-600">La pantalla de la puerta: entrada, salida e invitados.</p>
             </x-tarjeta>
         </a>
 
         <a href="{{ route('registro') }}" class="block transition hover:shadow-md">
             <x-tarjeta parte="2" class="h-full">
                 <p class="text-lg font-semibold">Registro</p>
-                <p class="mt-1 text-sm text-slate-600">La lista del día, la búsqueda y la exportación a Excel.</p>
             </x-tarjeta>
         </a>
     </div>
@@ -41,7 +36,6 @@
                 <a href="{{ route('usuarios') }}" class="block transition hover:shadow-md">
                     <x-tarjeta parte="3" class="h-full">
                         <p class="text-lg font-semibold">Usuarios</p>
-                        <p class="mt-1 text-sm text-slate-600">Quién entra al sistema y con qué alcance.</p>
                     </x-tarjeta>
                 </a>
             @endcan
@@ -50,7 +44,6 @@
                 <a href="{{ route('roles') }}" class="block transition hover:shadow-md">
                     <x-tarjeta parte="3" class="h-full">
                         <p class="text-lg font-semibold">Roles</p>
-                        <p class="mt-1 text-sm text-slate-600">Qué puede hacer cada rol, configurable.</p>
                     </x-tarjeta>
                 </a>
             @endcan

@@ -143,8 +143,11 @@
                     wire:target="{{ $recalcula }}"
                 >
                     {{-- table-fixed: sin esto un nombre largo empuja la tabla al scroll
-                         horizontal y las columnas bailan entre página y página. --}}
-                    <table class="w-full table-fixed text-sm">
+                         horizontal y las columnas bailan entre página y página.
+                         min-w: en un teléfono los anchos fijos no caben y la columna «Persona»
+                         se aplastaba a cero —el ente se corría a su sitio y el encabezado se
+                         encimaba—. Con un ancho mínimo, el contenedor desplaza en vez de aplastar. --}}
+                    <table class="w-full min-w-[40rem] table-fixed text-sm">
                         <caption class="sr-only">
                             Movimientos del {{ $this->diaElegido()->format('d/m/Y') }}, del más reciente al más antiguo.
                         </caption>
