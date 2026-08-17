@@ -191,6 +191,18 @@ class RegistroRealTest extends TestCase
     }
 
     #[Test]
+    public function la_cedula_se_muestra_con_puntos_como_en_marcar(): void
+    {
+        // Consistencia entre pantallas: marcar muestra la cédula con puntos; el registro también.
+        $ana = $this->trabajador(['cedula' => '28443995']);
+
+        $this->assertSame('28.443.995', $this->fuente->persona((string) $ana->id)->documento());
+        // Y se sigue encontrando, se busque con puntos o sin ellos.
+        $this->assertCount(1, $this->fuente->buscarPersonas('28443995'));
+        $this->assertCount(1, $this->fuente->buscarPersonas('28.443.995'));
+    }
+
+    #[Test]
     public function persona_devuelve_el_value_object_o_null(): void
     {
         $ana = $this->trabajador();
