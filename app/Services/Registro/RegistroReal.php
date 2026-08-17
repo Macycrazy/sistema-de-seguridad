@@ -128,12 +128,13 @@ final class RegistroReal implements FuenteDelRegistro
         return new Persona(
             id: (string) $persona->id,
             cedula: $persona->cedula,
-            // La tabla real guarda el nombre en un solo campo. Se pone el mismo valor en
-            // apellidos y en nombres: el value object, al verlos iguales, lo muestra una sola
-            // vez, en vez de dejar una coma colgando. El día que el listado traiga apellidos y
-            // nombres por separado, el corte se hace aquí.
+            // La tabla real guarda el nombre en un solo campo. Va entero en `apellidos`, y
+            // `nombres` queda vacío: así el nombre se muestra completo y NO se dispara el aviso
+            // de «ficha mal cargada» (que salta cuando nombres repite a apellidos), ni el Excel
+            // duplica el nombre en sus dos columnas. El día que el listado de personal traiga
+            // apellidos y nombres por separado, el corte se hace aquí.
             apellidos: $persona->nombre,
-            nombres: $persona->nombre,
+            nombres: '',
             tipo: TipoDePersona::from($persona->tipo),
             ente: null,
             dependencia: $esInvitado ? null : $persona->dependencia,

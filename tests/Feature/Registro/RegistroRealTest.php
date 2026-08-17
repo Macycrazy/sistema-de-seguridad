@@ -165,6 +165,32 @@ class RegistroRealTest extends TestCase
     }
 
     #[Test]
+    public function una_persona_real_no_dispara_el_aviso_de_ficha_mal_cargada(): void
+    {
+        // El nombre real va en un solo campo. No es una ficha con los apellidos repetidos en el
+        // campo de nombres, así que el panel no debe mostrar ese aviso.
+        $ana = $this->trabajador(['nombre' => 'ANA RODRÍGUEZ PEÑA']);
+
+        $persona = $this->fuente->persona((string) $ana->id);
+
+        $this->assertFalse($persona->nombresRepitenApellidos());
+        $this->assertSame('ANA RODRÍGUEZ PEÑA', $persona->nombre());
+    }
+
+    #[Test]
+    public function el_nombre_no_se_duplica_entre_apellidos_y_nombres(): void
+    {
+        // El Excel escribe apellidos y nombres en columnas separadas. Con el nombre en un solo
+        // campo, va entero en apellidos y nombres queda vacío: nunca repetido en las dos.
+        $ana = $this->trabajador(['nombre' => 'ANA RODRÍGUEZ PEÑA']);
+
+        $persona = $this->fuente->persona((string) $ana->id);
+
+        $this->assertSame('ANA RODRÍGUEZ PEÑA', $persona->apellidos);
+        $this->assertSame('', $persona->nombres);
+    }
+
+    #[Test]
     public function persona_devuelve_el_value_object_o_null(): void
     {
         $ana = $this->trabajador();
