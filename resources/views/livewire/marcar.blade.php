@@ -107,6 +107,41 @@
 
                     <p class="mt-1 font-mono text-sm text-slate-500">{{ $persona->cedulaConPuntos() }}</p>
 
+                    {{-- Dónde está y desde cuándo. No se guarda en ninguna columna: sale del
+                         último asiento, que es la única fuente de verdad de dónde está alguien.
+
+                         Los minutos solo se dicen si entró HOY. A quien se le quedó la entrada
+                         de ayer sin salida —el caso que avisa exigirQueElMovimientoTengaSentido—
+                         un «lleva 940 minutos dentro» no le dice nada a nadie: lo que hace falta
+                         ver es la fecha, para caer en cuenta de que falta marcarle la salida. --}}
+                    @php
+                        $ultimo = $persona->ultimoMovimiento();
+                        $estaDentroAhora = $persona->estaDentro();
+                    @endphp
+
+                    <p class="mt-2 text-sm text-slate-600">
+                        @if (! $ultimo)
+                            Sin movimientos registrados: es la primera vez.
+                        @elseif ($estaDentroAhora && $ultimo->ocurrio_en->isToday())
+                            <span class="font-semibold text-ok">Dentro</span>
+                            desde las {{ $ultimo->ocurrio_en->format('H:i') }},
+                            hace {{ (int) abs(now()->diffInMinutes($ultimo->ocurrio_en)) }} min.
+                        @elseif ($estaDentroAhora)
+                            <span class="font-semibold text-invitado">
+                                Dentro desde el {{ $ultimo->ocurrio_en->format('d/m') }}
+                                a las {{ $ultimo->ocurrio_en->format('H:i') }}.
+                            </span>
+                            <span class="block text-slate-500">
+                                Quedó sin marcar la salida: márcasela y ya podrá entrar.
+                            </span>
+                        @else
+                            Fuera. Último movimiento:
+                            {{ $ultimo->tipo }}
+                            {{ $ultimo->ocurrio_en->isToday() ? 'hoy' : 'el '.$ultimo->ocurrio_en->format('d/m') }}
+                            a las {{ $ultimo->ocurrio_en->format('H:i') }}.
+                        @endif
+                    </p>
+
                     @if ($persona->esTrabajador())
                         {{-- La gerencia va rotulada y no como un texto suelto: el vigilante
                              tiene que poder decir de un vistazo de dónde es quien tiene delante,
@@ -226,7 +261,40 @@
                     $claseSalida = $ancho.($estaDentro ? ' '.$realce : '');
                 @endphp
 
-                <div class="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:flex-wrap sm:items-center">
+                {{-- Qué se puede hacer y por qué. Va FUERA de la barra de los botones: en el
+                     teléfono esa barra queda pegada al borde de abajo, y un párrafo dentro la
+                     haría crecer hasta comerse media pantalla. --}}
+                <p class="mt-6 text-sm {{ $espera ? 'font-semibold text-invitado' : 'text-slate-500' }}">
+                    @if ($estaDentro)
+                        Ya tiene la entrada marcada: solo se le puede marcar la salida.
+                    @elseif ($espera)
+                        Entró hace menos de {{ $this->minutosEntreEntradas() }} minutos.
+                        Se le puede marcar otra entrada <strong>a partir de las {{ $espera }}</strong>.
+                        {{-- El porqué, en pequeño: sin esta frase el vigilante cree que el
+                             sistema está fallando. --}}
+                        <span class="mt-1 block font-normal text-slate-500">
+                            El plazo se cuenta desde su entrada anterior, no desde la salida.
+                        </span>
+                    @else
+                        No está dentro: solo se le puede marcar la entrada.
+                    @endif
+                </p>
+
+                {{-- LOS DOS BOTONES.
+
+                     En el teléfono esta barra queda PEGADA al borde de abajo mientras la ficha
+                     se desplaza por detrás. Es lo que permite que arriba quepa todo —los datos,
+                     el vehículo, y en el alta seis casillas más— sin que el botón se vaya de
+                     donde alcanza el pulgar: se sostiene el teléfono con una mano, porque la
+                     otra tiene el carnet.
+
+                     Los márgenes negativos son para que la barra llegue a los bordes de la
+                     tarjeta, que lleva p-5. Desde tableta en adelante no hace falta nada de
+                     esto y vuelve a ser una fila normal. --}}
+                <div class="sticky bottom-0 z-10 -mx-5 mt-4 flex flex-col gap-3 border-t border-slate-200
+                            bg-white px-5 pb-5 pt-4
+                            sm:static sm:mx-0 sm:mt-5 sm:flex-row sm:flex-wrap sm:items-center
+                            sm:border-slate-100 sm:px-0 sm:pb-0 sm:pt-5">
                     <x-boton
                         variante="entrada"
                         tamano="grande"
@@ -244,18 +312,6 @@
                         wire:loading.attr="disabled"
                         :disabled="! $estaDentro"
                     >SALIDA</x-boton>
-
-                    <p class="text-sm sm:ml-auto sm:max-w-[16rem] sm:text-right
-                              {{ $espera ? 'font-semibold text-invitado' : 'text-slate-500' }}">
-                        @if ($estaDentro)
-                            Ya tiene la entrada marcada: solo se le puede marcar la salida.
-                        @elseif ($espera)
-                            Entró hace menos de {{ $this->minutosEntreEntradas() }} minutos.
-                            Se le puede marcar otra entrada <strong>a partir de las {{ $espera }}</strong>.
-                        @else
-                            No está dentro: solo se le puede marcar la entrada.
-                        @endif
-                    </p>
                 </div>
 
                 @error('tipo')
@@ -338,8 +394,16 @@
                 />
 
                 {{-- En el teléfono, uno debajo del otro y a todo el ancho: en fila, «Guardar y
-                     continuar» se parte en dos líneas. --}}
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                     continuar» se parte en dos líneas.
+
+                     Y pegada abajo, igual que la barra de los botones de la puerta y por la misma
+                     razón — aquí hace todavía más falta, porque encima hay seis casillas: nombre,
+                     motivo, piso y las del vehículo. Sin esto hay que desplazar hasta el final
+                     para dar de alta a cada invitado. --}}
+                <div class="sticky bottom-0 z-10 -mx-5 flex flex-col gap-3 border-t border-slate-200
+                            bg-white px-5 pb-5 pt-4
+                            sm:static sm:mx-0 sm:flex-row sm:items-center
+                            sm:border-0 sm:px-0 sm:pb-0 sm:pt-0">
                     <x-boton type="submit" class="w-full sm:w-auto" wire:loading.attr="disabled">
                         Guardar y continuar
                     </x-boton>
