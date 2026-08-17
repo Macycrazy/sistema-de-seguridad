@@ -633,6 +633,36 @@ class MarcarPantallaTest extends TestCase
             ->assertSee('¿A qué oficina?');
     }
 
+    /**
+     * Una oficina donde todavía no labora nadie saldría como un código pelado. El catálogo puede
+     * ponerle nombre, y ese nombre cede en cuanto haya una ficha que diga otra cosa: la fuente de
+     * verdad sigue siendo el personal.
+     */
+    public function test_el_catalogo_pone_nombre_a_una_oficina_vacia_pero_manda_la_ficha(): void
+    {
+        config([
+            'edificio.oficinas' => ['9', '2-1'],
+            'edificio.nombres' => ['9' => 'Presidencia'],
+        ]);
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '25375258')
+            ->call('buscar')
+            ->call('elegirNivel', '9')
+            ->assertSet('piso', '9')
+            ->assertSee('Presidencia');
+
+        // Ahora sí hay alguien anotado en esa oficina, y lo que diga su ficha manda.
+        $this->trabajador(['cedula' => '44444444', 'piso' => '9', 'dependencia' => 'Despacho']);
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '25375258')
+            ->call('buscar')
+            ->call('elegirNivel', '9')
+            ->assertSee('Despacho')
+            ->assertDontSee('Presidencia');
+    }
+
     /** El aviso de invitado se puede cerrar, y vuelve a salir con la cédula siguiente. */
     public function test_el_aviso_de_invitado_se_puede_cerrar(): void
     {

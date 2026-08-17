@@ -359,10 +359,20 @@ class Marcar extends Component
                 return $lista;
             }, []);
 
+        // El respaldo para las oficinas donde todavía no labora nadie. Las claves se pasan a texto
+        // porque PHP convierte en número las que lo parecen: «9» llegaría aquí como int y no
+        // encontraría a su oficina, que es una cadena.
+        $nombres = [];
+
+        foreach ((array) config('edificio.nombres', []) as $codigo => $nombre) {
+            $nombres[(string) $codigo] = trim((string) $nombre);
+        }
+
         $mapa = [];
 
         foreach ($catalogo as $codigo) {
-            $mapa[self::nivelDe($codigo)][$codigo] = $gerencias[$codigo] ?? '';
+            // Manda la ficha; el nombre del catálogo solo se usa si no hay nadie anotado ahí.
+            $mapa[self::nivelDe($codigo)][$codigo] = ($gerencias[$codigo] ?? '') ?: ($nombres[$codigo] ?? '');
         }
 
         // Los pisos con nombre —LOBBY, PB— van primero: son la planta de abajo, por donde se
