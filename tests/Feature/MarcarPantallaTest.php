@@ -602,21 +602,35 @@ class MarcarPantallaTest extends TestCase
     }
 
     /**
-     * Hay sitios que no tienen oficinas dentro —«LOBBY», «7»: no llevan guion—. Ahí el piso ES el
-     * sitio, así que pedir un segundo toque sería pedirlo para nada.
+     * Un piso con UNA SOLA oficina queda anotado al escoger el piso: preguntar «¿a qué oficina?»
+     * para ofrecer una única respuesta es pedir un toque para nada.
+     *
+     * Se mira cuántas hay, no cómo se llaman: vale igual para «LOBBY» —que es el sitio entero—
+     * que para «PB-1» o «8-2», donde el código de la oficina ni siquiera se parece al del piso.
      */
-    public function test_un_sitio_sin_oficinas_queda_escogido_de_un_toque(): void
+    public function test_un_piso_con_una_sola_oficina_queda_anotado_de_un_toque(): void
     {
-        config(['edificio.oficinas' => ['LOBBY', '2-1', '2-2']]);
+        config(['edificio.oficinas' => ['LOBBY', 'PB-1', '2-1', '2-2', '7']]);
 
-        Livewire::test(Marcar::class)
+        $pantalla = Livewire::test(Marcar::class)
             ->set('cedula', '25375258')
-            ->call('buscar')
-            ->call('elegirNivel', 'LOBBY')
+            ->call('buscar');
+
+        // El sitio entero, sin guion.
+        $pantalla->call('elegirNivel', 'LOBBY')
             ->assertSet('piso', 'LOBBY')
-            // Y un piso que sí tiene oficinas deja el sitio en blanco hasta que se escoja una.
-            ->call('elegirNivel', '2')
-            ->assertSet('piso', '');
+            ->assertSee('Queda anotado')
+            ->assertDontSee('¿A qué oficina?');
+
+        $pantalla->call('elegirNivel', '7')->assertSet('piso', '7');
+
+        // Y la oficina única cuyo código no se parece al del piso: se anota ella, no el piso.
+        $pantalla->call('elegirNivel', 'PB')->assertSet('piso', 'PB-1');
+
+        // Un piso con varias sí pregunta, y deja el sitio en blanco hasta que se escoja.
+        $pantalla->call('elegirNivel', '2')
+            ->assertSet('piso', '')
+            ->assertSee('¿A qué oficina?');
     }
 
     /** El aviso de invitado se puede cerrar, y vuelve a salir con la cédula siguiente. */

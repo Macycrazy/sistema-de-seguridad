@@ -12,6 +12,10 @@
 @php
     $mapa = $mapa ?: [];
     $oficinas = $mapa[$nivel] ?? [];
+
+    // Con una sola oficina no se pregunta: al escoger el piso ya quedó anotada. Preguntar para
+    // ofrecer una única respuesta es hacer trabajar al vigilante para nada.
+    $hayQueElegirOficina = count($oficinas) > 1;
 @endphp
 
 {{--
@@ -56,7 +60,7 @@
             @endforeach
         </div>
 
-        @if ($oficinas)
+        @if ($hayQueElegirOficina)
             <p class="mb-1.5 font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
                 ¿A qué oficina?
             </p>
@@ -84,6 +88,16 @@
                     </button>
                 @endforeach
             </div>
+        @elseif ($piso !== '' && $oficinas)
+            {{-- Un solo sitio en ese piso: no se pregunta nada, pero sí se dice qué quedó
+                 anotado. Sin esto, el vigilante toca «LOBBY» y no ve pasar nada. --}}
+            <p class="mb-3 text-sm text-slate-600">
+                Queda anotado
+                <strong class="font-mono tracking-wide text-slate-900">{{ $piso }}</strong>
+                @if ($oficinas[$piso] ?? '')
+                    · {{ $oficinas[$piso] }}
+                @endif
+            </p>
         @endif
     @endif
 

@@ -397,8 +397,12 @@ class Marcar extends Component
     /**
      * Se escogió el piso: falta la oficina, así que el código anterior deja de valer.
      *
-     * Salvo cuando el piso ES el sitio —«LOBBY», «7»: no llevan guion ni tienen oficinas dentro—.
-     * Ahí pedir un segundo toque sería pedirlo para nada, así que queda escogido de una vez.
+     * Salvo cuando ese piso tiene UNA SOLA oficina —el LOBBY, el 7, el PB-1, el 8-2—. Ahí no hay
+     * nada que escoger: preguntar «¿a qué oficina?» para ofrecer una sola respuesta es pedir un
+     * toque para nada, y en la puerta se marca de pie y apurado. Queda anotada de una vez.
+     *
+     * Se mira cuántas hay y no cómo se llaman: el día que al piso 7 le pongan una segunda
+     * oficina, la pantalla vuelve sola a preguntar, sin que nadie tenga que acordarse de esto.
      */
     public function elegirNivel(string $nivel): void
     {
@@ -406,7 +410,7 @@ class Marcar extends Component
 
         $oficinas = array_keys($this->oficinasPorPiso()[$nivel] ?? []);
 
-        $this->piso = $oficinas === [$nivel] ? $nivel : '';
+        $this->piso = count($oficinas) === 1 ? $oficinas[0] : '';
     }
 
     /** Si se teclea el código a mano, el piso de arriba se pone al día solo. */
