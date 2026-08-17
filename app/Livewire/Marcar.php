@@ -42,6 +42,18 @@ class Marcar extends Component
     /** Se enciende cuando la cédula no está en el sistema: hay que dar de alta un invitado. */
     public bool $invitadoNuevo = false;
 
+    /**
+     * Si el aviso de «esta cédula no está en el sistema» sigue en pantalla.
+     *
+     * Se puede cerrar con la equis: al vigilante que ya entendió de qué va, el aviso solo le
+     * quita sitio a las casillas que tiene que rellenar. Vuelve a salir con cada cédula nueva,
+     * porque entonces es información y no un estorbo.
+     */
+    public bool $avisoInvitado = true;
+
+    /** El piso —solo el número— que se escogió primero, antes de elegir la oficina. */
+    public string $nivel = '';
+
     /** Cuántos pisos se ofrecen como atajo antes de dejarlo solo en la casilla de escribir. */
     public const PISOS_COMO_MUCHO = 12;
 
@@ -270,6 +282,9 @@ class Marcar extends Component
 
             $this->personaId = null;
             $this->invitadoNuevo = true;
+
+            // Cédula nueva, aviso nuevo: lo que se cerró antes era para el invitado anterior.
+            $this->avisoInvitado = true;
             unset($this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta, $this->esperaSalidaHasta);
 
             return;
@@ -284,6 +299,9 @@ class Marcar extends Component
         if ($persona->esInvitado()) {
             $this->motivo = (string) $persona->motivo;
             $this->piso = (string) $persona->piso;
+
+            // Para que la lista de oficinas salga ya abierta por el piso de la última visita.
+            $this->nivel = self::nivelDe($this->piso);
         }
 
         // Se propone lo mismo que trajo la última vez que entró, que casi siempre acierta. Si
@@ -323,6 +341,71 @@ class Marcar extends Component
             ->orderBy('piso')
             ->limit(self::PISOS_COMO_MUCHO)
             ->pluck('piso');
+    }
+
+    /**
+     * Las oficinas del edificio agrupadas por piso, con la gerencia que hay en cada una.
+     *
+     *     ['2' => ['2-1' => 'Tecnología', '2-2' => 'Planificación y Presupuesto'], ...]
+     *
+     * No hace falta ninguna tabla nueva para esto: la asociación entre el piso y la gerencia YA
+     * está en las fichas del personal —el código «2-1» es piso 2, oficina 1, y quien labora ahí
+     * dice de qué gerencia es—. Se lee de ellas, así que se mantiene sola: cuando entre el
+     * personal de verdad, el edificio entero aparece sin tocar código.
+     *
+     * Solo mira a los TRABAJADORES a propósito: las oficinas son de quien labora aquí. El piso de
+     * un invitado es a dónde fue de visita, y tomarlo por oficina llenaría la lista de sitios que
+     * no existen.
+     *
+     * @return array<string, array<string, string>>
+     */
+    #[Computed]
+    public function oficinasPorPiso(): array
+    {
+        $fichas = Persona::query()
+            ->where('tipo', Persona::TRABAJADOR)
+            ->whereNotNull('piso')
+            ->where('piso', '!=', '')
+            ->orderBy('piso')
+            ->get(['piso', 'dependencia']);
+
+        $mapa = [];
+
+        foreach ($fichas as $ficha) {
+            $codigo = (string) $ficha->piso;
+
+            // Si dos fichas de la misma oficina dicen gerencias distintas, se queda la primera:
+            // aquí no se arregla un dato mal puesto, solo se ofrece un atajo.
+            $mapa[self::nivelDe($codigo)][$codigo] ??= trim((string) $ficha->dependencia);
+        }
+
+        ksort($mapa, SORT_NATURAL);
+
+        foreach ($mapa as $nivel => $oficinas) {
+            ksort($oficinas, SORT_NATURAL);
+            $mapa[$nivel] = $oficinas;
+        }
+
+        return array_slice($mapa, 0, self::PISOS_COMO_MUCHO, preserve_keys: true);
+    }
+
+    /** El piso al que pertenece un código de oficina: de «2-1» sale «2». */
+    public static function nivelDe(?string $piso): string
+    {
+        return explode('-', (string) $piso, 2)[0];
+    }
+
+    /** Se escogió el piso: falta la oficina, así que el código anterior deja de valer. */
+    public function elegirNivel(string $nivel): void
+    {
+        $this->nivel = $nivel;
+        $this->piso = '';
+    }
+
+    /** Si se teclea el código a mano, el piso de arriba se pone al día solo. */
+    public function updatedPiso(): void
+    {
+        $this->nivel = self::nivelDe($this->piso);
     }
 
     /**
@@ -473,8 +556,9 @@ class Marcar extends Component
         // el siguiente casi siempre es venezolano. Dejarla puesta sería peor que reiniciarla —el
         // vigilante no se acordaría de que quedó en «E» del anterior—.
         $this->reset([
-            'cedula', 'nacionalidad', 'personaId', 'invitadoNuevo', 'nombre', 'motivo', 'piso',
-            'confirmacion', 'traeHoy', 'tipoVehiculo', 'marca', 'modelo', 'color', 'placa',
+            'cedula', 'nacionalidad', 'personaId', 'invitadoNuevo', 'avisoInvitado', 'nombre',
+            'motivo', 'piso', 'nivel', 'confirmacion', 'traeHoy', 'tipoVehiculo', 'marca',
+            'modelo', 'color', 'placa',
         ]);
         $this->resetValidation();
 

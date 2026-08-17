@@ -319,7 +319,8 @@
                     />
 
                     <x-piso
-                        :pisos="$this->pisosConocidos"
+                        :mapa="$this->oficinasPorPiso"
+                        :nivel="$nivel"
                         :piso="$piso"
                         :error="$errors->first('piso')"
                     />
@@ -450,16 +451,36 @@
     {{-- INVITADO NUEVO: la cédula no está en el sistema --}}
     @if ($invitadoNuevo)
         <x-tarjeta class="mt-5" wire:key="invitado-nuevo">
-            <div class="mb-4 rounded bg-invitado-suave px-4 py-3">
-                <p class="flex flex-wrap items-center gap-2 font-semibold text-invitado">
-                    <x-etiqueta tipo="invitado" />
-                    Esta cédula no está en el sistema: es un invitado.
-                </p>
-                <p class="mt-1 text-sm text-slate-600">
-                    Hacen falta tres datos: nombre, motivo y el piso al que va. La próxima vez que
-                    venga, con la cédula bastará —salvo el piso, que se pregunta siempre.
-                </p>
-            </div>
+            {{-- El aviso se puede cerrar con la equis. Al vigilante que ya entendió de qué va,
+                 solo le quita sitio a las casillas que tiene que rellenar — y en un teléfono ese
+                 sitio se nota. Vuelve a salir con cada cédula nueva, porque entonces es
+                 información y no un estorbo. --}}
+            @if ($avisoInvitado)
+                <div class="mb-4 flex items-start gap-3 rounded bg-invitado-suave px-4 py-3">
+                    <div class="min-w-0 flex-1">
+                        <p class="flex flex-wrap items-center gap-2 font-semibold text-invitado">
+                            <x-etiqueta tipo="invitado" />
+                            Esta cédula no está en el sistema: es un invitado.
+                        </p>
+                        <p class="mt-1 text-sm text-slate-600">
+                            Hacen falta tres datos: nombre, motivo y el piso al que va. La próxima vez
+                            que venga, con la cédula bastará —salvo el piso, que se pregunta siempre.
+                        </p>
+                    </div>
+
+                    {{-- Cerrar el aviso NO cancela el alta: solo esconde el texto. Por eso no
+                         dice «cancelar» ni se parece al botón que sí lo hace. --}}
+                    <button type="button"
+                            wire:click="$set('avisoInvitado', false)"
+                            aria-label="Cerrar el aviso"
+                            title="Cerrar el aviso"
+                            class="-mr-1 -mt-1 shrink-0 rounded p-2 text-xl leading-none text-invitado
+                                   transition hover:bg-invitado/10
+                                   focus:outline-none focus-visible:ring-4 focus-visible:ring-invitado/25">
+                        &times;
+                    </button>
+                </div>
+            @endif
 
             <form wire:submit="guardarInvitado" class="space-y-5">
                 <div class="max-w-md space-y-5">
@@ -484,7 +505,8 @@
                     />
 
                     <x-piso
-                        :pisos="$this->pisosConocidos"
+                        :mapa="$this->oficinasPorPiso"
+                        :nivel="$nivel"
                         :piso="$piso"
                         :error="$errors->first('piso')"
                     />

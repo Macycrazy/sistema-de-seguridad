@@ -1,55 +1,90 @@
 @props([
     'error' => null,
-    // Los pisos que ya se usan en el edificio. Vacío mientras la base esté sin cargar.
-    'pisos' => null,
-    // Cuál está puesto ahora mismo. Se pasa a mano porque un componente de Blade no ve las
-    // propiedades del componente de Livewire que lo usa.
+    // Las oficinas del edificio agrupadas por piso, con su gerencia:
+    //   ['2' => ['2-1' => 'Tecnología', '2-2' => 'Planificación y Presupuesto'], ...]
+    'mapa' => [],
+    // Qué piso se escogió, y qué oficina. Se pasan a mano porque un componente de Blade no ve
+    // las propiedades del componente de Livewire que lo usa.
+    'nivel' => '',
     'piso' => '',
 ])
 
 @php
-    $pisos = $pisos ?? collect();
+    $mapa = $mapa ?: [];
+    $oficinas = $mapa[$nivel] ?? [];
 @endphp
 
 {{--
-    A qué piso va. Al invitado se le pregunta SIEMPRE, en cada visita: puede cambiar de una a
-    otra, y saber quién hay en cada piso es media razón de ser de este registro.
+    A dónde va el invitado. Se le pregunta SIEMPRE, en cada visita: puede cambiar de una a otra, y
+    saber quién hay en cada piso es media razón de ser de este registro.
 
-    Dos formas de rellenarlo, y las dos están a la vez a propósito:
+    Se pregunta en DOS PASOS —primero el piso, después la oficina— y no en una sola lista larga.
+    Con cuatro oficinas daría igual; con un edificio entero, una lista de todas obliga a buscar, y
+    en la puerta se marca de pie y apurado. El piso lo sabe siempre el que llega («voy al dos»), y
+    de ahí salen dos o tres oficinas, no treinta.
 
-      · LOS ATAJOS — los pisos que ya se usan, sacados de las fichas que hay en la base. Un toque
-        y listo, sin teclear. No son una lista fija en el código: cuando se cargue el personal de
-        verdad, aparecen solos.
+    Cada oficina se ofrece CON SU GERENCIA, que es como el visitante dice a dónde va: no pregunta
+    por el «2-1», pregunta por Tecnología.
 
-      · LA CASILLA — porque los atajos nunca van a estar completos. Un piso al que todavía no ha
-        ido nadie no puede salir en la lista, y aun así tiene que poder anotarse. Por eso la
-        casilla no se esconde: los botones la rellenan, no la sustituyen.
+    La lista no está escrita en el código: sale de las fichas del personal, donde el piso y la
+    gerencia ya conviven. Se mantiene sola.
+
+    Y la casilla de escribir no se esconde nunca: una oficina donde todavía no labora nadie no
+    puede estar en la lista, y aun así tiene que poder anotarse. Los botones la rellenan.
 --}}
 <div>
-    @if ($pisos->isNotEmpty())
+    @if ($mapa)
         <p class="mb-1.5 font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
             ¿A qué piso va?
         </p>
 
-        <div class="mb-2 flex flex-wrap gap-2">
-            @foreach ($pisos as $p)
-                @php $marcado = $piso === $p; @endphp
+        <div class="mb-3 flex flex-wrap gap-2">
+            @foreach (array_keys($mapa) as $n)
+                @php $nMarcado = (string) $nivel === (string) $n; @endphp
 
-                {{-- Botón de verdad, no un <label> con radio: el valor no sale de aquí, la casilla
-                     sigue mandando. Estos solo la rellenan. --}}
                 <button type="button"
-                        wire:key="piso-{{ $p }}"
-                        wire:click="$set('piso', @js($p))"
-                        aria-pressed="{{ $marcado ? 'true' : 'false' }}"
-                        class="rounded-full border px-3.5 py-1.5 font-mono text-sm font-semibold tracking-wide
+                        wire:key="nivel-{{ $n }}"
+                        wire:click="elegirNivel(@js((string) $n))"
+                        aria-pressed="{{ $nMarcado ? 'true' : 'false' }}"
+                        class="min-w-12 whitespace-nowrap rounded-full border px-4 py-2 font-mono text-base font-bold
                                transition focus:outline-none focus-visible:ring-4 focus-visible:ring-parte1/25
-                               {{ $marcado
-                                    ? 'border-parte1 bg-parte1-suave text-parte1'
+                               {{ $nMarcado
+                                    ? 'border-parte1 bg-parte1 text-white'
                                     : 'border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50' }}">
-                    {{ $p }}
+                    {{ $n }}
                 </button>
             @endforeach
         </div>
+
+        @if ($oficinas)
+            <p class="mb-1.5 font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
+                ¿A qué oficina?
+            </p>
+
+            <div class="mb-3 flex flex-wrap gap-2">
+                @foreach ($oficinas as $codigo => $gerencia)
+                    @php $marcada = $piso === $codigo; @endphp
+
+                    <button type="button"
+                            wire:key="oficina-{{ $codigo }}"
+                            wire:click="$set('piso', @js($codigo))"
+                            aria-pressed="{{ $marcada ? 'true' : 'false' }}"
+                            class="whitespace-nowrap rounded-2xl border px-4 py-2 text-left
+                                   transition focus:outline-none focus-visible:ring-4 focus-visible:ring-parte1/25
+                                   {{ $marcada
+                                        ? 'border-parte1 bg-parte1-suave'
+                                        : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50' }}">
+                        <span class="block font-mono text-sm font-bold tracking-wide
+                                     {{ $marcada ? 'text-parte1' : 'text-slate-700' }}">
+                            {{ $codigo }}
+                        </span>
+                        <span class="block text-xs text-slate-500">
+                            {{ $gerencia ?: 'Sin gerencia anotada' }}
+                        </span>
+                    </button>
+                @endforeach
+            </div>
+        @endif
     @endif
 
     {{-- La casilla se acomoda sola mientras se teclea —sin espacios y en mayúsculas— igual que la
@@ -60,7 +95,7 @@
          los atributos de un <x-...> rompe el análisis de la etiqueta y se come en silencio lo que
          venga detrás. --}}
     <x-campo
-        :etiqueta="$pisos->isNotEmpty() ? 'O escríbelo' : 'Piso'"
+        :etiqueta="$mapa ? 'O escribe el código' : 'Piso'"
         nombre="piso"
         wire:model.live="piso"
         autocomplete="off"

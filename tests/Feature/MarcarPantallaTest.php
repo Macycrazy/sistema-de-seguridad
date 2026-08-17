@@ -559,26 +559,65 @@ class MarcarPantallaTest extends TestCase
      * Y no sustituyen a la casilla: un piso al que todavía no ha ido nadie no puede estar en la
      * lista, y aun así tiene que poder anotarse.
      */
-    public function test_los_pisos_que_ya_se_usan_se_ofrecen_como_atajo(): void
+    public function test_el_piso_se_pregunta_primero_y_la_oficina_despues(): void
     {
-        $this->trabajador(['piso' => '2-1']);
-        $this->trabajador(['cedula' => '22222222', 'piso' => '1-2']);
+        $this->trabajador(['piso' => '2-1', 'dependencia' => 'Tecnología']);
+        $this->trabajador(['cedula' => '22222222', 'piso' => '2-2', 'dependencia' => 'Planificación']);
+        $this->trabajador(['cedula' => '33333333', 'piso' => '1-2', 'dependencia' => 'Gestión Humana']);
 
-        Livewire::test(Marcar::class)
+        $pantalla = Livewire::test(Marcar::class)
             // Una cédula que no está: el alta de un invitado, que es donde se pregunta el piso.
             ->set('cedula', '25375258')
             ->call('buscar')
             ->assertSet('invitadoNuevo', true)
+            ->assertSee('¿A qué piso va?')
+            // Todavía no se ha escogido piso, así que las oficinas no se ofrecen: es lo que evita
+            // la lista larga de un edificio entero.
+            ->assertDontSee('Tecnología')
+            ->assertDontSee('Planificación');
+
+        // Escogido el piso 2, salen sus oficinas con la gerencia de cada una — que es como el
+        // visitante dice a dónde va: no pregunta por el «2-1», pregunta por Tecnología.
+        $pantalla->call('elegirNivel', '2')
+            ->assertSee('¿A qué oficina?')
             ->assertSee('2-1')
-            ->assertSee('1-2')
-            // Un piso que no usa nadie todavía se puede anotar igual.
-            ->set('nombre', 'Pedro Salazar Ruiz')
+            ->assertSee('Tecnología')
+            ->assertSee('2-2')
+            ->assertSee('Planificación')
+            // Las del otro piso siguen sin estorbar.
+            ->assertDontSee('Gestión Humana');
+
+        // Y una oficina donde todavía no labora nadie se puede anotar igual, escribiéndola.
+        $pantalla->set('nombre', 'Pedro Salazar Ruiz')
             ->set('motivo', 'Videoconferencia')
             ->set('piso', '9-9')
             ->call('guardarInvitado')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('personas', ['cedula' => '25375258', 'piso' => '9-9']);
+    }
+
+    /** El aviso de invitado se puede cerrar, y vuelve a salir con la cédula siguiente. */
+    public function test_el_aviso_de_invitado_se_puede_cerrar(): void
+    {
+        $pantalla = Livewire::test(Marcar::class)
+            ->set('cedula', '25375258')
+            ->call('buscar')
+            ->assertSet('invitadoNuevo', true)
+            ->assertSet('avisoInvitado', true)
+            ->assertSee('no está en el sistema');
+
+        $pantalla->set('avisoInvitado', false)
+            ->assertDontSee('no está en el sistema')
+            // Cerrarlo NO cancela el alta: las casillas siguen ahí.
+            ->assertSet('invitadoNuevo', true)
+            ->assertSee('Nombre y apellido')
+            ->assertSee('Motivo de visita');
+
+        // Otra cédula que tampoco está: el aviso vuelve, porque ahora es información.
+        $pantalla->set('cedula', '25375259')
+            ->assertSet('avisoInvitado', true)
+            ->assertSee('no está en el sistema');
     }
 
     /**
