@@ -5,6 +5,8 @@ namespace Tests\Feature\Trabajadores;
 use App\Models\Persona;
 use App\Services\GestionDeTrabajadores;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -82,6 +84,32 @@ class GestionDeTrabajadoresTest extends TestCase
 
         $this->expectException(ValidationException::class);
         $this->gestion->guardar('12345678', 'AHORA TRABAJADOR');
+    }
+
+    #[Test]
+    public function al_dar_de_alta_trae_la_foto_del_carnets(): void
+    {
+        Storage::fake('local');
+        config(['carnets.fotos' => 'http://carnets.interno/imgs/usuarios']);
+        Http::fake(['*/12345678.jpg' => Http::response('LA-FOTO', 200)]);
+
+        $t = $this->gestion->guardar('12345678', 'ANA PÉREZ');
+
+        $this->assertSame('fotos/12345678.jpg', $t->fresh()->foto_ruta);
+        $this->assertTrue($t->fresh()->tieneFoto());
+    }
+
+    #[Test]
+    public function sin_foto_en_el_carnets_el_alta_no_falla(): void
+    {
+        Storage::fake('local');
+        config(['carnets.fotos' => 'http://carnets.interno/imgs/usuarios']);
+        Http::fake(['*' => Http::response('', 404)]);
+
+        $t = $this->gestion->guardar('12345678', 'ANA PÉREZ');
+
+        $this->assertNull($t->fresh()->foto_ruta);
+        $this->assertFalse($t->fresh()->tieneFoto());
     }
 
     #[Test]

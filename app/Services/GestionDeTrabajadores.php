@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Persona;
+use App\Services\Carnets\FotoDelCarnet;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -29,6 +30,8 @@ class GestionDeTrabajadores
         Persona::ENTE_MARCA_PAIS => 'Marca País',
         Persona::ENTE_VENAPP => 'VENAPP',
     ];
+
+    public function __construct(private FotoDelCarnet $fotos) {}
 
     /**
      * Da de alta o actualiza a un trabajador, buscándolo por su cédula.
@@ -70,7 +73,7 @@ class GestionDeTrabajadores
             ]);
         }
 
-        return Persona::updateOrCreate(
+        $trabajador = Persona::updateOrCreate(
             ['cedula' => $cedula],
             [
                 'tipo' => Persona::TRABAJADOR,
@@ -81,6 +84,28 @@ class GestionDeTrabajadores
                 'activo' => true,
             ],
         );
+
+        $this->traerLaFoto($trabajador);
+
+        return $trabajador;
+    }
+
+    /**
+     * Trae la foto del sistema de carnets, si no la tiene ya. Best-effort: que el carnets no
+     * responda, o que esa persona no tenga foto, no puede impedir darla de alta. Solo se busca
+     * cuando falta, para no volver a bajar cientos de fotos en cada reimportación.
+     */
+    private function traerLaFoto(Persona $trabajador): void
+    {
+        if ($trabajador->tieneFoto()) {
+            return;
+        }
+
+        $ruta = $this->fotos->traer($trabajador->cedula);
+
+        if ($ruta !== null) {
+            $trabajador->update(['foto_ruta' => $ruta]);
+        }
     }
 
     /**
