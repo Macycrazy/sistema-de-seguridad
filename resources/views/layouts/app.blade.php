@@ -26,6 +26,12 @@
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
     <link rel="apple-touch-icon" href="{{ asset('icons/apple-touch-icon.png') }}">
 
+    {{-- El logo del CIIP en la pestaña del navegador. Se usan los mismos iconos cuadrados de la
+         PWA. Van en el layout, así que valen en todas las páginas, también en la de entrar. --}}
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('icons/icon-192.png') }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('icons/icon-512.png') }}">
+    <link rel="icon" href="{{ asset('icons/icon-192.png') }}">
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="flex min-h-[100dvh] flex-col bg-slate-50 text-slate-900 antialiased">
