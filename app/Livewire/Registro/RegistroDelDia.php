@@ -2,7 +2,9 @@
 
 namespace App\Livewire\Registro;
 
+use App\Auditoria\Accion;
 use App\Exports\MovimientosDelDia;
+use App\Services\Rastro;
 use App\Services\Registro\Ente;
 use App\Services\Registro\FuenteDelRegistro;
 use App\Services\Registro\Movimiento;
@@ -94,10 +96,34 @@ class RegistroDelDia extends Component
         $this->resetPage();
     }
 
+    /**
+     * El campo busca solo, con espera de 300 ms, así que esto salta en cada pausa del tecleo.
+     * Rastro agrupa las repeticiones de la misma búsqueda; ver Accion::seRepiteSola().
+     */
+    public function updatedBusqueda(): void
+    {
+        $texto = trim($this->busqueda);
+
+        if ($texto === '') {
+            return;
+        }
+
+        app(Rastro::class)->deja(Accion::REGISTRO_BUSQUEDA, detalle: $texto);
+    }
+
     public function abrirPanel(string $personaId): void
     {
         $this->personaEnPanel = $personaId;
         $this->busqueda = '';
+
+        // Abrir el histórico de alguien es ver dónde estuvo y a qué hora, que es lo más delicado
+        // que guarda el sistema. Queda anotado con nombre y apellido.
+        $persona = $this->fuente()->persona($personaId);
+
+        app(Rastro::class)->deja(
+            Accion::REGISTRO_HISTORICO,
+            detalle: $persona?->nombre ?? "persona {$personaId}",
+        );
     }
 
     public function cerrarPanel(): void
@@ -113,6 +139,14 @@ class RegistroDelDia extends Component
 
         // Se lleva lo que está viendo, no todo el histórico.
         $archivo = 'registro-'.$this->diaElegido()->toDateString().'.xlsx';
+
+        // Un archivo que sale del sistema y se va en un pendrive. Se anota con el día y los
+        // filtros, porque lo que se llevó depende de ellos.
+        app(Rastro::class)->deja(Accion::REGISTRO_EXPORTADO, detalle: implode(' · ', array_filter([
+            $this->diaElegido()->toDateString(),
+            $this->tipo !== '' ? "tipo: {$this->tipo}" : null,
+            $this->ente !== '' ? "ente: {$this->ente}" : null,
+        ])));
 
         return Excel::download(new MovimientosDelDia($this->delDia()), $archivo);
     }

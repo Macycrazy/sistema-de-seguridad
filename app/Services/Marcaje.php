@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Auditoria\Accion;
 use App\Models\Movimiento;
 use App\Models\Persona;
 use Illuminate\Support\Facades\DB;
@@ -48,7 +49,19 @@ class Marcaje
             return null;
         }
 
-        return Persona::where('cedula', $cedula)->first();
+        $persona = Persona::where('cedula', $cedula)->first();
+
+        /*
+         * El rastro de quién consultó qué cédula. Va aquí porque este es el único sitio por donde
+         * se consulta una, así que con esta línea queda cubierta la parte 1 entera.
+         *
+         * Se anota también cuando no se encuentra a nadie, y a propósito: quien anduvo probando
+         * cédulas al azar es justo lo que se querría ver en una auditoría. El ruido del tecleo lo
+         * resuelve Rastro agrupando las repeticiones, no dejando de anotar.
+         */
+        app(Rastro::class)->deja(Accion::CONSULTA_CEDULA, $persona, $cedula);
+
+        return $persona;
     }
 
     /**
@@ -144,7 +157,7 @@ class Marcaje
                 $persona->update(['motivo' => $motivo]);
             }
 
-            return Movimiento::create([
+            $movimiento = Movimiento::create([
                 'persona_id' => $persona->id,
                 'tipo' => $tipo,
                 'ocurrio_en' => now(),
@@ -152,6 +165,12 @@ class Marcaje
                 // El asiento de un trabajador no lleva motivo: viene a trabajar.
                 'motivo' => $persona->esInvitado() ? $persona->motivo : null,
             ]);
+
+            // El rastro va dentro de la misma transacción: o quedan los dos asientos o no queda
+            // ninguno. Un movimiento sin rastro sería justo el que nadie podría explicar.
+            app(Rastro::class)->deja(Accion::MOVIMIENTO_REGISTRADO, $persona, $tipo, $usuarioId);
+
+            return $movimiento;
         });
     }
 

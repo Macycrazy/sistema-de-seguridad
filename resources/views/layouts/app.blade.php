@@ -47,6 +47,7 @@
                             ['ruta' => 'registro', 'texto' => 'Registro', 'permiso' => 'ver-registro'],
                             ['ruta' => 'usuarios', 'texto' => 'Usuarios', 'permiso' => 'gestionar-usuarios'],
                             ['ruta' => 'roles', 'texto' => 'Roles', 'permiso' => 'gestionar-permisos'],
+                            ['ruta' => 'auditoria', 'texto' => 'Auditoría', 'permiso' => 'ver-auditoria'],
                         ])->filter(fn ($m) => ! isset($m['permiso']) || auth()->user()->can($m['permiso']));
                     @endphp
 

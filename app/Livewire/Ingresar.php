@@ -2,8 +2,9 @@
 
 namespace App\Livewire;
 
+use App\Auditoria\Accion;
 use App\Models\User;
-use App\Usuarios\Rol;
+use App\Services\Rastro;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -47,6 +48,10 @@ class Ingresar extends Component
         if (! $usuario || ! Hash::check($this->clave, (string) $usuario->password)) {
             $this->anotarElFallo();
 
+            // Queda anotado el nombre que se intentó, aunque no exista: una racha de intentos
+            // fallidos contra nombres inventados es exactamente lo que hay que poder ver después.
+            app(Rastro::class)->deja(Accion::INGRESO_FALLIDO, detalle: $this->usuario);
+
             throw ValidationException::withMessages([
                 'usuario' => 'Usuario o clave incorrectos.',
             ]);
@@ -57,6 +62,14 @@ class Ingresar extends Component
         // que llega a su turno y no puede entrar hay que decirle por qué.
         if (! $usuario->activo) {
             $this->anotarElFallo();
+
+            // Aquí sí se sabe quién era: dio con la clave buena. Que alguien desactivado siga
+            // intentando entrar es un dato, no ruido.
+            app(Rastro::class)->deja(
+                Accion::INGRESO_FALLIDO,
+                detalle: 'usuario desactivado',
+                usuarioId: $usuario->id,
+            );
 
             throw ValidationException::withMessages([
                 'usuario' => 'Ese usuario está desactivado. Habla con el administrador.',
@@ -70,6 +83,8 @@ class Ingresar extends Component
         // regenerarla a mano, pero sí saber que pasa: sin eso, un identificador conocido de
         // antes seguiría abriendo la sesión de quien acaba de entrar.
         Auth::login($usuario);
+
+        app(Rastro::class)->deja(Accion::INGRESO_CORRECTO);
 
         $this->clave = '';
 

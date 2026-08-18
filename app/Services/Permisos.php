@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Auditoria\Accion;
 use App\Models\User;
 use App\Usuarios\Permiso;
 use App\Usuarios\Rol;
@@ -94,6 +95,14 @@ class Permisos
         });
 
         $this->olvidar();
+
+        app(Rastro::class)->deja(
+            Accion::PERMISOS_CAMBIADOS,
+            detalle: $rol->etiqueta().': '.($valores->isEmpty()
+                ? 'sin ningún permiso'
+                : $valores->map(fn (Permiso $p) => $p->value)->sort()->implode(', ')),
+            usuarioId: $quienLoHace->id,
+        );
     }
 
     /** Vuelve a dejar los permisos como venían de fábrica. */

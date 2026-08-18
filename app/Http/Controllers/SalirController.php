@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Auditoria\Accion;
+use App\Services\Rastro;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +21,9 @@ class SalirController extends Controller
 {
     public function __invoke(Request $request): RedirectResponse
     {
+        // Antes de cerrar: después de Auth::logout() ya no hay usuario a quien atribuírselo.
+        app(Rastro::class)->deja(Accion::SALIDA);
+
         Auth::logout();
 
         // Cerrar la sesión de Laravel no borra lo que hubiera guardado en la de PHP. Sin estas

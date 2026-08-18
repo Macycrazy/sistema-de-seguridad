@@ -2,7 +2,9 @@
 
 namespace App\Livewire;
 
+use App\Auditoria\Accion;
 use App\Services\GestionDeUsuarios;
+use App\Services\Rastro;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
@@ -83,6 +85,8 @@ class CambiarClave extends Component
 
             return;
         }
+
+        app(Rastro::class)->deja(Accion::CLAVE_PROPIA_CAMBIADA);
 
         $this->actual = '';
         $this->nueva = '';

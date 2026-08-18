@@ -57,6 +57,12 @@
                     </a>
                 @endcan
 
+                @can('ver-auditoria')
+                    <a href="{{ route('auditoria') }}" class="block font-semibold text-parte3 underline">
+                        Auditoría
+                    </a>
+                @endcan
+
                 @cannot('gestionar-usuarios')
                     <p class="text-slate-500">Los gestiona el supervisor</p>
                 @endcannot

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Auditoria\Accion;
 use App\Models\Persona;
 use App\Models\User;
 use App\Usuarios\Rol;
@@ -72,7 +73,7 @@ class GestionDeUsuarios
             ]);
         }
 
-        return User::create([
+        $creado = User::create([
             'usuario' => $usuario,
             'nombre' => $nombre,
             'cedula' => $cedula,
@@ -80,6 +81,14 @@ class GestionDeUsuarios
             'activo' => true,
             'password' => $clave,
         ]);
+
+        app(Rastro::class)->deja(
+            Accion::USUARIO_CREADO,
+            detalle: "«{$creado->usuario}» como {$rol->etiqueta()}",
+            usuarioId: $quienLoHace?->id,
+        );
+
+        return $creado;
     }
 
     /**
@@ -116,6 +125,8 @@ class GestionDeUsuarios
         }
 
         $usuario->update(['activo' => false]);
+
+        app(Rastro::class)->deja(Accion::USUARIO_DESACTIVADO, detalle: "«{$usuario->usuario}»");
     }
 
     public function reactivar(User $usuario, User $quienLoHace): void
@@ -123,6 +134,8 @@ class GestionDeUsuarios
         $this->exigirAlcance($usuario, $quienLoHace);
 
         $usuario->update(['activo' => true]);
+
+        app(Rastro::class)->deja(Accion::USUARIO_REACTIVADO, detalle: "«{$usuario->usuario}»");
     }
 
     /**
@@ -157,7 +170,15 @@ class GestionDeUsuarios
             ]);
         }
 
+        $anterior = $usuario->rol;
+
         $usuario->update(['rol' => $nuevo]);
+
+        app(Rastro::class)->deja(
+            Accion::USUARIO_ROL_CAMBIADO,
+            detalle: "«{$usuario->usuario}»: de {$anterior->etiqueta()} a {$nuevo->etiqueta()}",
+            usuarioId: $quienLoHace->id,
+        );
     }
 
     /**
@@ -182,6 +203,14 @@ class GestionDeUsuarios
         $this->exigirClaveSuficiente($clave, $campo);
 
         $usuario->update(['password' => $clave]);
+
+        // La clave no se anota, evidentemente. Lo que se anota es que alguien se la cambió a
+        // alguien, que es la pregunta que se hace después: «¿quién pudo entrar como Ana?».
+        app(Rastro::class)->deja(
+            Accion::USUARIO_CLAVE_CAMBIADA,
+            detalle: "«{$usuario->usuario}»",
+            usuarioId: $quienLoHace->id,
+        );
     }
 
     /**

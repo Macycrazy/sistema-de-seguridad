@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Auditoria\Accion;
 use App\Models\Persona;
+use App\Services\Rastro;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -12,7 +14,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *
  * Las fotos NO están en una carpeta pública: viven en storage/app/private y solo salen por aquí.
  * Este controlador es el único portero, y por eso es donde va el permiso —el gate «ver-foto»— y
- * donde el bloque D anotará quién miró la cara de quién.
+ * donde se anota quién miró la cara de quién.
  *
  * Hoy el gate deja pasar a los tres roles: el vigilante necesita la foto para comprobar que quien
  * tiene delante es quien dice ser, y sin eso la pantalla de marcar no sirve para lo que sirve.
@@ -30,6 +32,10 @@ class FotoPersonaController extends Controller
         $ruta = $persona->rutaFotoSegura();
 
         abort_if($ruta === null, 404);
+
+        // Quién miró la cara de quién. Se anota después del 404 a propósito: pedir la foto de
+        // alguien que no tiene no es haber visto ninguna cara, y anotarlo ensuciaría el rastro.
+        app(Rastro::class)->deja(Accion::FOTO_VISTA, $persona);
 
         return Storage::disk('local')->response($ruta, headers: [
             // La cara de una persona no se queda en la caché de un proxy ni del navegador.

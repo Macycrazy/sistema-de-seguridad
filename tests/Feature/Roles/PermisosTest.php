@@ -34,6 +34,7 @@ class PermisosTest extends TestCase
             'vigilante · registro' => [Rol::VIGILANTE, '/registro', 403],
             'vigilante · usuarios' => [Rol::VIGILANTE, '/usuarios', 403],
             'vigilante · roles' => [Rol::VIGILANTE, '/roles', 403],
+            'vigilante · auditoria' => [Rol::VIGILANTE, '/auditoria', 403],
 
             'supervisor · inicio' => [Rol::SUPERVISOR, '/', 200],
             'supervisor · marcar' => [Rol::SUPERVISOR, '/marcar', 200],
@@ -41,6 +42,7 @@ class PermisosTest extends TestCase
             'supervisor · registro' => [Rol::SUPERVISOR, '/registro', 200],
             'supervisor · usuarios' => [Rol::SUPERVISOR, '/usuarios', 200],
             'supervisor · roles' => [Rol::SUPERVISOR, '/roles', 403],
+            'supervisor · auditoria' => [Rol::SUPERVISOR, '/auditoria', 403],
 
             'administrador · inicio' => [Rol::ADMINISTRADOR, '/', 200],
             'administrador · marcar' => [Rol::ADMINISTRADOR, '/marcar', 200],
@@ -48,6 +50,7 @@ class PermisosTest extends TestCase
             'administrador · registro' => [Rol::ADMINISTRADOR, '/registro', 200],
             'administrador · usuarios' => [Rol::ADMINISTRADOR, '/usuarios', 200],
             'administrador · roles' => [Rol::ADMINISTRADOR, '/roles', 200],
+            'administrador · auditoria' => [Rol::ADMINISTRADOR, '/auditoria', 200],
         ];
     }
 

@@ -51,4 +51,7 @@ Route::middleware('auth')->group(function () {
 
     // Parte 3 · qué puede hacer cada rol. Solo el administrador, y no se puede quitar.
     Route::view('/roles', 'roles')->middleware('can:gestionar-permisos')->name('roles');
+
+    // Parte 3 · el rastro. Solo se mira: no hay ninguna ruta que lo escriba ni lo borre.
+    Route::view('/auditoria', 'auditoria')->middleware('can:ver-auditoria')->name('auditoria');
 });
