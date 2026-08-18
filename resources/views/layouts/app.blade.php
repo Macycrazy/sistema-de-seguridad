@@ -36,6 +36,10 @@
 
     @php
         $puede = fn ($permiso) => auth()->check() && (! $permiso || auth()->user()->can($permiso));
+
+        // El número de alertas activas para la insignia del menú. Se calcula una vez por carga y
+        // solo para quien puede ver el registro; sin ese permiso, ni se consulta.
+        $alertasActivas = $puede('ver-registro') ? app(\App\Services\Alertas\Alertas::class)->cuantas() : 0;
     @endphp
 
     {{--
@@ -77,6 +81,7 @@
                             ['ruta' => 'marcar', 'texto' => 'Marcar', 'permiso' => null],
                             ['ruta' => 'registro', 'texto' => 'Registro', 'permiso' => 'ver-registro'],
                             ['ruta' => 'reportes', 'texto' => 'Reportes', 'permiso' => 'ver-registro'],
+                            ['ruta' => 'alertas', 'texto' => 'Alertas', 'permiso' => 'ver-registro', 'insignia' => $alertasActivas],
                         ])->filter(fn ($m) => $puede($m['permiso']));
 
                         $administracion = collect([
@@ -102,9 +107,13 @@
                                 @php $activo = request()->routeIs($m['ruta']); @endphp
                                 <a href="{{ route($m['ruta']) }}"
                                    @if ($activo) aria-current="page" @endif
-                                   class="rounded px-3 py-2 transition
+                                   class="relative rounded px-3 py-2 transition
                                           {{ $activo ? 'bg-white text-marca' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
                                     {{ $m['texto'] }}
+                                    @if (! empty($m['insignia']))
+                                        <span class="ml-1 inline-flex min-w-[1.25rem] justify-center rounded-full bg-alto px-1.5 py-0.5 text-[10px] font-bold leading-none text-white"
+                                              aria-label="{{ $m['insignia'] }} alertas activas">{{ $m['insignia'] }}</span>
+                                    @endif
                                 </a>
                             @endforeach
                         @endforeach
@@ -159,6 +168,7 @@
                 ['ruta' => 'marcar', 'texto' => 'Marcar', 'permiso' => null, 'icono' => 'marcar'],
                 ['ruta' => 'registro', 'texto' => 'Registro', 'permiso' => 'ver-registro', 'icono' => 'registro'],
                 ['ruta' => 'reportes', 'texto' => 'Reportes', 'permiso' => 'ver-registro', 'icono' => 'reportes'],
+                ['ruta' => 'alertas', 'texto' => 'Alertas', 'permiso' => 'ver-registro', 'icono' => 'alertas', 'insignia' => $alertasActivas],
                 ['ruta' => 'trabajadores', 'texto' => 'Personal', 'permiso' => 'gestionar-personal', 'icono' => 'personal'],
                 ['ruta' => 'usuarios', 'texto' => 'Usuarios', 'permiso' => 'gestionar-usuarios', 'icono' => 'usuarios'],
                 ['ruta' => 'edificio', 'texto' => 'Edificio', 'permiso' => 'gestionar-edificio', 'icono' => 'edificio'],
@@ -172,6 +182,7 @@
                 'marcar' => '<rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="11" r="2"/><path d="M13 9.7h5M13 13h5M5.6 15.6c.6-1.5 3.2-1.5 3.8 0"/>',
                 'registro' => '<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1.1"/><circle cx="4" cy="12" r="1.1"/><circle cx="4" cy="18" r="1.1"/>',
                 'reportes' => '<path d="M4 20V4"/><path d="M4 20h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="5" width="3" height="12"/>',
+                'alertas' => '<path d="M12 4a5 5 0 0 0-5 5c0 4-2 5-2 7h14c0-2-2-3-2-7a5 5 0 0 0-5-5z"/><path d="M10.5 20a1.7 1.7 0 0 0 3 0"/>',
                 'personal' => '<path d="M4 20c0-3.2 2.7-5 6-5s6 1.8 6 5"/><circle cx="10" cy="8" r="3.2"/><path d="M17 13.5c1.9.5 3 2 3 4.5"/>',
                 'edificio' => '<path d="M4 21V6l7-3v18"/><path d="M11 8h6v13"/><path d="M7 9h0M7 12h0M7 15h0M14 12h0M14 16h0"/>',
                 'ajustes' => '<circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M5 5l1.5 1.5M17.5 17.5 19 19M3 12h2M19 12h2M5 19l1.5-1.5M17.5 6.5 19 5"/>',
@@ -193,10 +204,16 @@
                            @if ($activo) aria-current="page" @endif
                            class="flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-semibold tracking-wide transition
                                   {{ $activo ? 'text-marca' : 'text-slate-500 hover:text-slate-800' }}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-                                 stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
-                                {!! $icono($t['icono']) !!}
-                            </svg>
+                            <span class="relative">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                     stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
+                                    {!! $icono($t['icono']) !!}
+                                </svg>
+                                @if (! empty($t['insignia']))
+                                    <span class="absolute -right-2 -top-1.5 inline-flex min-w-[1.1rem] justify-center rounded-full bg-alto px-1 py-0.5 text-[9px] font-bold leading-none text-white"
+                                          aria-label="{{ $t['insignia'] }} alertas activas">{{ $t['insignia'] }}</span>
+                                @endif
+                            </span>
                             {{ $t['texto'] }}
                         </a>
                     @endforeach

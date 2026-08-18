@@ -60,6 +60,9 @@ Route::middleware('auth')->group(function () {
     // quien ve el detalle ve su resumen.
     Route::view('/reportes', 'reportes')->middleware('can:ver-registro')->name('reportes');
 
+    // Lo que ahora mismo merece atención: permanencias largas y aforo superado. Mismo permiso.
+    Route::view('/alertas', 'alertas')->middleware('can:ver-registro')->name('alertas');
+
     // Meter la nómina: alta manual e importación por Excel, mientras la asociación con el sistema
     // de carnets no la traiga sola.
     Route::view('/trabajadores', 'trabajadores')->middleware('can:gestionar-personal')->name('trabajadores');
