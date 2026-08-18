@@ -141,7 +141,7 @@ class Panel extends Component
         return app(Reportes::class)->porVehiculo($this->tramo()['desde'], $this->tramo()['hasta']);
     }
 
-    /** La franja pico dicha en horas, «8:00 a. m. – 8:59 a. m.». Nula si el tramo está vacío. */
+    /** La franja pico dicha en horas, «08:00 – 08:59». Nula si el tramo está vacío. */
     #[Computed]
     public function franjaPico(): ?string
     {
@@ -153,7 +153,7 @@ class Panel extends Component
 
         $inicio = CarbonImmutable::today()->setTime($hora, 0);
 
-        return $inicio->format('g:i a').' – '.$inicio->addMinutes(59)->format('g:i a');
+        return $inicio->format('H:i').' – '.$inicio->addMinutes(59)->format('H:i');
     }
 
     public function render()

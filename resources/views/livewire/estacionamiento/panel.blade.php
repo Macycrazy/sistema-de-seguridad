@@ -64,7 +64,7 @@
                             @if ($v->cedula)<span class="ml-1 font-mono text-xs text-slate-400">{{ $v->cedula }}</span>@endif
                         </td>
                         <td class="whitespace-nowrap px-4 py-3 text-right font-mono text-xs text-slate-500">
-                            {{ app(\App\Services\Estacionamiento\Estacionamiento::class)->desde($v->ocurrio_en)->translatedFormat('d M · g:i a') }}
+                            {{ app(\App\Services\Estacionamiento\Estacionamiento::class)->desde($v->ocurrio_en)->translatedFormat('d M · H:i') }}
                         </td>
                     </tr>
                 @empty
