@@ -147,7 +147,7 @@
                          min-w: en un teléfono los anchos fijos no caben y la columna «Persona»
                          se aplastaba a cero —el ente se corría a su sitio y el encabezado se
                          encimaba—. Con un ancho mínimo, el contenedor desplaza en vez de aplastar. --}}
-                    <table class="w-full min-w-[40rem] table-fixed text-sm">
+                    <table class="w-full min-w-[52rem] table-fixed text-sm">
                         <caption class="sr-only">
                             Movimientos del {{ $this->diaElegido()->format('d/m/Y') }}, del más reciente al más antiguo.
                         </caption>
@@ -162,6 +162,7 @@
                                 <th scope="col" class="w-28 px-4 py-3 font-semibold">Ente</th>
                                 <th scope="col" class="w-36 px-4 py-3 font-semibold">Tipo</th>
                                 <th scope="col" class="w-32 px-4 py-3 font-semibold">Mov.</th>
+                                <th scope="col" class="w-40 px-4 py-3 font-semibold">Vehículo</th>
                             </tr>
                         </thead>
 
@@ -197,6 +198,17 @@
                                     </td>
                                     <td class="px-4 py-3"><x-etiqueta :tipo="$movimiento->persona->tipo->value" /></td>
                                     <td class="px-4 py-3"><x-etiqueta :tipo="$movimiento->sentido->value" /></td>
+                                    <td class="px-4 py-3">
+                                        {{-- Con qué vehículo: así el vehículo del registro tiene dueño. --}}
+                                        @if ($movimiento->tieneVehiculo())
+                                            <span class="flex items-center gap-1.5">
+                                                <x-etiqueta :tipo="$movimiento->vehiculo->tipo" tamano="chico" />
+                                                <span class="truncate font-mono text-xs font-semibold tracking-wider text-slate-700">{{ $movimiento->vehiculo->placa }}</span>
+                                            </span>
+                                        @else
+                                            <span class="text-slate-300">—</span>
+                                        @endif
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>

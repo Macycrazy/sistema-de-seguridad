@@ -34,6 +34,7 @@ class MovimientosDelDia implements FromCollection, ShouldAutoSize, WithHeadings,
             $m->persona->dependencia ?? '',
             $m->persona->tipo->etiqueta(),
             $m->sentido->etiqueta(),
+            $m->tieneVehiculo() ? $m->vehiculo->descripcion() : 'A pie',
             $m->registradoPor,
         ]);
     }
@@ -48,7 +49,7 @@ class MovimientosDelDia implements FromCollection, ShouldAutoSize, WithHeadings,
     {
         return [
             'Fecha', 'Hora', 'Documento', 'Apellidos', 'Nombres', 'Ente',
-            'Dependencia', 'Tipo', 'Movimiento', 'Registrado por',
+            'Dependencia', 'Tipo', 'Movimiento', 'Vehículo', 'Registrado por',
         ];
     }
 

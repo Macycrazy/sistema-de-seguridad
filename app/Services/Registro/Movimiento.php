@@ -2,6 +2,7 @@
 
 namespace App\Services\Registro;
 
+use App\Services\DatosVehiculo;
 use Carbon\CarbonImmutable;
 
 /**
@@ -18,7 +19,16 @@ final readonly class Movimiento
         public Sentido $sentido,
         public CarbonImmutable $ocurrioEn,
         public string $registradoPor,
+        // Con qué vehículo se hizo ESTE movimiento, congelado tal cual estaba ese día. Nulo o vacío
+        // = a pie. Sin esto, saber a quién pertenece un vehículo en el registro era imposible.
+        public ?DatosVehiculo $vehiculo = null,
     ) {}
+
+    /** Se hizo con vehículo (no a pie). */
+    public function tieneVehiculo(): bool
+    {
+        return $this->vehiculo !== null && ! $this->vehiculo->vacio();
+    }
 
     public function hora(): string
     {

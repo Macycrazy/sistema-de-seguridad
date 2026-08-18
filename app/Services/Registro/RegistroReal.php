@@ -4,6 +4,7 @@ namespace App\Services\Registro;
 
 use App\Models\Movimiento as MovimientoModel;
 use App\Models\Persona as PersonaModel;
+use App\Services\DatosVehiculo;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -116,6 +117,8 @@ final class RegistroReal implements FuenteDelRegistro
             ocurrioEn: CarbonImmutable::parse($movimiento->ocurrio_en),
             // Quién lo anotó. Nulo mientras haya movimientos de antes del ingreso con usuario.
             registradoPor: $movimiento->usuario?->nombre ?? $movimiento->usuario?->usuario ?? '—',
+            // El vehículo congelado en el asiento, tal cual estaba ese día.
+            vehiculo: DatosVehiculo::desdeModelo($movimiento),
         );
     }
 

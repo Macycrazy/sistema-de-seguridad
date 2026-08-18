@@ -273,4 +273,36 @@ class RegistroRealTest extends TestCase
         $this->assertSame(Sentido::Entrada, $delDia->first()->sentido);
         $this->assertSame(1, $this->fuente->dentroEn(CarbonImmutable::today()));
     }
+
+    #[Test]
+    public function el_movimiento_trae_el_vehiculo_con_que_se_hizo(): void
+    {
+        // Sin esto, un vehículo en el registro no tiene dueño: no se sabe quién entró en él.
+        $ana = $this->trabajador();
+        MovimientoModel::create([
+            'persona_id' => $ana->id,
+            'tipo' => MovimientoModel::ENTRADA,
+            'ocurrio_en' => CarbonImmutable::today()->setTime(8, 0),
+            'tipo_vehiculo' => 'carro',
+            'marca' => 'Toyota',
+            'placa' => 'AB123CD',
+        ]);
+
+        $mov = $this->fuente->movimientosDelDia(CarbonImmutable::today())->first();
+
+        $this->assertTrue($mov->tieneVehiculo());
+        $this->assertSame('AB123CD', $mov->vehiculo->placa);
+        $this->assertSame('carro', $mov->vehiculo->tipo);
+    }
+
+    #[Test]
+    public function un_movimiento_a_pie_no_trae_vehiculo(): void
+    {
+        $ana = $this->trabajador();
+        $this->anotar($ana, MovimientoModel::ENTRADA, CarbonImmutable::today()->setTime(8, 0));
+
+        $mov = $this->fuente->movimientosDelDia(CarbonImmutable::today())->first();
+
+        $this->assertFalse($mov->tieneVehiculo());
+    }
 }
