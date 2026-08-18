@@ -31,3 +31,16 @@
     --color-alto: #b32b3c;
     --color-alto-suave: #fbe3e6;
 }
+
+/* En el teléfono, la columna es angosta y el texto explicativo queda con el borde derecho muy
+   desparejo —se ve raro—. Se justifica solo ahí (en pantalla ancha se deja al ras, que ya luce
+   bien) y con guionado en español, para que no se abran huecos grandes entre palabras. Se aplica
+   a los párrafos: un número o una etiqueta de una sola línea no se estira, así que no les afecta.
+   El lang="es" del documento es lo que hace que el guionado corte donde debe. */
+@media (max-width: 639.98px) {
+    main :where(p) {
+        text-align: justify;
+        text-justify: inter-word;
+        hyphens: auto;
+    }
+}
