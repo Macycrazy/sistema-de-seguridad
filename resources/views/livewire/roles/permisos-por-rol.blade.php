@@ -12,7 +12,7 @@
 
     <div class="mb-6">
         <h1 class="text-3xl font-bold tracking-tight">Roles y permisos</h1>
-        <p class="mt-2 text-sm text-slate-600">Marca lo que abre cada rol.</p>
+        <p class="mt-1 text-sm text-slate-500">Marca lo que abre cada rol.</p>
     </div>
 
     @if ($confirmacion !== '')

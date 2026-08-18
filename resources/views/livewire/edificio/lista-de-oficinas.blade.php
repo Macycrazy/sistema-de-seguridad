@@ -3,8 +3,7 @@
         <x-aviso class="mb-5" wire:key="aviso">{{ $aviso }}</x-aviso>
     @endif
 
-    <div class="flex items-center justify-between gap-4">
-        <p class="text-sm text-slate-600">La lista que se ofrece al marcar el piso de un invitado.</p>
+    <div class="flex items-center justify-end gap-4">
         <x-boton wire:click="abrirAlta">Nueva oficina</x-boton>
     </div>
 
