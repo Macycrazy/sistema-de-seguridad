@@ -1,0 +1,97 @@
+<?php
+
+namespace App\Services\Alertas;
+
+use App\Models\Parametro;
+use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
+
+/**
+ * Los umbrales de las alertas, que el administrador ajusta sin tocar código.
+ *
+ * Mismo patrón que ReglasDeTiempo y misma tabla «parametros» (con claves propias, prefijadas
+ * «alerta_»): un valor por omisión en el código que también es el respaldo si la tabla está
+ * vacía, y el valor que manda sale de la base. Cambiarlos desde Ajustes vale en la siguiente
+ * lectura de alertas, sin volver a desplegar.
+ *
+ * Se separan de ReglasDeTiempo a propósito: aquéllas gobiernan la puerta al marcar; éstas, cuándo
+ * algo del registro merece un aviso. Son dos oficios distintos aunque compartan la tabla.
+ */
+class UmbralesDeAlerta
+{
+    /** clave => [etiqueta, explicación, por omisión, mínimo, máximo, unidad]. */
+    public const UMBRALES = [
+        'alerta_horas_permanencia' => [
+            'Permanencia larga',
+            'Horas que alguien puede llevar dentro sin marcar salida antes de que se avise. Casi siempre es un olvido de marcar la salida.',
+            12, 1, 48, 'horas',
+        ],
+        'alerta_aforo' => [
+            'Aforo',
+            'Cuántas personas dentro a la vez disparan el aviso de aforo. En 0 el aviso queda desactivado.',
+            0, 0, 999, 'personas',
+        ],
+    ];
+
+    /** @var array<string, int>|null Los valores de la base, leídos una sola vez. */
+    private ?array $valores = null;
+
+    public function horasPermanencia(): int
+    {
+        return $this->valor('alerta_horas_permanencia');
+    }
+
+    public function aforo(): int
+    {
+        return $this->valor('alerta_aforo');
+    }
+
+    /**
+     * Para la pantalla: los umbrales con etiqueta, explicación, valor actual y límites.
+     *
+     * @return Collection<int, array{clave:string, etiqueta:string, explicacion:string, valor:int, minimo:int, maximo:int, unidad:string}>
+     */
+    public function todos(): Collection
+    {
+        return collect(self::UMBRALES)->map(fn (array $umbral, string $clave) => [
+            'clave' => $clave,
+            'etiqueta' => $umbral[0],
+            'explicacion' => $umbral[1],
+            'valor' => $this->valor($clave),
+            'minimo' => $umbral[3],
+            'maximo' => $umbral[4],
+            'unidad' => $umbral[5],
+        ])->values();
+    }
+
+    /**
+     * Ajusta un umbral, validado contra sus límites.
+     *
+     * @throws ValidationException
+     */
+    public function guardar(string $clave, int $valor): void
+    {
+        if (! array_key_exists($clave, self::UMBRALES)) {
+            throw ValidationException::withMessages(['valor' => 'Ese umbral no existe.']);
+        }
+
+        [, , , $minimo, $maximo] = self::UMBRALES[$clave];
+
+        if ($valor < $minimo || $valor > $maximo) {
+            throw ValidationException::withMessages([
+                'valor' => "El valor tiene que estar entre $minimo y $maximo.",
+            ]);
+        }
+
+        Parametro::updateOrCreate(['clave' => $clave], ['valor' => $valor]);
+
+        $this->valores = null;
+    }
+
+    private function valor(string $clave): int
+    {
+        $this->valores ??= Parametro::query()->pluck('valor', 'clave')->all();
+
+        return $this->valores[$clave] ?? self::UMBRALES[$clave][2];
+    }
+}

@@ -34,6 +34,19 @@
                     <p class="mt-1 text-sm text-slate-500">Las cuentas del registro por tramo de fechas.</p>
                 </x-tarjeta>
             </a>
+
+            @php $alertasActivas = app(\App\Services\Alertas\Alertas::class)->cuantas(); @endphp
+            <a href="{{ route('alertas') }}" class="block transition hover:shadow-md">
+                <x-tarjeta parte="2" class="h-full">
+                    <p class="flex items-center gap-2 text-lg font-semibold">
+                        Alertas
+                        @if ($alertasActivas > 0)
+                            <span class="inline-flex min-w-[1.25rem] justify-center rounded-full bg-alto px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">{{ $alertasActivas }}</span>
+                        @endif
+                    </p>
+                    <p class="mt-1 text-sm text-slate-500">Permanencias largas y aforo superado.</p>
+                </x-tarjeta>
+            </a>
         @endcan
     </div>
 
