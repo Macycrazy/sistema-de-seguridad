@@ -127,14 +127,14 @@
             @else
                 {{-- Misma estructura que la tabla de la base visual, para que las tres
                      partes se vean como un solo sistema. --}}
-                {{-- La altura acotada no es estética: `overflow-x-auto` convierte al div en
-                     área de scroll en los DOS ejes, así que un `sticky` de dentro se ancla
-                     a él y no a la ventana. Sin altura, ese contenedor nunca desplaza en
-                     vertical y la cabecera fija no fijaría nada. Con max-h sí desplaza, la
-                     cabecera se queda arriba, y el contador y los filtros no se pierden de
-                     vista mientras se recorre la lista. --}}
+                {{-- El scroll interno con cabecera fija es SOLO de pantalla ancha (sm+): ahí la
+                     altura acotada hace que el contenedor desplace en vertical y el `sticky` de la
+                     cabecera se ancle a él. En el teléfono eso sería un scroll dentro de otro
+                     scroll —confuso, y deja un hueco grande bajo la lista—, así que ahí la tabla
+                     fluye con la página (solo desplaza en horizontal, para las columnas anchas) y
+                     hay una sola barra de scroll: la de la página. --}}
                 <div
-                    class="mt-3 max-h-[70vh] overflow-auto rounded border border-slate-200 bg-white shadow-sm transition-opacity"
+                    class="mt-3 overflow-x-auto rounded border border-slate-200 bg-white shadow-sm transition-opacity sm:max-h-[70vh] sm:overflow-auto"
                     {{-- Los dos modificadores van en el MISMO atributo. Separados, el
                          `wire:loading.delay` suelto es una directiva por su cuenta, y una
                          wire:loading sin `.class` significa «muestra esto solo mientras
@@ -152,7 +152,10 @@
                             Movimientos del {{ $this->diaElegido()->format('d/m/Y') }}, del más reciente al más antiguo.
                         </caption>
 
-                        <thead class="sticky top-0 z-10 bg-white">
+                        {{-- La cabecera se fija solo donde hay scroll interno (sm+): en móvil el
+                             contenedor no desplaza en vertical, así que fijarla la encimaría con la
+                             cabecera azul de la página. --}}
+                        <thead class="bg-white sm:sticky sm:top-0 sm:z-10">
                             <tr class="border-b border-slate-200 text-left font-mono text-xs uppercase tracking-widest text-slate-500">
                                 <th scope="col" class="w-20 px-4 py-3 font-semibold">Hora</th>
                                 <th scope="col" class="px-4 py-3 font-semibold">Persona</th>
