@@ -20,6 +20,12 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
+            {{-- La plantilla en blanco, para que la carga masiva salga normalizada. --}}
+            <button type="button" wire:click="descargarPlantilla"
+                    class="text-sm font-semibold text-parte3 hover:underline">
+                Descargar plantilla
+            </button>
+
             {{-- Importar: subir el Excel y cargar en bloque. --}}
             <form wire:submit="importar" class="flex items-center gap-2">
                 <label class="cursor-pointer rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">

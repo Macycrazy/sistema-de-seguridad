@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Trabajadores;
 
+use App\Exports\PlantillaTrabajadores;
 use App\Imports\TrabajadoresImport;
 use App\Models\Persona;
 use App\Services\GestionDeTrabajadores;
@@ -12,6 +13,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * La pantalla para meter al personal: uno a uno, o en bloque desde un Excel.
@@ -126,6 +128,12 @@ class ListaDeTrabajadores extends Component
         $this->aviso = $trabajador->wasRecentlyCreated
             ? 'Trabajador dado de alta.'
             : 'Ese trabajador ya existía; se actualizaron sus datos.';
+    }
+
+    /** La plantilla en blanco con las columnas exactas y el ente en desplegable. */
+    public function descargarPlantilla(): BinaryFileResponse
+    {
+        return Excel::download(new PlantillaTrabajadores, 'plantilla-personal.xlsx');
     }
 
     public function importar(): void
