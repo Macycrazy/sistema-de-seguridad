@@ -16,16 +16,11 @@
     </div>
 
     @if ($confirmacion !== '')
-        <div class="mb-5 rounded border border-ok/30 bg-ok-suave px-4 py-3 text-sm font-semibold text-ok"
-             wire:key="confirmacion">
-            {{ $confirmacion }}
-        </div>
+        <x-aviso class="mb-5" wire:key="confirmacion">{{ $confirmacion }}</x-aviso>
     @endif
 
     @if ($errors->has('permisos'))
-        <div class="mb-5 rounded border border-alto/30 bg-alto-suave px-4 py-3 text-sm font-semibold text-alto">
-            {{ $errors->first('permisos') }}
-        </div>
+        <x-error class="mb-5">{{ $errors->first('permisos') }}</x-error>
     @endif
 
     <div class="overflow-hidden rounded border border-slate-200 bg-white shadow-sm">

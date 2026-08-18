@@ -16,9 +16,7 @@
 
     {{-- Por qué se acabó la sesión anterior: la desactivaron, o se cerró. --}}
     @if (session('aviso'))
-        <div class="mb-5 rounded border border-alto/30 bg-alto-suave px-4 py-3 text-sm font-semibold text-alto">
-            {{ session('aviso') }}
-        </div>
+        <x-error class="mb-5">{{ session('aviso') }}</x-error>
     @endif
 
     <x-tarjeta parte="3">

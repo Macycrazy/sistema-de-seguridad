@@ -37,7 +37,7 @@ class PantallaAlertasTest extends TestCase
         Livewire::test(Panel::class)
             ->assertOk()
             ->assertSee('ANA PÉREZ')
-            ->assertSee('Aviso');
+            ->assertSee('AVISO');   // la etiqueta de gravedad, en mayúscula como todas
     }
 
     #[Test]

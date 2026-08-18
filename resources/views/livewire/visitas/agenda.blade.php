@@ -1,9 +1,6 @@
 <div>
     @if ($aviso)
-        <div class="mb-5 rounded border border-parte3/30 bg-parte3-suave px-4 py-3 text-sm font-semibold text-parte3"
-             role="status" wire:key="aviso-visitas">
-            {{ $aviso }}
-        </div>
+        <x-aviso class="mb-5" wire:key="aviso-visitas">{{ $aviso }}</x-aviso>
     @endif
 
     <div class="flex flex-wrap items-end justify-between gap-4">
@@ -64,11 +61,11 @@
                 @forelse ($this->visitas as $visita)
                     @php
                         $vencida = $visita->esVencida();
-                        [$texto, $clases] = match (true) {
-                            $visita->estado === \App\Models\VisitaEsperada::LLEGO => ['Llegó', 'bg-parte2/10 text-parte2'],
-                            $visita->estado === \App\Models\VisitaEsperada::CANCELADA => ['Cancelada', 'bg-slate-100 text-slate-500'],
-                            $vencida => ['Vencida', 'bg-alto-suave text-alto'],
-                            default => ['Esperada', 'bg-parte1/10 text-parte1'],
+                        $estado = match (true) {
+                            $visita->estado === \App\Models\VisitaEsperada::LLEGO => 'llego',
+                            $visita->estado === \App\Models\VisitaEsperada::CANCELADA => 'cancelada',
+                            $vencida => 'vencida',
+                            default => 'esperada',
                         };
                     @endphp
                     <tr wire:key="vis-{{ $visita->id }}">
@@ -83,7 +80,7 @@
                         </td>
                         <td class="px-4 py-3 text-slate-600">{{ $visita->a_quien_visita ?: '—' }}</td>
                         <td class="px-4 py-3">
-                            <span class="rounded px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide {{ $clases }}">{{ $texto }}</span>
+                            <x-etiqueta :tipo="$estado" tamano="chico" />
                         </td>
                         <td class="whitespace-nowrap px-4 py-3 text-right">
                             @if ($visita->estaEsperada())

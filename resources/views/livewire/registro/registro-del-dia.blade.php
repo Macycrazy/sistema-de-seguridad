@@ -8,9 +8,9 @@
     {{-- Rojo solo para esto: un dato que no se entiende.
          role=alert porque aparece a mitad de sesión, al cambiar la fecha. --}}
     @if ($this->fechaIlegible)
-        <p role="alert" class="mb-4 rounded border border-alto bg-alto-suave px-4 py-3 text-sm text-alto">
+        <x-error class="mb-4">
             No se entiende la fecha «{{ $fecha }}». Se está mostrando el día de hoy.
-        </p>
+        </x-error>
     @endif
 
     {{-- La cifra que gobierna la pantalla, y al lado el botón que produce el reporte. --}}

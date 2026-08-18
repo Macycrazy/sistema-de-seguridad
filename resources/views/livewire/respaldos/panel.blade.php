@@ -1,11 +1,10 @@
 <div>
     @if ($aviso)
-        <div class="mb-5 rounded border border-parte3/30 bg-parte3-suave px-4 py-3 text-sm font-semibold text-parte3"
-             role="status" wire:key="aviso-resp">{{ $aviso }}</div>
+        <x-aviso class="mb-5" wire:key="aviso-resp">{{ $aviso }}</x-aviso>
     @endif
 
     @if ($error)
-        <div class="mb-5 rounded border border-alto/40 bg-alto-suave px-4 py-3 text-sm text-alto" role="alert">{{ $error }}</div>
+        <x-error class="mb-5">{{ $error }}</x-error>
     @endif
 
     <div class="flex flex-wrap items-center justify-between gap-4">
