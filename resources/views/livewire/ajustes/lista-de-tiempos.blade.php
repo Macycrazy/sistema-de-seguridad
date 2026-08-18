@@ -1,0 +1,44 @@
+<div>
+    @if ($aviso)
+        <div class="mb-5 rounded border border-parte3/30 bg-parte3-suave px-4 py-3 text-sm font-semibold text-parte3"
+             role="status" wire:key="aviso">
+            {{ $aviso }}
+        </div>
+    @endif
+
+    <p class="max-w-2xl text-sm text-slate-600">
+        Los plazos del marcaje. Valen desde el siguiente marcaje, sin reiniciar nada.
+    </p>
+
+    <form wire:submit="guardar" class="mt-6 space-y-4">
+        @foreach ($this->reglas as $regla)
+            <div class="rounded border border-slate-200 bg-white p-4 shadow-sm sm:flex sm:items-center sm:justify-between sm:gap-6"
+                 wire:key="regla-{{ $regla['clave'] }}">
+                <div class="min-w-0">
+                    <p class="font-semibold text-slate-900">{{ $regla['etiqueta'] }}</p>
+                    <p class="mt-0.5 text-sm text-slate-600">{{ $regla['explicacion'] }}</p>
+                </div>
+
+                <div class="mt-3 flex shrink-0 items-center gap-2 sm:mt-0">
+                    <input
+                        type="number"
+                        min="{{ $regla['minimo'] }}"
+                        max="{{ $regla['maximo'] }}"
+                        wire:model="valores.{{ $regla['clave'] }}"
+                        class="w-24 rounded border border-slate-300 px-3 py-2 text-right font-mono text-lg tabular-nums
+                               focus:border-slate-900 focus:outline-none focus:ring-4 focus:ring-slate-900/20"
+                    >
+                    <span class="w-16 font-mono text-xs uppercase tracking-widest text-slate-500">{{ $regla['unidad'] }}</span>
+                </div>
+
+                @error('valores.'.$regla['clave'])
+                    <p class="mt-2 w-full text-sm text-alto sm:text-right">{{ $message }}</p>
+                @enderror
+            </div>
+        @endforeach
+
+        <div class="pt-2">
+            <x-boton type="submit">Guardar</x-boton>
+        </div>
+    </form>
+</div>

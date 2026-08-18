@@ -31,6 +31,8 @@ enum Permiso: string
 
     case GESTIONAR_EDIFICIO = 'gestionar-edificio';
 
+    case GESTIONAR_AJUSTES = 'gestionar-ajustes';
+
     case VER_AUDITORIA = 'ver-auditoria';
 
     case GESTIONAR_PERMISOS = 'gestionar-permisos';
@@ -44,6 +46,7 @@ enum Permiso: string
             self::GESTIONAR_USUARIOS => 'Gestionar usuarios',
             self::GESTIONAR_PERSONAL => 'Gestionar personal',
             self::GESTIONAR_EDIFICIO => 'Gestionar el edificio',
+            self::GESTIONAR_AJUSTES => 'Ajustar los tiempos',
             self::VER_AUDITORIA => 'Ver la auditoría',
             self::GESTIONAR_PERMISOS => 'Gestionar permisos',
         };
@@ -58,6 +61,7 @@ enum Permiso: string
             self::GESTIONAR_USUARIOS => 'Dar de alta, desactivar y cambiar claves y roles.',
             self::GESTIONAR_PERSONAL => 'Cargar y dar de alta a los trabajadores que se marcan en la puerta.',
             self::GESTIONAR_EDIFICIO => 'Las oficinas del edificio que se ofrecen al marcar el piso de un invitado.',
+            self::GESTIONAR_AJUSTES => 'Las reglas de tiempo del marcaje: los plazos entre entradas y salidas.',
             self::VER_AUDITORIA => 'Quién consultó qué cédula, quién exportó y quién corrigió.',
             self::GESTIONAR_PERMISOS => 'Esta misma pantalla.',
         };
@@ -96,6 +100,7 @@ enum Permiso: string
             self::VER_AUDITORIA,
             self::GESTIONAR_PERSONAL,
             self::GESTIONAR_EDIFICIO,
+            self::GESTIONAR_AJUSTES,
             self::GESTIONAR_PERMISOS => [Rol::ADMINISTRADOR],
         };
     }

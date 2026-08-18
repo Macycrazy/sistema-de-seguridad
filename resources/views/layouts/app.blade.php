@@ -82,6 +82,7 @@
                             ['ruta' => 'trabajadores', 'texto' => 'Trabajadores', 'permiso' => 'gestionar-personal'],
                             ['ruta' => 'usuarios', 'texto' => 'Usuarios', 'permiso' => 'gestionar-usuarios'],
                             ['ruta' => 'edificio', 'texto' => 'Edificio', 'permiso' => 'gestionar-edificio'],
+                            ['ruta' => 'ajustes', 'texto' => 'Ajustes', 'permiso' => 'gestionar-ajustes'],
                             ['ruta' => 'roles', 'texto' => 'Roles', 'permiso' => 'gestionar-permisos'],
                         ])->filter(fn ($m) => $puede($m['permiso']));
 
@@ -158,6 +159,7 @@
                 ['ruta' => 'trabajadores', 'texto' => 'Personal', 'permiso' => 'gestionar-personal', 'icono' => 'personal'],
                 ['ruta' => 'usuarios', 'texto' => 'Usuarios', 'permiso' => 'gestionar-usuarios', 'icono' => 'usuarios'],
                 ['ruta' => 'edificio', 'texto' => 'Edificio', 'permiso' => 'gestionar-edificio', 'icono' => 'edificio'],
+                ['ruta' => 'ajustes', 'texto' => 'Ajustes', 'permiso' => 'gestionar-ajustes', 'icono' => 'ajustes'],
                 ['ruta' => 'roles', 'texto' => 'Roles', 'permiso' => 'gestionar-permisos', 'icono' => 'roles'],
             ])->filter(fn ($t) => $puede($t['permiso']))->values();
 
@@ -167,6 +169,7 @@
                 'registro' => '<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1.1"/><circle cx="4" cy="12" r="1.1"/><circle cx="4" cy="18" r="1.1"/>',
                 'personal' => '<path d="M4 20c0-3.2 2.7-5 6-5s6 1.8 6 5"/><circle cx="10" cy="8" r="3.2"/><path d="M17 13.5c1.9.5 3 2 3 4.5"/>',
                 'edificio' => '<path d="M4 21V6l7-3v18"/><path d="M11 8h6v13"/><path d="M7 9h0M7 12h0M7 15h0M14 12h0M14 16h0"/>',
+                'ajustes' => '<circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M5 5l1.5 1.5M17.5 17.5 19 19M3 12h2M19 12h2M5 19l1.5-1.5M17.5 6.5 19 5"/>',
                 'usuarios' => '<circle cx="9" cy="8" r="3"/><path d="M3.8 20c0-3 2.4-5 5.2-5s5.2 2 5.2 5"/><path d="M16 6.6a3 3 0 0 1 0 5.6M20.5 20c0-2.4-1.5-4.2-3.6-4.8"/>',
                 'roles' => '<path d="M12 3.2 19 6v5c0 4.4-3 7.4-7 8.8-4-1.4-7-4.4-7-8.8V6z"/><path d="M9 11.8l2 2 4-4"/>',
                 default => '',

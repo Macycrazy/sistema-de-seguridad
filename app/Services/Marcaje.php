@@ -85,6 +85,22 @@ class Marcaje
      */
     public const DIGITOS_MAXIMOS_JURIDICO = 10;
 
+    // ReglasDeTiempo vive en el mismo namespace, así que no lleva «use». El contenedor la inyecta;
+    // las constantes de arriba quedan como los valores por omisión de esas reglas.
+    public function __construct(private ReglasDeTiempo $reglas) {}
+
+    /** Los minutos entre dos entradas. Sale de las reglas ajustables; lo usa la pantalla. */
+    public function minutosEntreEntradas(): int
+    {
+        return $this->reglas->minutosEntreEntradas();
+    }
+
+    /** Los minutos entre la entrada y su salida. Otro plazo, otro número, también ajustable. */
+    public function minutosEntreEntradaYSalida(): int
+    {
+        return $this->reglas->minutosEntreEntradaYSalida();
+    }
+
     /** Cuántos dígitos admite cada letra. */
     public static function digitosMaximos(?string $nacionalidad = null): int
     {
@@ -328,7 +344,7 @@ class Marcaje
             throw ValidationException::withMessages([
                 'tipo' => sprintf(
                     'Entró hace menos de %d minutos. Se le puede marcar la salida a partir de las %s.',
-                    self::MINUTOS_ENTRE_ENTRADA_Y_SALIDA,
+                    $this->reglas->minutosEntreEntradaYSalida(),
                     $desde->format(Movimiento::FORMATO_HORA),
                 ),
             ]);
@@ -390,7 +406,7 @@ class Marcaje
             return null;
         }
 
-        return $ultimo->ocurrio_en->diffInSeconds(now()) < self::SEGUNDOS_ANTIDUPLICADO
+        return $ultimo->ocurrio_en->diffInSeconds(now()) < $this->reglas->segundosAntiduplicado()
             ? $ultimo
             : null;
     }
@@ -434,8 +450,8 @@ class Marcaje
         $porLaSalida = $this->desdeLaSalida($persona);
 
         [$minutos, $verbo] = $porLaSalida && $porLaSalida->equalTo($desde)
-            ? [self::MINUTOS_ENTRE_SALIDA_Y_ENTRADA, 'Salió']
-            : [self::MINUTOS_ENTRE_ENTRADAS, 'Entró'];
+            ? [$this->reglas->minutosEntreSalidaYEntrada(), 'Salió']
+            : [$this->reglas->minutosEntreEntradas(), 'Entró'];
 
         return sprintf(
             '%s hace menos de %d minutos. Se le puede marcar otra entrada a partir de las %s.',
@@ -448,13 +464,13 @@ class Marcaje
     /** Cuándo se cumple el plazo que se cuenta desde su entrada anterior. */
     private function desdeLaEntrada(Persona $persona): ?CarbonInterface
     {
-        return $persona->ultimaEntrada()?->ocurrio_en->copy()->addMinutes(self::MINUTOS_ENTRE_ENTRADAS);
+        return $persona->ultimaEntrada()?->ocurrio_en->copy()->addMinutes($this->reglas->minutosEntreEntradas());
     }
 
     /** Cuándo se cumple el plazo que se cuenta desde su última salida. */
     private function desdeLaSalida(Persona $persona): ?CarbonInterface
     {
-        return $persona->ultimaSalida()?->ocurrio_en->copy()->addMinutes(self::MINUTOS_ENTRE_SALIDA_Y_ENTRADA);
+        return $persona->ultimaSalida()?->ocurrio_en->copy()->addMinutes($this->reglas->minutosEntreSalidaYEntrada());
     }
 
     /**
@@ -472,7 +488,7 @@ class Marcaje
             return null;
         }
 
-        $desde = $ultima->ocurrio_en->copy()->addMinutes(self::MINUTOS_ENTRE_ENTRADA_Y_SALIDA);
+        $desde = $ultima->ocurrio_en->copy()->addMinutes($this->reglas->minutosEntreEntradaYSalida());
 
         return $desde->isFuture() ? $desde : null;
     }
