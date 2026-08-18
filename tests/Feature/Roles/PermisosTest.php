@@ -31,6 +31,7 @@ class PermisosTest extends TestCase
             // El inicio del vigilante es marcar: al no ver el registro, «/» lo redirige (302) ahí.
             'vigilante · inicio' => [Rol::VIGILANTE, '/', 302],
             'vigilante · marcar' => [Rol::VIGILANTE, '/marcar', 200],
+            'vigilante · estacionamiento' => [Rol::VIGILANTE, '/estacionamiento', 200],
             'vigilante · su clave' => [Rol::VIGILANTE, '/clave', 200],
             'vigilante · registro' => [Rol::VIGILANTE, '/registro', 403],
             'vigilante · reportes' => [Rol::VIGILANTE, '/reportes', 403],
@@ -61,6 +62,7 @@ class PermisosTest extends TestCase
 
             'administrador · inicio' => [Rol::ADMINISTRADOR, '/', 200],
             'administrador · marcar' => [Rol::ADMINISTRADOR, '/marcar', 200],
+            'administrador · estacionamiento' => [Rol::ADMINISTRADOR, '/estacionamiento', 200],
             'administrador · su clave' => [Rol::ADMINISTRADOR, '/clave', 200],
             'administrador · registro' => [Rol::ADMINISTRADOR, '/registro', 200],
             'administrador · reportes' => [Rol::ADMINISTRADOR, '/reportes', 200],

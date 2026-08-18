@@ -7,6 +7,7 @@ use App\Models\Persona;
 use App\Services\Alertas\Alerta;
 use App\Services\Alertas\Alertas;
 use App\Services\Alertas\UmbralesDeAlerta;
+use App\Services\DatosVehiculo;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
@@ -94,6 +95,34 @@ class AlertasTest extends TestCase
         $this->marca($luis, Movimiento::ENTRADA, CarbonImmutable::now()->subMinutes(20));
 
         $this->assertNull(app(Alertas::class)->activas()->firstWhere('tipo', Alerta::AFORO));
+    }
+
+    #[Test]
+    public function el_estacionamiento_avisa_cuando_se_pasa_del_aforo(): void
+    {
+        app(UmbralesDeAlerta::class)->guardar('alerta_aforo_estacionamiento', 1);
+
+        $ana = $this->persona('1');
+        $luis = $this->persona('2');
+        $this->marca($ana, Movimiento::ENTRADA, CarbonImmutable::now()->subMinutes(30));
+        $ana->movimientos()->latest('id')->first()->update(['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'AAA111']);
+        $this->marca($luis, Movimiento::ENTRADA, CarbonImmutable::now()->subMinutes(20));
+        $luis->movimientos()->latest('id')->first()->update(['tipo_vehiculo' => DatosVehiculo::MOTO, 'placa' => 'BBB222']);
+
+        $alerta = app(Alertas::class)->activas()->firstWhere('tipo', Alerta::ESTACIONAMIENTO);
+
+        $this->assertNotNull($alerta);
+        $this->assertTrue($alerta->esUrgente());
+    }
+
+    #[Test]
+    public function el_estacionamiento_en_cero_no_avisa(): void
+    {
+        $ana = $this->persona('1');
+        $this->marca($ana, Movimiento::ENTRADA, CarbonImmutable::now()->subMinutes(30));
+        $ana->movimientos()->latest('id')->first()->update(['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'AAA111']);
+
+        $this->assertNull(app(Alertas::class)->activas()->firstWhere('tipo', Alerta::ESTACIONAMIENTO));
     }
 
     #[Test]

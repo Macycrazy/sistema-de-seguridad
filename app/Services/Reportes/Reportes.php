@@ -171,6 +171,27 @@ final class Reportes
             ->map(fn ($fila) => ['unidad' => $fila->unidad, 'entradas' => (int) $fila->n]);
     }
 
+    /**
+     * Cómo se entró en el tramo: en carro, en moto o a pie.
+     *
+     * Se mira el vehículo congelado en cada entrada. Sin tipo_vehiculo, se entró caminando.
+     *
+     * @return array{carro:int, moto:int, aPie:int}
+     */
+    public function porVehiculo(CarbonImmutable $desde, CarbonImmutable $hasta): array
+    {
+        $conteo = $this->entradasEntre($desde, $hasta)
+            ->selectRaw("coalesce(tipo_vehiculo, 'a-pie') as t, count(*) as n")
+            ->groupByRaw('coalesce(tipo_vehiculo, \'a-pie\')')
+            ->pluck('n', 't');
+
+        return [
+            'carro' => (int) ($conteo['carro'] ?? 0),
+            'moto' => (int) ($conteo['moto'] ?? 0),
+            'aPie' => (int) ($conteo['a-pie'] ?? 0),
+        ];
+    }
+
     /** El tramo, siempre de entradas y siempre acotado por [inicio del día, fin del día]. */
     private function entradasEntre(CarbonImmutable $desde, CarbonImmutable $hasta)
     {

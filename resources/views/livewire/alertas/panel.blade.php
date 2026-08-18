@@ -48,7 +48,11 @@
                                 {{ $urgente ? 'Urgente' : 'Aviso' }}
                             </span>
                             <span class="font-mono text-[10px] uppercase tracking-widest text-slate-400">
-                                {{ $alerta->tipo === \App\Services\Alertas\Alerta::AFORO ? 'Aforo' : 'Permanencia' }}
+                                @switch($alerta->tipo)
+                                    @case(\App\Services\Alertas\Alerta::AFORO) Aforo @break
+                                    @case(\App\Services\Alertas\Alerta::ESTACIONAMIENTO) Estacionamiento @break
+                                    @default Permanencia
+                                @endswitch
                             </span>
                         </div>
                         <p class="mt-1 text-sm text-slate-600">{{ $alerta->detalle }}</p>

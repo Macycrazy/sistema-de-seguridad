@@ -134,6 +134,23 @@
             </x-tarjeta>
         </div>
 
+        {{-- CÓMO SE ENTRÓ --}}
+        @php
+            $veh = $this->porVehiculo;
+            $totalVeh = max(1, $veh['carro'] + $veh['moto'] + $veh['aPie']);
+        @endphp
+        <x-tarjeta titulo="Cómo se entró" class="mt-4">
+            <div class="grid grid-cols-3 gap-4 text-center">
+                @foreach ([['En carro', $veh['carro']], ['En moto', $veh['moto']], ['A pie', $veh['aPie']]] as [$rotulo, $n])
+                    <div>
+                        <p class="text-2xl font-bold tabular-nums text-slate-900">{{ number_format($n) }}</p>
+                        <p class="font-mono text-[11px] uppercase tracking-widest text-slate-500">{{ $rotulo }}</p>
+                        <p class="text-xs text-slate-400">{{ round($n / $totalVeh * 100) }}%</p>
+                    </div>
+                @endforeach
+            </div>
+        </x-tarjeta>
+
         {{-- POR UNIDAD --}}
         <x-tarjeta titulo="Entradas por unidad" class="mt-4">
             <ul class="space-y-2.5">

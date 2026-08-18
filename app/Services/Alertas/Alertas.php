@@ -4,6 +4,7 @@ namespace App\Services\Alertas;
 
 use App\Models\Movimiento;
 use App\Models\Persona;
+use App\Services\Estacionamiento\Estacionamiento;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +26,10 @@ use Illuminate\Support\Facades\DB;
  */
 final class Alertas
 {
-    public function __construct(private UmbralesDeAlerta $umbrales) {}
+    public function __construct(
+        private UmbralesDeAlerta $umbrales,
+        private Estacionamiento $estacionamiento,
+    ) {}
 
     /**
      * Todas las alertas activas ahora, las urgentes primero y, dentro de cada gravedad, la
@@ -48,6 +52,20 @@ final class Alertas
                 titulo: 'Aforo superado',
                 detalle: $dentro->count().' personas dentro; el aforo son '.$aforo.'.',
             ));
+        }
+
+        // ESTACIONAMIENTO — se llena aparte del aforo de personas: mucha gente entra caminando.
+        $aforoEst = $this->umbrales->aforoEstacionamiento();
+        if ($aforoEst > 0) {
+            $vehiculos = $this->estacionamiento->cuantosDentro();
+            if ($vehiculos > $aforoEst) {
+                $alertas->push(new Alerta(
+                    tipo: Alerta::ESTACIONAMIENTO,
+                    severidad: Alerta::URGENTE,
+                    titulo: 'Estacionamiento lleno',
+                    detalle: $vehiculos.' vehículos dentro; el aforo son '.$aforoEst.'.',
+                ));
+            }
         }
 
         // PERMANENCIA — una alerta por persona que lleva de más.
