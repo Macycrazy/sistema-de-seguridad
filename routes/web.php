@@ -60,6 +60,9 @@ Route::middleware('auth')->group(function () {
     // de carnets no la traiga sola.
     Route::view('/trabajadores', 'trabajadores')->middleware('can:gestionar-personal')->name('trabajadores');
 
+    // El catálogo de oficinas del edificio, que la puerta ofrece al marcar el piso de un invitado.
+    Route::view('/edificio', 'edificio')->middleware('can:gestionar-edificio')->name('edificio');
+
     /*
      * Parte 3 · dar de alta, desactivar y cambiar claves y roles.
      *

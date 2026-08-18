@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\Movimiento;
 use App\Models\Persona;
 use App\Services\DatosVehiculo;
+use App\Services\Edificio\CatalogoDelEdificio;
 use App\Services\Marcaje;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -363,9 +364,9 @@ class Marcar extends Component
     #[Computed]
     public function oficinasPorPiso(): array
     {
-        // La LISTA sale del catálogo del edificio (config/edificio.php): hay sitios donde no
-        // labora nadie —el LOBBY— y aun así se va de visita a ellos.
-        $catalogo = collect(config('edificio.oficinas', []))
+        // La LISTA sale del catálogo del edificio (tabla «oficinas», que el administrador
+        // gestiona): hay sitios donde no labora nadie —el LOBBY— y aun así se va de visita.
+        $catalogo = collect(app(CatalogoDelEdificio::class)->oficinas())
             ->map(fn ($codigo) => Persona::normalizarPiso($codigo))
             ->filter()
             ->unique();
@@ -391,7 +392,7 @@ class Marcar extends Component
         // encontraría a su oficina, que es una cadena.
         $nombres = [];
 
-        foreach ((array) config('edificio.nombres', []) as $codigo => $nombre) {
+        foreach (app(CatalogoDelEdificio::class)->nombres() as $codigo => $nombre) {
             $nombres[(string) $codigo] = trim((string) $nombre);
         }
 
@@ -446,7 +447,7 @@ class Marcar extends Component
     {
         $delCatalogo = [];
 
-        foreach ((array) config('edificio.nombres', []) as $codigo => $nombre) {
+        foreach (app(CatalogoDelEdificio::class)->nombres() as $codigo => $nombre) {
             $delCatalogo[(string) $codigo] = trim((string) $nombre);
         }
 
