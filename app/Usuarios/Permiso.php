@@ -29,6 +29,8 @@ enum Permiso: string
 
     case GESTIONAR_PERSONAL = 'gestionar-personal';
 
+    case GESTIONAR_EDIFICIO = 'gestionar-edificio';
+
     case VER_AUDITORIA = 'ver-auditoria';
 
     case GESTIONAR_PERMISOS = 'gestionar-permisos';
@@ -41,6 +43,7 @@ enum Permiso: string
             self::EXPORTAR_REGISTRO => 'Exportar el registro',
             self::GESTIONAR_USUARIOS => 'Gestionar usuarios',
             self::GESTIONAR_PERSONAL => 'Gestionar personal',
+            self::GESTIONAR_EDIFICIO => 'Gestionar el edificio',
             self::VER_AUDITORIA => 'Ver la auditoría',
             self::GESTIONAR_PERMISOS => 'Gestionar permisos',
         };
@@ -54,6 +57,7 @@ enum Permiso: string
             self::EXPORTAR_REGISTRO => 'Sacar el día a un archivo que se lleva en un pendrive.',
             self::GESTIONAR_USUARIOS => 'Dar de alta, desactivar y cambiar claves y roles.',
             self::GESTIONAR_PERSONAL => 'Cargar y dar de alta a los trabajadores que se marcan en la puerta.',
+            self::GESTIONAR_EDIFICIO => 'Las oficinas del edificio que se ofrecen al marcar el piso de un invitado.',
             self::VER_AUDITORIA => 'Quién consultó qué cédula, quién exportó y quién corrigió.',
             self::GESTIONAR_PERMISOS => 'Esta misma pantalla.',
         };
@@ -91,6 +95,7 @@ enum Permiso: string
             // Cargar la nómina es tarea del administrador. Se puede abrir a más desde /roles.
             self::VER_AUDITORIA,
             self::GESTIONAR_PERSONAL,
+            self::GESTIONAR_EDIFICIO,
             self::GESTIONAR_PERMISOS => [Rol::ADMINISTRADOR],
         };
     }

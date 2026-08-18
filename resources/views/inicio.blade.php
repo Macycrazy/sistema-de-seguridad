@@ -29,13 +29,21 @@
     </div>
 
     {{-- ADMINISTRACIÓN · solo aparece si hay algo que administrar --}}
-    @canany(['gestionar-personal', 'gestionar-usuarios', 'gestionar-permisos'])
+    @canany(['gestionar-personal', 'gestionar-edificio', 'gestionar-usuarios', 'gestionar-permisos'])
         <h2 class="mt-8 font-mono text-xs font-bold uppercase tracking-widest text-slate-500">Administración</h2>
         <div class="mt-3 grid gap-4 sm:grid-cols-2">
             @can('gestionar-personal')
                 <a href="{{ route('trabajadores') }}" class="block transition hover:shadow-md">
                     <x-tarjeta parte="3" class="h-full">
                         <p class="text-lg font-semibold">Trabajadores</p>
+                    </x-tarjeta>
+                </a>
+            @endcan
+
+            @can('gestionar-edificio')
+                <a href="{{ route('edificio') }}" class="block transition hover:shadow-md">
+                    <x-tarjeta parte="3" class="h-full">
+                        <p class="text-lg font-semibold">Edificio</p>
                     </x-tarjeta>
                 </a>
             @endcan

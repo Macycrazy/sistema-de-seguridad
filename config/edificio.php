@@ -11,10 +11,13 @@ return [
     | botones: primero el piso y después la oficina, para no poner una lista de treinta delante de
     | alguien que está de pie en la puerta.
     |
-    | Va aquí y no en la base de datos porque es la lista del edificio, no un dato del sistema:
-    | cambia cuando alguien se muda de oficina, y entonces se edita este archivo. Tampoco se saca
-    | de las fichas del personal, porque hay sitios donde no labora nadie —el LOBBY, un piso
-    | recién desocupado— y aun así se va de visita a ellos.
+    | Estos son los valores DE FÁBRICA. Al migrar se siembran en la tabla «oficinas», y de ahí en
+    | adelante el catálogo se gestiona desde la pantalla del edificio (permiso «gestionar-edificio»),
+    | sin editar este archivo ni volver a desplegar. Queda como semilla y como respaldo: si la tabla
+    | estuviera vacía, la puerta cae a esta lista.
+    |
+    | El catálogo no se saca de las fichas del personal, porque hay sitios donde no labora nadie
+    | —el LOBBY, un piso recién desocupado— y aun así se va de visita a ellos.
     |
     | El código es el que ya se usa en las fichas: «2-1» es piso 2, oficina 1. Los que no llevan
     | guion —«7», «LOBBY»— son un sitio entero y se escogen de un toque, sin segundo paso.
