@@ -14,7 +14,12 @@
        blanco (public/imagenes/logo-ciip-blanco.png), no el azul. */
     --color-marca: #004090;
 
-    /* Un color por parte. Se usan para identificar el módulo, no para decorar. */
+    /* Tres acentos, uno por familia de pantallas (no para decorar, para ubicar):
+         parte1 (azul)  → la puerta y lo operativo: marcar, estacionamiento, visitas.
+         parte2 (teal)  → el registro y su análisis: movimientos, reportes, alertas.
+         parte3 (verde) → la administración: usuarios, edificio, ajustes, organigrama…
+       Nacieron como «una por cada parte del equipo»; hoy agrupan por familia. Al agregar una
+       pantalla, se elige el acento de su familia, no uno nuevo. El éxito usa «ok», no parte3. */
     --color-parte1: #223d90;
     --color-parte1-suave: #e6ebfa;
     --color-parte2: #0a6d8c;
