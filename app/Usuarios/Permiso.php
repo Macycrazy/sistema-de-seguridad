@@ -29,6 +29,8 @@ enum Permiso: string
 
     case GESTIONAR_PERSONAL = 'gestionar-personal';
 
+    case GESTIONAR_VISITAS = 'gestionar-visitas';
+
     case GESTIONAR_EDIFICIO = 'gestionar-edificio';
 
     case GESTIONAR_AJUSTES = 'gestionar-ajustes';
@@ -45,6 +47,7 @@ enum Permiso: string
             self::EXPORTAR_REGISTRO => 'Exportar el registro',
             self::GESTIONAR_USUARIOS => 'Gestionar usuarios',
             self::GESTIONAR_PERSONAL => 'Gestionar personal',
+            self::GESTIONAR_VISITAS => 'Gestionar visitas esperadas',
             self::GESTIONAR_EDIFICIO => 'Gestionar el edificio',
             self::GESTIONAR_AJUSTES => 'Ajustar los tiempos',
             self::VER_AUDITORIA => 'Ver la auditoría',
@@ -60,6 +63,7 @@ enum Permiso: string
             self::EXPORTAR_REGISTRO => 'Sacar el día a un archivo que se lleva en un pendrive.',
             self::GESTIONAR_USUARIOS => 'Dar de alta, desactivar y cambiar claves y roles.',
             self::GESTIONAR_PERSONAL => 'Cargar y dar de alta a los trabajadores que se marcan en la puerta.',
+            self::GESTIONAR_VISITAS => 'Agendar a quién se espera y ver la lista de visitas del día en la puerta.',
             self::GESTIONAR_EDIFICIO => 'Las oficinas del edificio que se ofrecen al marcar el piso de un invitado.',
             self::GESTIONAR_AJUSTES => 'Las reglas de tiempo del marcaje: los plazos entre entradas y salidas.',
             self::VER_AUDITORIA => 'Quién consultó qué cédula, quién exportó y quién corrigió.',
@@ -94,6 +98,8 @@ enum Permiso: string
 
             self::VER_REGISTRO,
             self::EXPORTAR_REGISTRO,
+            // Agendar visitas es tarea de recepción/supervisión; el vigilante marca, no agenda.
+            self::GESTIONAR_VISITAS,
             self::GESTIONAR_USUARIOS => [Rol::SUPERVISOR, Rol::ADMINISTRADOR],
 
             // Cargar la nómina es tarea del administrador. Se puede abrir a más desde /roles.
