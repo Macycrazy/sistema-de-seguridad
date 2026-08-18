@@ -48,6 +48,15 @@
                 </x-tarjeta>
             </a>
         @endcan
+
+        @can('gestionar-visitas')
+            <a href="{{ route('visitas') }}" class="block transition hover:shadow-md">
+                <x-tarjeta parte="1" class="h-full">
+                    <p class="text-lg font-semibold">Visitas</p>
+                    <p class="mt-1 text-sm text-slate-500">Quién se espera hoy, agendado antes de que llegue.</p>
+                </x-tarjeta>
+            </a>
+        @endcan
     </div>
 
     {{-- ADMINISTRACIÓN · solo aparece si hay algo que administrar --}}

@@ -63,6 +63,9 @@ Route::middleware('auth')->group(function () {
     // Lo que ahora mismo merece atención: permanencias largas y aforo superado. Mismo permiso.
     Route::view('/alertas', 'alertas')->middleware('can:ver-registro')->name('alertas');
 
+    // La agenda de visitas esperadas: recepción anticipa quién viene, la puerta lo confirma.
+    Route::view('/visitas', 'visitas')->middleware('can:gestionar-visitas')->name('visitas');
+
     // Meter la nómina: alta manual e importación por Excel, mientras la asociación con el sistema
     // de carnets no la traiga sola.
     Route::view('/trabajadores', 'trabajadores')->middleware('can:gestionar-personal')->name('trabajadores');
