@@ -45,11 +45,9 @@
                         <td class="px-4 py-3 text-slate-500">{{ $fila->detalle ?: '—' }}</td>
                     </tr>
                 @empty
-                    <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-sm text-slate-500">
-                            No hay nada en la bitácora con estos filtros.
-                        </td>
-                    </tr>
+                    <x-tabla-vacia :columnas="5">
+                        No hay nada en la bitácora con estos filtros.
+                    </x-tabla-vacia>
                 @endforelse
             </tbody>
         </table>
