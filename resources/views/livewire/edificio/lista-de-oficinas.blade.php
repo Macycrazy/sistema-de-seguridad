@@ -52,11 +52,9 @@
                         </td>
                     </tr>
                 @empty
-                    <tr>
-                        <td colspan="3" class="px-4 py-8 text-center text-sm text-slate-500">
-                            No hay oficinas en el catálogo.
-                        </td>
-                    </tr>
+                    <x-tabla-vacia :columnas="3">
+                        No hay oficinas en el catálogo.
+                    </x-tabla-vacia>
                 @endforelse
             </tbody>
         </table>

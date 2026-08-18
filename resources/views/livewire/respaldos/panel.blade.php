@@ -45,11 +45,9 @@
                         </td>
                     </tr>
                 @empty
-                    <tr>
-                        <td colspan="4" class="px-4 py-10 text-center text-sm text-slate-500">
-                            Todavía no hay respaldos. Crea el primero con el botón de arriba.
-                        </td>
-                    </tr>
+                    <x-tabla-vacia :columnas="4">
+                        Todavía no hay respaldos. Crea el primero con el botón de arriba.
+                    </x-tabla-vacia>
                 @endforelse
             </tbody>
         </table>

@@ -121,11 +121,9 @@
                         </td>
                     </tr>
                 @empty
-                    <tr>
-                        <td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500">
-                            {{ trim($busqueda) === '' ? 'Todavía no hay trabajadores cargados.' : 'Nadie coincide con «'.$busqueda.'».' }}
-                        </td>
-                    </tr>
+                    <x-tabla-vacia :columnas="6">
+                        {{ trim($busqueda) === '' ? 'Todavía no hay trabajadores cargados.' : 'Nadie coincide con «'.$busqueda.'».' }}
+                    </x-tabla-vacia>
                 @endforelse
             </tbody>
         </table>
