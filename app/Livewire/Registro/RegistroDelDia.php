@@ -3,6 +3,7 @@
 namespace App\Livewire\Registro;
 
 use App\Exports\MovimientosDelDia;
+use App\Services\Auditoria\Auditoria;
 use App\Services\Registro\Ente;
 use App\Services\Registro\FuenteDelRegistro;
 use App\Services\Registro\Movimiento;
@@ -98,6 +99,13 @@ class RegistroDelDia extends Component
     {
         $this->personaEnPanel = $personaId;
         $this->busqueda = '';
+
+        // Quién abrió el histórico de quién queda en la bitácora: es la consulta que no deja otra
+        // huella (el marcaje ya guarda su usuario, esto no). El id solo es numérico con la fuente
+        // real; con la inventada del desarrollo es «p-5» y no hay a quién anotar.
+        if (ctype_digit($personaId) && $persona = \App\Models\Persona::find($personaId)) {
+            app(Auditoria::class)->consultoHistorico($persona);
+        }
     }
 
     public function cerrarPanel(): void
@@ -113,6 +121,9 @@ class RegistroDelDia extends Component
 
         // Se lleva lo que está viendo, no todo el histórico.
         $archivo = 'registro-'.$this->diaElegido()->toDateString().'.xlsx';
+
+        // Sacar el día a un archivo es la vía más fácil de llevarse la data: queda en la bitácora.
+        app(Auditoria::class)->exportoRegistro($this->diaElegido()->toDateString());
 
         return Excel::download(new MovimientosDelDia($this->delDia()), $archivo);
     }

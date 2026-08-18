@@ -3,6 +3,7 @@
 namespace App\Livewire\Edificio;
 
 use App\Models\Oficina;
+use App\Services\Auditoria\Auditoria;
 use App\Services\Edificio\CatalogoDelEdificio;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -77,11 +78,14 @@ class ListaDeOficinas extends Component
         $this->creando = false;
         $this->reset('codigo', 'nombre', 'editando');
         $this->aviso = $oficina->wasRecentlyCreated ? 'Oficina agregada.' : 'Oficina actualizada.';
+        app(Auditoria::class)->cambioOficinas(($oficina->wasRecentlyCreated ? 'agregó' : 'renombró').' '.$oficina->codigo);
     }
 
     public function eliminar(int $id): void
     {
-        $this->catalogo->eliminar(Oficina::findOrFail($id));
+        $oficina = Oficina::findOrFail($id);
+        $this->catalogo->eliminar($oficina);
+        app(Auditoria::class)->cambioOficinas('quitó '.$oficina->codigo);
         $this->aviso = 'Oficina quitada del catálogo.';
     }
 

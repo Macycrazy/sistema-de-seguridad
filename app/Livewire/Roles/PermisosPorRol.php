@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Roles;
 
+use App\Services\Auditoria\Auditoria;
 use App\Services\Permisos;
 use App\Usuarios\Permiso;
 use App\Usuarios\Rol;
@@ -82,6 +83,8 @@ class PermisosPorRol extends Component
         }
 
         $this->leerDeLaBase();
+
+        app(Auditoria::class)->cambioPermisos();
 
         $this->confirmacion = 'Permisos guardados. Valen desde ya, sin volver a entrar.';
     }
