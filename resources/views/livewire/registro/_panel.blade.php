@@ -71,8 +71,17 @@
             <ul class="mt-3 max-h-96 divide-y divide-slate-100 overflow-y-auto">
                 @foreach ($this->historico as $movimiento)
                     <li wire:key="hist-{{ $movimiento->id }}" class="flex items-center justify-between gap-3 py-2">
-                        <span class="font-mono text-xs text-slate-500">
-                            {{ $movimiento->fecha() }} · {{ $movimiento->hora() }}
+                        <span class="min-w-0">
+                            <span class="block font-mono text-xs text-slate-500">
+                                {{ $movimiento->fecha() }} · {{ $movimiento->hora() }}
+                            </span>
+                            {{-- Con qué vehículo se hizo, para saber de quién es ese vehículo. --}}
+                            @if ($movimiento->tieneVehiculo())
+                                <span class="mt-1 flex items-center gap-1.5">
+                                    <x-etiqueta :tipo="$movimiento->vehiculo->tipo" tamano="chico" />
+                                    <span class="font-mono text-xs font-semibold tracking-wider text-slate-700">{{ $movimiento->vehiculo->placa }}</span>
+                                </span>
+                            @endif
                         </span>
                         <x-etiqueta :tipo="$movimiento->sentido->value" />
                     </li>

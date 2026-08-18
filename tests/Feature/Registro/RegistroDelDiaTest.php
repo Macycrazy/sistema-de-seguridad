@@ -455,14 +455,14 @@ class RegistroDelDiaTest extends TestCase
 
         $this->assertSame(
             ['Fecha', 'Hora', 'Documento', 'Apellidos', 'Nombres', 'Ente',
-                'Dependencia', 'Tipo', 'Movimiento', 'Registrado por'],
+                'Dependencia', 'Tipo', 'Movimiento', 'Vehículo', 'Registrado por'],
             $export->headings(),
         );
 
         // Cada fila lleva quién la registró: sin eso el registro no prueba nada.
         $this->assertSame(
             $soloInvitados->first()->registradoPor,
-            $filas->first()[9],
+            $filas->first()[10],
         );
 
         // Apellidos y nombres en columnas separadas, como en el listado de personal.
