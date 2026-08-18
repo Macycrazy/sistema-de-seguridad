@@ -704,7 +704,7 @@ class MarcarPantallaTest extends TestCase
             ->set('cedula', '12345678')
             ->call('buscar')
             ->call('marcarEntrada')
-            ->assertSee('Entrada registrada a las 9:06am');
+            ->assertSee('Entrada registrada a las 09:06');
 
         $this->travelTo(now()->setTime(17, 42));
 
@@ -712,8 +712,8 @@ class MarcarPantallaTest extends TestCase
             ->set('cedula', '12345678')
             ->call('buscar')
             ->call('marcarSalida')
-            // La tarde se dice como se dice aquí: «5:42pm», no «17:42».
-            ->assertSee('Salida registrada a las 5:42pm');
+            // La tarde en 24 horas: «17:42», sin dudas entre mañana y tarde.
+            ->assertSee('Salida registrada a las 17:42');
     }
 
     /**
@@ -733,7 +733,7 @@ class MarcarPantallaTest extends TestCase
             ->set('cedula', '12345678')
             ->call('buscar')
             ->call('marcarEntrada')
-            ->assertSee('Entrada registrada a las 9:06am');
+            ->assertSee('Entrada registrada a las 09:06');
 
         // Dentro de la ventana del antiduplicado, pero ya en el minuto siguiente.
         $this->travel(Marcaje::SEGUNDOS_ANTIDUPLICADO - 1)->seconds();
@@ -743,8 +743,8 @@ class MarcarPantallaTest extends TestCase
             ->call('buscar')
             ->call('marcarEntrada')
             // Las 9:06 del asiento que ya existía, no las 9:07 que marca el reloj.
-            ->assertSee('Entrada registrada a las 9:06am')
-            ->assertDontSee('Entrada registrada a las 9:07am');
+            ->assertSee('Entrada registrada a las 09:06')
+            ->assertDontSee('Entrada registrada a las 09:07');
 
         $this->assertDatabaseCount('movimientos', 1);
     }
@@ -790,7 +790,7 @@ class MarcarPantallaTest extends TestCase
             ->set('cedula', '12345678')
             ->call('buscar')
             ->assertSee('Se le puede marcar la salida')
-            ->assertSee('9:05am')
+            ->assertSee('09:05')
             ->call('marcarSalida')
             ->assertHasErrors('tipo');
 

@@ -22,17 +22,17 @@ class Movimiento extends Model
     public const SALIDA = 'salida';
 
     /**
-     * Cómo se dice una hora en la pantalla de la puerta: «8:12am», «1:45pm».
+     * Cómo se dice una hora en la pantalla de la puerta: «08:12», «13:45».
      *
      * Es UNA SOLA definición a propósito. La hora aparece en la etiqueta de quien está dentro, en
      * los últimos movimientos, en los dos avisos de espera y en la confirmación de cada marcaje;
      * escrita a mano en cada sitio, acabaría diciéndose de tres maneras distintas en la misma
      * pantalla.
      *
-     * Con am/pm y no de 0 a 23: es como se dice la hora aquí. «Entró a la una y cuarto», no «a
-     * las trece quince».
+     * En 24 horas, igual que el registro: en un sistema de seguridad no puede haber duda entre las
+     * 8 de la mañana y las 8 de la noche.
      */
-    public const FORMATO_HORA = 'g:ia';
+    public const FORMATO_HORA = 'H:i';
 
     protected $table = 'movimientos';
 
