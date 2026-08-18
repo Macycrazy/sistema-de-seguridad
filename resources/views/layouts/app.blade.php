@@ -86,6 +86,7 @@
 
                         $administracion = collect([
                             ['ruta' => 'trabajadores', 'texto' => 'Trabajadores', 'permiso' => 'gestionar-personal'],
+                            ['ruta' => 'organigrama', 'texto' => 'Organigrama', 'permiso' => 'gestionar-personal'],
                             ['ruta' => 'usuarios', 'texto' => 'Usuarios', 'permiso' => 'gestionar-usuarios'],
                             ['ruta' => 'edificio', 'texto' => 'Edificio', 'permiso' => 'gestionar-edificio'],
                             ['ruta' => 'ajustes', 'texto' => 'Ajustes', 'permiso' => 'gestionar-ajustes'],
@@ -170,6 +171,7 @@
                 ['ruta' => 'reportes', 'texto' => 'Reportes', 'permiso' => 'ver-registro', 'icono' => 'reportes'],
                 ['ruta' => 'alertas', 'texto' => 'Alertas', 'permiso' => 'ver-registro', 'icono' => 'alertas', 'insignia' => $alertasActivas],
                 ['ruta' => 'trabajadores', 'texto' => 'Personal', 'permiso' => 'gestionar-personal', 'icono' => 'personal'],
+                ['ruta' => 'organigrama', 'texto' => 'Organigrama', 'permiso' => 'gestionar-personal', 'icono' => 'organigrama'],
                 ['ruta' => 'usuarios', 'texto' => 'Usuarios', 'permiso' => 'gestionar-usuarios', 'icono' => 'usuarios'],
                 ['ruta' => 'edificio', 'texto' => 'Edificio', 'permiso' => 'gestionar-edificio', 'icono' => 'edificio'],
                 ['ruta' => 'ajustes', 'texto' => 'Ajustes', 'permiso' => 'gestionar-ajustes', 'icono' => 'ajustes'],
@@ -183,6 +185,7 @@
                 'registro' => '<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1.1"/><circle cx="4" cy="12" r="1.1"/><circle cx="4" cy="18" r="1.1"/>',
                 'reportes' => '<path d="M4 20V4"/><path d="M4 20h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="5" width="3" height="12"/>',
                 'alertas' => '<path d="M12 4a5 5 0 0 0-5 5c0 4-2 5-2 7h14c0-2-2-3-2-7a5 5 0 0 0-5-5z"/><path d="M10.5 20a1.7 1.7 0 0 0 3 0"/>',
+                'organigrama' => '<rect x="9" y="3" width="6" height="4" rx="1"/><rect x="3" y="16" width="6" height="4" rx="1"/><rect x="15" y="16" width="6" height="4" rx="1"/><path d="M12 7v5M6 16v-2h12v2"/>',
                 'personal' => '<path d="M4 20c0-3.2 2.7-5 6-5s6 1.8 6 5"/><circle cx="10" cy="8" r="3.2"/><path d="M17 13.5c1.9.5 3 2 3 4.5"/>',
                 'edificio' => '<path d="M4 21V6l7-3v18"/><path d="M11 8h6v13"/><path d="M7 9h0M7 12h0M7 15h0M14 12h0M14 16h0"/>',
                 'ajustes' => '<circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M5 5l1.5 1.5M17.5 17.5 19 19M3 12h2M19 12h2M5 19l1.5-1.5M17.5 6.5 19 5"/>',

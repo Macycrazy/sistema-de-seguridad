@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Reportes;
 
+use App\Models\Departamento;
 use App\Models\Movimiento;
 use App\Models\Persona;
 use App\Services\Reportes\Reportes;
@@ -129,6 +130,30 @@ class ReportesTest extends TestCase
 
         $this->assertSame(2, $porTipo['trabajador']);
         $this->assertSame(1, $porTipo['invitado']);
+    }
+
+    #[Test]
+    public function por_departamento_agrupa_por_unidad_y_cae_al_texto_si_no_hay_enlace(): void
+    {
+        $dep = Departamento::create(['nombre' => 'GERENCIA A', 'nivel' => 2, 'activo' => true]);
+        $conUnidad = $this->persona('1');
+        $conUnidad->update(['departamento_id' => $dep->id, 'dependencia' => 'GERENCIA A']);
+        $soloTexto = $this->persona('2');
+        $soloTexto->update(['dependencia' => 'SIN ENLACE']);
+
+        $this->entrada($conUnidad, '2026-08-10 08:00');
+        $this->entrada($conUnidad, '2026-08-11 08:00');
+        $this->entrada($soloTexto, '2026-08-10 09:00');
+
+        $porUnidad = app(Reportes::class)->porDepartamento(
+            CarbonImmutable::parse('2026-08-01'),
+            CarbonImmutable::parse('2026-08-31'),
+        );
+
+        $this->assertSame('GERENCIA A', $porUnidad[0]['unidad']);
+        $this->assertSame(2, $porUnidad[0]['entradas']);
+        $this->assertSame('SIN ENLACE', $porUnidad[1]['unidad']);
+        $this->assertSame(1, $porUnidad[1]['entradas']);
     }
 
     #[Test]

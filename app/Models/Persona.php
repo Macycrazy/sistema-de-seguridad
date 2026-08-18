@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\DatosVehiculo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
@@ -68,6 +69,10 @@ class Persona extends Model
         'ente',
         'nombre',
         'dependencia',
+        // La unidad del organigrama a la que pertenece, cuando está enlazada. Es aditiva sobre
+        // «dependencia» (el texto): quien no la tenga se sigue mostrando por su texto. Ver la
+        // migración crear_tabla_departamentos.
+        'departamento_id',
         // Dónde labora el trabajador, o a dónde se dirige el invitado. Ver la migración.
         'piso',
         'foto_ruta',
@@ -127,6 +132,12 @@ class Persona extends Model
     public function movimientos(): HasMany
     {
         return $this->hasMany(Movimiento::class);
+    }
+
+    /** La unidad del organigrama a la que pertenece, si está enlazada. */
+    public function departamento(): BelongsTo
+    {
+        return $this->belongsTo(Departamento::class);
     }
 
     /** El último movimiento registrado, que es el que dice si está dentro o fuera. */

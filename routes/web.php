@@ -67,6 +67,9 @@ Route::middleware('auth')->group(function () {
     // de carnets no la traiga sola.
     Route::view('/trabajadores', 'trabajadores')->middleware('can:gestionar-personal')->name('trabajadores');
 
+    // El organigrama como dato: la estructura de unidades a la que pertenece el personal.
+    Route::view('/organigrama', 'organigrama')->middleware('can:gestionar-personal')->name('organigrama');
+
     // El catálogo de oficinas del edificio, que la puerta ofrece al marcar el piso de un invitado.
     Route::view('/edificio', 'edificio')->middleware('can:gestionar-edificio')->name('edificio');
 

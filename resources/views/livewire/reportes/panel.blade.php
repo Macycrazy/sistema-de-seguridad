@@ -9,6 +9,7 @@
     $topeDia = max(1, $this->porDia->max('entradas'));
     $topeFranja = max(1, max($porFranja ?: [0]));
     $totalTipo = max(1, $porTipo['trabajador'] + $porTipo['invitado']);
+    $topeUnidad = max(1, $this->porDepartamento->max('entradas'));
 @endphp
 
 <div wire:loading.class="opacity-60" class="transition-opacity">
@@ -132,6 +133,24 @@
                 </dl>
             </x-tarjeta>
         </div>
+
+        {{-- POR UNIDAD --}}
+        <x-tarjeta titulo="Entradas por unidad" class="mt-4">
+            <ul class="space-y-2.5">
+                @foreach ($this->porDepartamento as $fila)
+                    <li>
+                        <div class="flex items-baseline justify-between gap-3 text-sm">
+                            <span class="min-w-0 truncate text-slate-700">{{ $fila['unidad'] }}</span>
+                            <span class="shrink-0 font-semibold tabular-nums text-slate-900">{{ $fila['entradas'] }}</span>
+                        </div>
+                        <div class="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
+                            <div class="h-full rounded-full bg-parte2/80"
+                                 style="width: {{ max(3, round($fila['entradas'] / $topeUnidad * 100)) }}%"></div>
+                        </div>
+                    </li>
+                @endforeach
+            </ul>
+        </x-tarjeta>
 
         {{-- MÁS FRECUENTES --}}
         <x-tarjeta titulo="Quiénes entraron más veces" class="mt-4">
