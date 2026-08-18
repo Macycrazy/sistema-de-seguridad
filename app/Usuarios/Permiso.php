@@ -35,6 +35,8 @@ enum Permiso: string
 
     case GESTIONAR_AJUSTES = 'gestionar-ajustes';
 
+    case GESTIONAR_RESPALDOS = 'gestionar-respaldos';
+
     case VER_AUDITORIA = 'ver-auditoria';
 
     case GESTIONAR_PERMISOS = 'gestionar-permisos';
@@ -50,6 +52,7 @@ enum Permiso: string
             self::GESTIONAR_VISITAS => 'Gestionar visitas esperadas',
             self::GESTIONAR_EDIFICIO => 'Gestionar el edificio',
             self::GESTIONAR_AJUSTES => 'Ajustar los tiempos',
+            self::GESTIONAR_RESPALDOS => 'Gestionar respaldos',
             self::VER_AUDITORIA => 'Ver la auditoría',
             self::GESTIONAR_PERMISOS => 'Gestionar permisos',
         };
@@ -66,6 +69,7 @@ enum Permiso: string
             self::GESTIONAR_VISITAS => 'Agendar a quién se espera y ver la lista de visitas del día en la puerta.',
             self::GESTIONAR_EDIFICIO => 'Las oficinas del edificio que se ofrecen al marcar el piso de un invitado.',
             self::GESTIONAR_AJUSTES => 'Las reglas de tiempo del marcaje: los plazos entre entradas y salidas.',
+            self::GESTIONAR_RESPALDOS => 'Crear y descargar copias de seguridad de la base. Un respaldo es TODA la data.',
             self::VER_AUDITORIA => 'Quién consultó qué cédula, quién exportó y quién corrigió.',
             self::GESTIONAR_PERMISOS => 'Esta misma pantalla.',
         };
@@ -107,6 +111,8 @@ enum Permiso: string
             self::GESTIONAR_PERSONAL,
             self::GESTIONAR_EDIFICIO,
             self::GESTIONAR_AJUSTES,
+            // Un respaldo es toda la base en un archivo: solo el administrador.
+            self::GESTIONAR_RESPALDOS,
             self::GESTIONAR_PERMISOS => [Rol::ADMINISTRADOR],
         };
     }

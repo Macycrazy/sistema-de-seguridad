@@ -73,6 +73,7 @@ class AppServiceProvider extends ServiceProvider
         Permiso::GESTIONAR_PERSONAL,
         Permiso::GESTIONAR_EDIFICIO,
         Permiso::GESTIONAR_AJUSTES,
+        Permiso::GESTIONAR_RESPALDOS,
         Permiso::VER_AUDITORIA,
         Permiso::GESTIONAR_USUARIOS,
         Permiso::GESTIONAR_PERMISOS,
