@@ -100,4 +100,7 @@ Route::middleware('auth')->group(function () {
 
     // Parte 3 · qué puede hacer cada rol. Solo el administrador, y no se puede quitar.
     Route::view('/roles', 'roles')->middleware('can:gestionar-permisos')->name('roles');
+
+    // Respaldos de la base: crear, descargar y borrar. Un respaldo es toda la data, solo admin.
+    Route::view('/respaldos', 'respaldos')->middleware('can:gestionar-respaldos')->name('respaldos');
 });

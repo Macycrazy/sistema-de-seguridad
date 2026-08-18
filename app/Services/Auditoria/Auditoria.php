@@ -41,6 +41,8 @@ class Auditoria
 
     public const DEPURO_DATOS = 'depuro-datos';
 
+    public const RESPALDO = 'respaldo';
+
     /** La acción, en frase, para la pantalla. */
     public const ETIQUETAS = [
         self::CONSULTO_HISTORICO => 'Consultó un histórico',
@@ -56,6 +58,7 @@ class Auditoria
         self::CARGO_PERSONAL => 'Cargó personal',
         self::CAMBIO_ORGANIGRAMA => 'Cambió el organigrama',
         self::DEPURO_DATOS => 'Depuró datos',
+        self::RESPALDO => 'Respaldo',
     ];
 
     /** El punto único de escritura. */
@@ -136,6 +139,11 @@ class Auditoria
     public function depuroDatos(string $detalle): void
     {
         $this->anota(self::DEPURO_DATOS, $detalle);
+    }
+
+    public function respaldo(string $detalle): void
+    {
+        $this->anota(self::RESPALDO, $detalle);
     }
 
     /** Cómo se nombra a una persona en el rastro: su cédula, que es lo que se buscó. */
