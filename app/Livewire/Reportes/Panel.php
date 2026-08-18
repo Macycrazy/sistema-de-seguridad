@@ -127,6 +127,13 @@ class Panel extends Component
         return app(Reportes::class)->masFrecuentes($this->tramo()['desde'], $this->tramo()['hasta']);
     }
 
+    /** @return Collection<int, array{unidad:string, entradas:int}> */
+    #[Computed]
+    public function porDepartamento(): Collection
+    {
+        return app(Reportes::class)->porDepartamento($this->tramo()['desde'], $this->tramo()['hasta']);
+    }
+
     /** La franja pico dicha en horas, «8:00 a. m. – 8:59 a. m.». Nula si el tramo está vacío. */
     #[Computed]
     public function franjaPico(): ?string

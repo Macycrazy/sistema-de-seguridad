@@ -37,6 +37,8 @@ class Auditoria
 
     public const CARGO_PERSONAL = 'cargo-personal';
 
+    public const CAMBIO_ORGANIGRAMA = 'cambio-organigrama';
+
     /** La acción, en frase, para la pantalla. */
     public const ETIQUETAS = [
         self::CONSULTO_HISTORICO => 'Consultó un histórico',
@@ -50,6 +52,7 @@ class Auditoria
         self::CAMBIO_REGLAS => 'Cambió las reglas de tiempo',
         self::CAMBIO_OFICINAS => 'Cambió las oficinas',
         self::CARGO_PERSONAL => 'Cargó personal',
+        self::CAMBIO_ORGANIGRAMA => 'Cambió el organigrama',
     ];
 
     /** El punto único de escritura. */
@@ -120,6 +123,11 @@ class Auditoria
     public function cargoPersonal(string $detalle): void
     {
         $this->anota(self::CARGO_PERSONAL, $detalle);
+    }
+
+    public function cambioOrganigrama(string $detalle): void
+    {
+        $this->anota(self::CAMBIO_ORGANIGRAMA, $detalle);
     }
 
     /** Cómo se nombra a una persona en el rastro: su cédula, que es lo que se buscó. */

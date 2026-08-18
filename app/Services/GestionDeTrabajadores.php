@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Persona;
 use App\Services\Carnets\FotoDelCarnet;
+use App\Services\Organigrama\Organigrama;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -85,9 +86,29 @@ class GestionDeTrabajadores
             ],
         );
 
+        $this->enlazarDepartamento($trabajador);
         $this->traerLaFoto($trabajador);
 
         return $trabajador;
+    }
+
+    /**
+     * Enlaza al trabajador con su unidad del organigrama a partir del texto de «dependencia»,
+     * creando la unidad si es la primera vez que aparece. Es aditivo: el texto se conserva; esto
+     * solo llena la FK para poder agrupar. Sin dependencia, no hay nada que enlazar.
+     */
+    private function enlazarDepartamento(Persona $trabajador): void
+    {
+        if (! $trabajador->dependencia) {
+            return;
+        }
+
+        $departamento = app(Organigrama::class)
+            ->paraTexto($trabajador->dependencia, $trabajador->ente);
+
+        if ($departamento && $trabajador->departamento_id !== $departamento->id) {
+            $trabajador->update(['departamento_id' => $departamento->id]);
+        }
     }
 
     /**

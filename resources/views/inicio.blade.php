@@ -60,6 +60,13 @@
                         <p class="text-lg font-semibold">Trabajadores</p>
                     </x-tarjeta>
                 </a>
+
+                <a href="{{ route('organigrama') }}" class="block transition hover:shadow-md">
+                    <x-tarjeta parte="3" class="h-full">
+                        <p class="text-lg font-semibold">Organigrama</p>
+                        <p class="mt-1 text-sm text-slate-500">La estructura de unidades del CIIP.</p>
+                    </x-tarjeta>
+                </a>
             @endcan
 
             @can('gestionar-edificio')

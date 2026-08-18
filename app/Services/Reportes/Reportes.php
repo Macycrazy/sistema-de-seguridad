@@ -148,6 +148,29 @@ final class Reportes
         ]);
     }
 
+    /**
+     * Entradas por unidad del organigrama, de mayor a menor.
+     *
+     * Se agrupa por la unidad enlazada; quien no la tenga cae a su texto de «dependencia», y quien
+     * no tenga ni eso, a «Sin unidad». Así el desglose no pierde a nadie mientras se adopta el
+     * organigrama.
+     *
+     * @return Collection<int, array{unidad:string, entradas:int}>
+     */
+    public function porDepartamento(CarbonImmutable $desde, CarbonImmutable $hasta, int $limite = 8): Collection
+    {
+        return $this->entradasEntre($desde, $hasta)
+            ->join('personas', 'personas.id', '=', 'movimientos.persona_id')
+            ->leftJoin('departamentos', 'departamentos.id', '=', 'personas.departamento_id')
+            ->selectRaw("coalesce(departamentos.nombre, personas.dependencia, 'Sin unidad') as unidad, count(*) as n")
+            ->groupByRaw("coalesce(departamentos.nombre, personas.dependencia, 'Sin unidad')")
+            ->orderByDesc('n')
+            ->orderBy('unidad')
+            ->limit($limite)
+            ->get()
+            ->map(fn ($fila) => ['unidad' => $fila->unidad, 'entradas' => (int) $fila->n]);
+    }
+
     /** El tramo, siempre de entradas y siempre acotado por [inicio del día, fin del día]. */
     private function entradasEntre(CarbonImmutable $desde, CarbonImmutable $hasta)
     {

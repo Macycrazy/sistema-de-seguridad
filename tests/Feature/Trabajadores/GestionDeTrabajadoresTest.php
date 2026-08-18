@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Trabajadores;
 
+use App\Models\Departamento;
 use App\Models\Persona;
 use App\Services\GestionDeTrabajadores;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -35,6 +36,18 @@ class GestionDeTrabajadoresTest extends TestCase
         $this->assertSame(Persona::ENTE_CIIP, $t->ente);
         $this->assertSame(Persona::TRABAJADOR, $t->tipo);
         $this->assertTrue($t->activo);
+    }
+
+    #[Test]
+    public function al_dar_de_alta_se_enlaza_y_no_duplica_la_unidad_del_organigrama(): void
+    {
+        $ana = $this->gestion->guardar('12345678', 'ANA', 'ciip', 'Gestión Humana');
+        // La segunda escribe la unidad en otras mayúsculas: debe reusar la misma, no crear otra.
+        $luis = $this->gestion->guardar('23456789', 'LUIS', 'ciip', 'gestión humana');
+
+        $this->assertNotNull($ana->fresh()->departamento_id);
+        $this->assertSame($ana->fresh()->departamento_id, $luis->fresh()->departamento_id);
+        $this->assertSame(1, Departamento::count());
     }
 
     #[Test]
