@@ -32,7 +32,6 @@ return new class extends Migration
         $ahora = now();
         $defaults = [
             'segundos_antiduplicado' => Marcaje::SEGUNDOS_ANTIDUPLICADO,
-            'minutos_entre_entradas' => Marcaje::MINUTOS_ENTRE_ENTRADAS,
             'minutos_entre_entrada_y_salida' => Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA,
             'minutos_entre_salida_y_entrada' => Marcaje::MINUTOS_ENTRE_SALIDA_Y_ENTRADA,
         ];

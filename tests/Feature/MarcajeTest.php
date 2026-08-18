@@ -424,7 +424,7 @@ class MarcajeTest extends TestCase
         $this->marcaje->registrar($persona, Movimiento::ENTRADA, vehiculo: $moto);
         $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
         $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA, vehiculo: $moto);
-        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS)->minutes();
+        $this->travel(Marcaje::MINUTOS_ENTRE_SALIDA_Y_ENTRADA)->minutes();
         $this->marcaje->registrar($persona->fresh(), Movimiento::ENTRADA, vehiculo: $moto);
 
         $this->assertCount(1, $persona->fresh()->vehiculos);
@@ -440,7 +440,7 @@ class MarcajeTest extends TestCase
         $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA, vehiculo: $moto);
 
         // No pasar vehículo, o pasar uno vacío, significan lo mismo: hoy vino caminando.
-        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS)->minutes();
+        $this->travel(Marcaje::MINUTOS_ENTRE_SALIDA_Y_ENTRADA)->minutes();
         $aPie = $this->marcaje->registrar($persona->fresh(), Movimiento::ENTRADA);
 
         $this->assertNull($aPie->placa);
@@ -678,7 +678,7 @@ class MarcajeTest extends TestCase
 
         // Vuelve a entrar: cuenta otra vez. Hay que dejar pasar la espera entre entradas,
         // que aquí no es lo que se está probando pero se aplica igual.
-        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS)->minutes();
+        $this->travel(Marcaje::MINUTOS_ENTRE_SALIDA_Y_ENTRADA)->minutes();
         $this->marcaje->registrar($luis->fresh(), Movimiento::ENTRADA);
         $this->assertSame(3, $this->marcaje->cuantosDentro());
     }
@@ -747,7 +747,7 @@ class MarcajeTest extends TestCase
         $this->marcaje->registrar($persona, Movimiento::ENTRADA);
         $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
         $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
-        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS)->minutes();
+        $this->travel(Marcaje::MINUTOS_ENTRE_SALIDA_Y_ENTRADA)->minutes();
         $this->marcaje->registrar($persona->fresh(), Movimiento::ENTRADA);
 
         $this->assertDatabaseCount('movimientos', 3);
@@ -776,26 +776,25 @@ class MarcajeTest extends TestCase
     }
 
     /**
-     * Los dos plazos de la entrada se cumplen A LA VEZ, y manda el que termine más tarde.
+     * La espera para entrar se cuenta desde la SALIDA, por mucho rato que llevara dentro.
      *
-     * Esta prueba decía lo contrario —que la espera se contaba solo desde la entrada anterior, así
-     * que salir y volver a entrar en el acto pasaba—. Se reescribió, no se borró: ese hueco es el
-     * que apareció usando la pantalla y el que vino a tapar MINUTOS_ENTRE_SALIDA_Y_ENTRADA.
+     * Esta prueba decía justo lo contrario —que se contaba desde la entrada anterior, así que
+     * salir y volver a entrar en el acto pasaba—. Se reescribió, no se borró: ese hueco es el que
+     * apareció usando la pantalla, y es el que esta regla vino a tapar.
      */
-    public function test_cumplido_el_plazo_de_la_entrada_todavia_manda_el_de_la_salida(): void
+    public function test_la_espera_para_entrar_se_cuenta_desde_la_salida(): void
     {
         $persona = $this->trabajador();
 
         $this->marcaje->registrar($persona, Movimiento::ENTRADA);
-        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS - 2)->minutes();
-        $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
 
-        // Han pasado los minutos de rigor desde la ENTRADA, pero ninguno desde la SALIDA.
-        $this->travel(2)->minutes();
+        // Media mañana dentro: da igual cuánto, lo que cuenta empieza al salir.
+        $this->travel(3)->hours();
+        $salida = $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
 
-        $this->assertStringContainsString(
-            'Salió hace menos de',
-            (string) $this->marcaje->motivoDeLaEsperaParaEntrar($persona->fresh()),
+        $this->assertSame(
+            $salida->ocurrio_en->copy()->addMinutes(Marcaje::MINUTOS_ENTRE_SALIDA_Y_ENTRADA)->toDateTimeString(),
+            $this->marcaje->puedeEntrarDesde($persona->fresh())?->toDateTimeString(),
         );
 
         $this->expectException(ValidationException::class);
@@ -810,20 +809,20 @@ class MarcajeTest extends TestCase
         // Sin movimientos, nada que esperar.
         $this->assertNull($this->marcaje->puedeEntrarDesde($persona));
 
-        $entrada = $this->marcaje->registrar($persona, Movimiento::ENTRADA);
-        $this->travel(5)->minutes();
-        $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
+        $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
+        $salida = $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
 
         $desde = $this->marcaje->puedeEntrarDesde($persona->fresh());
 
         $this->assertNotNull($desde);
         $this->assertSame(
-            $entrada->ocurrio_en->copy()->addMinutes(Marcaje::MINUTOS_ENTRE_ENTRADAS)->format('H:i'),
-            $desde->format('H:i'),
+            $salida->ocurrio_en->copy()->addMinutes(Marcaje::MINUTOS_ENTRE_SALIDA_Y_ENTRADA)->toDateTimeString(),
+            $desde->toDateTimeString(),
         );
 
         // Cumplido el plazo, ya no hay nada que esperar.
-        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADAS)->minutes();
+        $this->travel(Marcaje::MINUTOS_ENTRE_SALIDA_Y_ENTRADA)->minutes();
         $this->assertNull($this->marcaje->puedeEntrarDesde($persona->fresh()));
     }
 
@@ -864,9 +863,9 @@ class MarcajeTest extends TestCase
     /**
      * Después de una salida siempre hay que esperar, sea la hora que sea.
      *
-     * Es el hueco que dejaba MINUTOS_ENTRE_ENTRADAS por su cuenta: ese plazo se cuenta desde la
-     * ENTRADA anterior, así que a quien llevaba toda la mañana dentro ya se le había cumplido, y
-     * salía y volvía a entrar en el mismo segundo.
+     * Es el hueco que dejaba el plazo anterior, que se contaba desde la ENTRADA: a quien llevaba
+     * toda la mañana dentro ya se le había cumplido, así que salía y volvía a entrar en el mismo
+     * segundo.
      */
     public function test_despues_de_salir_hay_que_esperar_aunque_llevara_horas_dentro(): void
     {
@@ -903,38 +902,10 @@ class MarcajeTest extends TestCase
         $this->assertDatabaseCount('movimientos', 3);
     }
 
-    /**
-     * Con los números de hoy, el plazo de la SALIDA es el que manda siempre, y conviene saberlo.
-     *
-     * Sale de sumar las reglas: no se puede salir antes de MINUTOS_ENTRE_ENTRADA_Y_SALIDA (5), así
-     * que la salida nunca ocurre antes de entrada+5; y entonces salida+5 nunca cae antes de
-     * entrada+10, que es MINUTOS_ENTRE_ENTRADAS. El plazo entre dos entradas queda como un suelo
-     * que en la práctica no llega a tocar.
-     *
-     * No es un fallo —los tres plazos son coherentes— pero si algún día se sube el de las
-     * entradas a veinte minutos, ESE volverá a mandar. Esta prueba está para que ese día alguien
-     * se entere de por qué cambia el mensaje.
-     */
-    public function test_el_plazo_de_la_salida_es_el_que_manda_con_los_numeros_de_hoy(): void
+    public function test_los_dos_plazos_no_se_confunden_entre_si(): void
     {
-        $persona = $this->trabajador();
-
-        $this->marcaje->registrar($persona, Movimiento::ENTRADA);
-
-        // Lo antes que se puede salir.
-        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
-        $salida = $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
-
-        $this->assertSame(
-            $salida->ocurrio_en->copy()->addMinutes(Marcaje::MINUTOS_ENTRE_SALIDA_Y_ENTRADA)->toDateTimeString(),
-            $this->marcaje->puedeEntrarDesde($persona->fresh())?->toDateTimeString(),
-        );
-    }
-
-    public function test_la_espera_entre_entradas_no_estorba_a_la_salida(): void
-    {
-        // Son dos plazos distintos y no se confunden: la salida solo espera SU plazo —los cinco
-        // minutos desde la entrada—, no los diez que hay entre dos entradas.
+        // Son dos, y cada uno cuenta desde su sitio: para SALIR se esperan cinco minutos desde la
+        // entrada, y para volver a ENTRAR, cinco desde la salida. Cumplir uno no cumple el otro.
         $persona = $this->trabajador();
 
         $this->marcaje->registrar($persona, Movimiento::ENTRADA);

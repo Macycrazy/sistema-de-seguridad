@@ -319,14 +319,15 @@ se borran. Por eso se ataja antes de escribirlo y no después.
 > ventana del antiduplicado se consideraban **reales** y se guardaban las dos. Ya no: la segunda
 > se rechaza. La prueba que decía lo contrario está reescrita, no borrada.
 
-### Y hay que esperar entre dos entradas
+### Y hay que esperar después de salir
 
-Además, **entre dos entradas de la misma persona tienen que pasar
-`Marcaje::MINUTOS_ENTRE_ENTRADAS` (10 min)**, haya salido en el medio o no. Es lo que evita que
-alguien que entra y sale a cada rato llene el histórico de movimientos.
+Para volver a entrar tienen que pasar `Marcaje::MINUTOS_ENTRE_SALIDA_Y_ENTRADA` (**5 min**),
+contados **desde la salida**.
 
-**Se cuenta desde la ENTRADA anterior, no desde la salida.** Si se contara desde la salida
-bastaría con quedarse un minuto adentro para saltarse la regla, y no serviría de nada.
+> Hubo antes un plazo que se contaba desde la ENTRADA anterior, y dejaba pasar justo lo que venía a
+> atajar: a quien llevaba toda la mañana dentro ya se le había cumplido hacía rato, así que salía y
+> se le podía marcar la entrada en el mismo segundo. Se quitó. Las pruebas que lo daban por bueno
+> están reescritas, no borradas.
 
 Es el único momento en que **no se puede marcar nada**: la persona está fuera, así que la salida
 tampoco aplica. La pantalla apaga los dos botones y dice la hora exacta a partir de la cual se le
@@ -334,31 +335,16 @@ puede marcar la entrada — no un «no se puede» a secas.
 
 | Hora | Qué pasa |
 |---|---|
-| 09:00 | Entrada · ✅ |
-| 09:03 | Salida · ✅ (la espera no estorba a la salida) |
-| 09:06 | Entrada · ❌ «a partir de las 09:10» |
-| 09:10 | Entrada · ✅ |
+| 9:00am | Entrada · ✅ |
+| 9:05am | Salida · ✅ (lo antes que se le puede marcar) |
+| 9:07am | Entrada · ❌ «a partir de las 9:10am» |
+| 9:10am | Entrada · ✅ |
 
-`Marcaje::puedeEntrarDesde(Persona)` devuelve esa hora, o `null` si puede entrar ya. **A la
-parte 2 le sirve** si quiere avisar de lo mismo en su pantalla.
-
-### Y después de salir, para volver a entrar
-
-`Marcaje::MINUTOS_ENTRE_SALIDA_Y_ENTRADA` (**5 min**), contados desde la última salida. Tapa el
-hueco que dejaba el plazo de arriba por su cuenta: aquel se cuenta desde la **entrada** anterior,
-así que a quien llevaba toda la mañana dentro ya se le había cumplido — salía y se le podía marcar
-la entrada en el mismo segundo.
-
-Los dos plazos de la entrada se cumplen **a la vez**, y `puedeEntrarDesde()` devuelve el que
-termine más tarde. Cuál de los dos manda cambia el motivo que se le enseña al vigilante, así que la
-frase la redacta `Marcaje::motivoDeLaEsperaParaEntrar()` y **no la pantalla**: si no, leería
-«entró hace poco» cuando el problema es que acaba de salir.
-
-> **Con los números de hoy, el de la salida manda siempre.** No se puede salir antes de
-> entrada+5, así que salida+5 nunca cae antes de entrada+10. El plazo entre dos entradas queda como
-> un suelo que en la práctica no llega a tocarse. No es un fallo —los tres son coherentes—, pero si
-> alguien sube el de las entradas a veinte minutos, ese volverá a mandar. Hay una prueba que lo
-> deja escrito.
+`Marcaje::puedeEntrarDesde(Persona)` devuelve esa hora, o `null` si puede entrar ya, y
+`Marcaje::motivoDeLaEsperaParaEntrar(Persona)` devuelve la frase ya redactada. **El texto lo pone
+el servicio y no la pantalla**: depende de una regla, y las reglas viven aquí — escrito en la
+vista, se quedaría desfasado la primera vez que la regla cambie, como ya pasó. **A la parte 2 le
+sirve** si quiere avisar de lo mismo en la suya.
 
 ### Y también hay que esperar para salir
 
@@ -367,10 +353,10 @@ Entre la entrada de alguien y su salida tienen que pasar
 asientos separados por segundos casi siempre es el carnet leído dos veces o el botón equivocado, y
 como los movimientos no se borran, ese asiento se quedaría en el histórico para siempre.
 
-**Son dos plazos distintos y no tienen por qué valer igual.** El de arriba —10 min entre dos
-entradas— evita que alguien llene el registro entrando a cada rato; este evita el asiento que no
-ocurrió. `Marcaje::puedeSalirDesde(Persona)` devuelve la hora a partir de la cual se le puede
-marcar la salida, o `null` si puede salir ya, igual que su hermana.
+**Son dos plazos y cada uno cuenta desde su sitio**: para salir, cinco minutos desde la entrada;
+para volver a entrar, cinco desde la salida. Cumplir uno no cumple el otro.
+`Marcaje::puedeSalirDesde(Persona)` devuelve la hora a partir de la cual se le puede marcar la
+salida, o `null` si puede salir ya, igual que su hermana.
 
 Si de verdad hubo que sacar a alguien antes de los cinco minutos, se corrige como todo aquí: con un
 movimiento nuevo cuando se pueda, nunca editando el anterior.

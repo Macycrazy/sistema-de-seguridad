@@ -28,11 +28,6 @@ class ReglasDeTiempo
             'Segundos en que volver a pulsar el mismo botón no crea otro asiento (doble pulsación, doble lectura del carnet).',
             Marcaje::SEGUNDOS_ANTIDUPLICADO, 1, 120, 'segundos',
         ],
-        'minutos_entre_entradas' => [
-            'Entre dos entradas',
-            'Minutos que tienen que pasar para volver a marcarle la entrada a quien ya entró.',
-            Marcaje::MINUTOS_ENTRE_ENTRADAS, 0, 600, 'minutos',
-        ],
         'minutos_entre_entrada_y_salida' => [
             'Entre la entrada y su salida',
             'Minutos mínimos entre que alguien entra y se le marca la salida.',
@@ -51,11 +46,6 @@ class ReglasDeTiempo
     public function segundosAntiduplicado(): int
     {
         return $this->valor('segundos_antiduplicado');
-    }
-
-    public function minutosEntreEntradas(): int
-    {
-        return $this->valor('minutos_entre_entradas');
     }
 
     public function minutosEntreEntradaYSalida(): int

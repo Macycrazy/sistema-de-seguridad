@@ -5,7 +5,6 @@ namespace App\Livewire;
 use App\Models\Movimiento;
 use App\Models\Persona;
 use App\Services\DatosVehiculo;
-use App\Services\Edificio\CatalogoDelEdificio;
 use App\Services\Marcaje;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -185,12 +184,6 @@ class Marcar extends Component
         return $persona ? $this->marcaje->motivoDeLaEsperaParaEntrar($persona) : null;
     }
 
-    /** Los minutos que tienen que pasar entre dos entradas. Lo decide el servicio (ajustable). */
-    public function minutosEntreEntradas(): int
-    {
-        return $this->marcaje->minutosEntreEntradas();
-    }
-
     /** Los minutos que tienen que pasar entre la entrada y su salida. Otro plazo, otro número. */
     public function minutosEntreEntradaYSalida(): int
     {
@@ -364,9 +357,9 @@ class Marcar extends Component
     #[Computed]
     public function oficinasPorPiso(): array
     {
-        // La LISTA sale del catálogo del edificio (tabla «oficinas», que el administrador
-        // gestiona): hay sitios donde no labora nadie —el LOBBY— y aun así se va de visita.
-        $catalogo = collect(app(CatalogoDelEdificio::class)->oficinas())
+        // La LISTA sale del catálogo del edificio (config/edificio.php): hay sitios donde no
+        // labora nadie —el LOBBY— y aun así se va de visita a ellos.
+        $catalogo = collect(config('edificio.oficinas', []))
             ->map(fn ($codigo) => Persona::normalizarPiso($codigo))
             ->filter()
             ->unique();
@@ -392,7 +385,7 @@ class Marcar extends Component
         // encontraría a su oficina, que es una cadena.
         $nombres = [];
 
-        foreach (app(CatalogoDelEdificio::class)->nombres() as $codigo => $nombre) {
+        foreach ((array) config('edificio.nombres', []) as $codigo => $nombre) {
             $nombres[(string) $codigo] = trim((string) $nombre);
         }
 
@@ -447,7 +440,7 @@ class Marcar extends Component
     {
         $delCatalogo = [];
 
-        foreach (app(CatalogoDelEdificio::class)->nombres() as $codigo => $nombre) {
+        foreach ((array) config('edificio.nombres', []) as $codigo => $nombre) {
             $delCatalogo[(string) $codigo] = trim((string) $nombre);
         }
 

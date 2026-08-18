@@ -31,11 +31,11 @@ class PantallaAjustesTest extends TestCase
         $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
 
         Livewire::test(ListaDeTiempos::class)
-            ->set('valores.minutos_entre_entradas', 25)
+            ->set('valores.minutos_entre_salida_y_entrada', 25)
             ->call('guardar')
             ->assertHasNoErrors();
 
-        $this->assertSame(25, Parametro::where('clave', 'minutos_entre_entradas')->first()->valor);
+        $this->assertSame(25, Parametro::where('clave', 'minutos_entre_salida_y_entrada')->first()->valor);
     }
 
     #[Test]
