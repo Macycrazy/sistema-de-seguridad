@@ -77,23 +77,19 @@
                         permiso, y el grupo entero desaparece si no queda ninguna.
                     --}}
                     @php
+                        // El menú se queda en cinco a lo sumo: el turno a la izquierda y, tras la
+                        // línea, TODA la administración recogida en un solo panel. Reportes y
+                        // Alertas ya no son entradas sueltas: son vistas del registro y viven en su
+                        // submenú, así que «Registro» las cuenta como activas y lleva la insignia.
                         $operacion = collect([
                             ['ruta' => 'marcar', 'texto' => 'Marcar', 'permiso' => null],
                             ['ruta' => 'estacionamiento', 'texto' => 'Estacionamiento', 'permiso' => null],
-                            ['ruta' => 'registro', 'texto' => 'Registro', 'permiso' => 'ver-registro'],
-                            ['ruta' => 'reportes', 'texto' => 'Reportes', 'permiso' => 'ver-registro'],
-                            ['ruta' => 'alertas', 'texto' => 'Alertas', 'permiso' => 'ver-registro', 'insignia' => $alertasActivas],
+                            ['ruta' => 'registro', 'texto' => 'Registro', 'permiso' => 'ver-registro', 'rutas' => ['registro', 'reportes', 'alertas'], 'insignia' => $alertasActivas],
                             ['ruta' => 'visitas', 'texto' => 'Visitas', 'permiso' => 'gestionar-visitas'],
                         ])->filter(fn ($m) => $puede($m['permiso']));
 
                         $administracion = collect([
-                            ['ruta' => 'trabajadores', 'texto' => 'Trabajadores', 'permiso' => 'gestionar-personal'],
-                            ['ruta' => 'organigrama', 'texto' => 'Organigrama', 'permiso' => 'gestionar-personal'],
-                            ['ruta' => 'usuarios', 'texto' => 'Usuarios', 'permiso' => 'gestionar-usuarios'],
-                            ['ruta' => 'edificio', 'texto' => 'Edificio', 'permiso' => 'gestionar-edificio'],
-                            ['ruta' => 'ajustes', 'texto' => 'Ajustes', 'permiso' => 'gestionar-ajustes'],
-                            ['ruta' => 'roles', 'texto' => 'Roles', 'permiso' => 'gestionar-permisos'],
-                            ['ruta' => 'auditoria', 'texto' => 'Auditoría', 'permiso' => 'ver-auditoria'],
+                            ['ruta' => 'administracion', 'texto' => 'Admin', 'permiso' => 'ver-administracion'],
                         ])->filter(fn ($m) => $puede($m['permiso']));
 
                         $grupos = collect([$operacion, $administracion])->filter->isNotEmpty()->values();
@@ -107,7 +103,7 @@
                             @endif
 
                             @foreach ($grupo as $m)
-                                @php $activo = request()->routeIs($m['ruta']); @endphp
+                                @php $activo = request()->routeIs(...($m['rutas'] ?? [$m['ruta']])); @endphp
                                 <a href="{{ route($m['ruta']) }}"
                                    @if ($activo) aria-current="page" @endif
                                    class="relative rounded px-3 py-2 transition
@@ -163,24 +159,17 @@
 
     @auth
         @php
-            // La misma navegación, pero abajo y plana, para el pulgar. Incluye «Inicio» solo para
-            // quien tiene un tablero (el vigilante no: su inicio ES marcar). Si a alguien le queda
-            // un solo destino —el vigilante—, la barra no aparece: está siempre en su pantalla.
+            // La misma navegación de arriba, abajo y plana para el pulgar: cinco a lo sumo. Toda la
+            // administración es un solo botón «Admin», y Reportes/Alertas viven dentro de Registro
+            // (por eso «Registro» se enciende con ellas y lleva la insignia). Si a alguien le queda
+            // un solo destino —el vigilante ve solo Marcar y Vehículos—, la barra igual aparece; con
+            // ninguno, no.
             $tabs = collect([
-                ['ruta' => 'inicio', 'texto' => 'Inicio', 'permiso' => 'ver-registro', 'icono' => 'inicio'],
                 ['ruta' => 'marcar', 'texto' => 'Marcar', 'permiso' => null, 'icono' => 'marcar'],
                 ['ruta' => 'estacionamiento', 'texto' => 'Vehículos', 'permiso' => null, 'icono' => 'estacionamiento'],
-                ['ruta' => 'registro', 'texto' => 'Registro', 'permiso' => 'ver-registro', 'icono' => 'registro'],
-                ['ruta' => 'reportes', 'texto' => 'Reportes', 'permiso' => 'ver-registro', 'icono' => 'reportes'],
-                ['ruta' => 'alertas', 'texto' => 'Alertas', 'permiso' => 'ver-registro', 'icono' => 'alertas', 'insignia' => $alertasActivas],
+                ['ruta' => 'registro', 'texto' => 'Registro', 'permiso' => 'ver-registro', 'icono' => 'registro', 'rutas' => ['registro', 'reportes', 'alertas'], 'insignia' => $alertasActivas],
                 ['ruta' => 'visitas', 'texto' => 'Visitas', 'permiso' => 'gestionar-visitas', 'icono' => 'visitas'],
-                ['ruta' => 'trabajadores', 'texto' => 'Personal', 'permiso' => 'gestionar-personal', 'icono' => 'personal'],
-                ['ruta' => 'organigrama', 'texto' => 'Organigrama', 'permiso' => 'gestionar-personal', 'icono' => 'organigrama'],
-                ['ruta' => 'usuarios', 'texto' => 'Usuarios', 'permiso' => 'gestionar-usuarios', 'icono' => 'usuarios'],
-                ['ruta' => 'edificio', 'texto' => 'Edificio', 'permiso' => 'gestionar-edificio', 'icono' => 'edificio'],
-                ['ruta' => 'ajustes', 'texto' => 'Ajustes', 'permiso' => 'gestionar-ajustes', 'icono' => 'ajustes'],
-                ['ruta' => 'roles', 'texto' => 'Roles', 'permiso' => 'gestionar-permisos', 'icono' => 'roles'],
-                ['ruta' => 'auditoria', 'texto' => 'Auditoría', 'permiso' => 'ver-auditoria', 'icono' => 'auditoria'],
+                ['ruta' => 'administracion', 'texto' => 'Admin', 'permiso' => 'ver-administracion', 'icono' => 'administracion'],
             ])->filter(fn ($t) => $puede($t['permiso']))->values();
 
             $icono = fn ($clave) => match ($clave) {
@@ -192,6 +181,7 @@
                 'organigrama' => '<rect x="9" y="3" width="6" height="4" rx="1"/><rect x="3" y="16" width="6" height="4" rx="1"/><rect x="15" y="16" width="6" height="4" rx="1"/><path d="M12 7v5M6 16v-2h12v2"/>',
                 'visitas' => '<path d="M16 21v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 19.5V21"/><circle cx="10" cy="8" r="3.2"/><path d="M17 4v5M14.5 6.5h5"/>',
                 'estacionamiento' => '<path d="M5 16v-3.5l1.8-4A2 2 0 0 1 8.6 7h6.8a2 2 0 0 1 1.8 1.5l1.8 4V16"/><path d="M5 16v2M19 16v2"/><circle cx="8" cy="15.5" r="1"/><circle cx="16" cy="15.5" r="1"/>',
+                'administracion' => '<circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M5 5l1.5 1.5M17.5 17.5 19 19M3 12h2M19 12h2M5 19l1.5-1.5M17.5 6.5 19 5"/>',
                 'personal' => '<path d="M4 20c0-3.2 2.7-5 6-5s6 1.8 6 5"/><circle cx="10" cy="8" r="3.2"/><path d="M17 13.5c1.9.5 3 2 3 4.5"/>',
                 'edificio' => '<path d="M4 21V6l7-3v18"/><path d="M11 8h6v13"/><path d="M7 9h0M7 12h0M7 15h0M14 12h0M14 16h0"/>',
                 'ajustes' => '<circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M5 5l1.5 1.5M17.5 17.5 19 19M3 12h2M19 12h2M5 19l1.5-1.5M17.5 6.5 19 5"/>',
@@ -208,7 +198,7 @@
                  aria-label="Módulos">
                 <div class="mx-auto flex max-w-lg items-stretch justify-around">
                     @foreach ($tabs as $t)
-                        @php $activo = request()->routeIs($t['ruta']); @endphp
+                        @php $activo = request()->routeIs(...($t['rutas'] ?? [$t['ruta']])); @endphp
                         <a href="{{ route($t['ruta']) }}"
                            @if ($activo) aria-current="page" @endif
                            class="flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-semibold tracking-wide transition

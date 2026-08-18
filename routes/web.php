@@ -69,6 +69,11 @@ Route::middleware('auth')->group(function () {
     // La agenda de visitas esperadas: recepción anticipa quién viene, la puerta lo confirma.
     Route::view('/visitas', 'visitas')->middleware('can:gestionar-visitas')->name('visitas');
 
+    // El panel de administración: reúne en un solo sitio todo lo de admin (personal, organigrama,
+    // usuarios, edificio, ajustes, auditoría, roles), para que el menú de arriba no se llene. Lo
+    // abre quien tenga cualquiera de esos permisos; cada tarjeta, además, revisa el suyo.
+    Route::view('/administracion', 'administracion')->middleware('can:ver-administracion')->name('administracion');
+
     // Meter la nómina: alta manual e importación por Excel, mientras la asociación con el sistema
     // de carnets no la traiga sola.
     Route::view('/trabajadores', 'trabajadores')->middleware('can:gestionar-personal')->name('trabajadores');

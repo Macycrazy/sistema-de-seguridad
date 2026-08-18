@@ -68,6 +68,16 @@ class AppServiceProvider extends ServiceProvider
      * Lo que sigue siendo código, y a propósito, es el orden de los roles: a quién puede tocar
      * cada quien lo dice Rol::alcanza(), no esta tabla. Ver App\Usuarios\Permiso.
      */
+    /** Los permisos que hacen a alguien «de administración»: los que abren el panel de admin. */
+    private const PERMISOS_DE_ADMIN = [
+        Permiso::GESTIONAR_PERSONAL,
+        Permiso::GESTIONAR_EDIFICIO,
+        Permiso::GESTIONAR_AJUSTES,
+        Permiso::VER_AUDITORIA,
+        Permiso::GESTIONAR_USUARIOS,
+        Permiso::GESTIONAR_PERMISOS,
+    ];
+
     private function definirPermisos(): void
     {
         foreach (Permiso::cases() as $permiso) {
@@ -77,5 +87,22 @@ class AppServiceProvider extends ServiceProvider
                     && app(Permisos::class)->tiene($usuario->rol, $permiso),
             );
         }
+
+        // Un gate compuesto para el panel de administración: lo abre quien tenga CUALQUIERA de los
+        // permisos de admin. No es un permiso de la tabla —no se marca en /roles—, se deriva de
+        // ellos, para que el panel y su entrada en el menú aparezcan si hay algo que administrar.
+        Gate::define('ver-administracion', function (User $usuario) {
+            if (! $usuario->rol instanceof Rol) {
+                return false;
+            }
+
+            foreach (self::PERMISOS_DE_ADMIN as $permiso) {
+                if (app(Permisos::class)->tiene($usuario->rol, $permiso)) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
     }
 }
