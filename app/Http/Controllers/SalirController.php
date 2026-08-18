@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Auditoria\Auditoria;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +20,9 @@ class SalirController extends Controller
 {
     public function __invoke(Request $request): RedirectResponse
     {
+        // Antes de cerrar, mientras aún se sabe quién era: el asiento sale a su nombre.
+        app(Auditoria::class)->salio();
+
         Auth::logout();
 
         // Cerrar la sesión de Laravel no borra lo que hubiera guardado en la de PHP. Sin estas

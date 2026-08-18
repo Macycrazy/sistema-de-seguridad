@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\User;
+use App\Services\Auditoria\Auditoria;
 use App\Usuarios\Rol;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -46,6 +47,8 @@ class Ingresar extends Component
         // «ese usuario no existe» le regalaría media respuesta a quien esté probando nombres.
         if (! $usuario || ! Hash::check($this->clave, (string) $usuario->password)) {
             $this->anotarElFallo();
+            // Sin cuenta: no se sabe quién estaba al teclado, y decirlo sería inventar.
+            app(Auditoria::class)->ingresoFallido(null, 'usuario o clave incorrectos');
 
             throw ValidationException::withMessages([
                 'usuario' => 'Usuario o clave incorrectos.',
@@ -57,6 +60,8 @@ class Ingresar extends Component
         // que llega a su turno y no puede entrar hay que decirle por qué.
         if (! $usuario->activo) {
             $this->anotarElFallo();
+            // La clave era la buena pero la cuenta está desactivada: aquí sí se sabe quién intenta.
+            app(Auditoria::class)->ingresoFallido($usuario->usuario, 'cuenta desactivada');
 
             throw ValidationException::withMessages([
                 'usuario' => 'Ese usuario está desactivado. Habla con el administrador.',
@@ -70,6 +75,9 @@ class Ingresar extends Component
         // regenerarla a mano, pero sí saber que pasa: sin eso, un identificador conocido de
         // antes seguiría abriendo la sesión de quien acaba de entrar.
         Auth::login($usuario);
+
+        // Ya con la sesión abierta: el asiento sale a nombre de quien acaba de entrar.
+        app(Auditoria::class)->ingresoCorrecto();
 
         $this->clave = '';
 

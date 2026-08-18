@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Movimiento;
 use App\Models\Persona;
+use App\Services\Auditoria\Auditoria;
 use App\Services\DatosVehiculo;
 use App\Services\Marcaje;
 use Illuminate\Support\Collection;
@@ -307,6 +308,10 @@ class Marcar extends Component
         $this->personaId = $persona->id;
         $this->invitadoNuevo = false;
         unset($this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta, $this->esperaSalidaHasta, $this->motivoEspera);
+
+        // Que el vigilante haya sacado la ficha de esta cédula queda anotado. Con dedup: el tecleo
+        // dispara esta búsqueda varias veces, y para la auditoría fue una sola consulta.
+        app(Auditoria::class)->consultoCedula($cedula);
 
         // Un invitado que vuelve ya trae su motivo y el piso de la última vez: se muestran para
         // confirmarlos o cambiarlos, que para eso se le pregunta cada visita.
