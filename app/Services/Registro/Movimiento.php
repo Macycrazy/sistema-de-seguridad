@@ -32,7 +32,8 @@ final readonly class Movimiento
 
     public function hora(): string
     {
-        return $this->ocurrioEn->format('H:i');
+        // 12 horas con am/pm, igual que la puerta (App\Models\Movimiento::FORMATO_HORA).
+        return $this->ocurrioEn->format('g:i a');
     }
 
     public function fecha(): string

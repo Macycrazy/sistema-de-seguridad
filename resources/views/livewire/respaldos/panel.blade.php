@@ -34,7 +34,7 @@
                 @forelse ($this->respaldos as $r)
                     <tr wire:key="resp-{{ $r['nombre'] }}">
                         <td class="px-4 py-3 font-mono text-slate-900">{{ $r['nombre'] }}</td>
-                        <td class="px-4 py-3 text-slate-600">{{ $r['cuando']->translatedFormat('d M Y · H:i') }}</td>
+                        <td class="px-4 py-3 text-slate-600">{{ $r['cuando']->translatedFormat('d M Y · g:i a') }}</td>
                         <td class="px-4 py-3 text-right tabular-nums text-slate-600">{{ number_format($r['bytes'] / 1024, 1) }} KB</td>
                         <td class="whitespace-nowrap px-4 py-3 text-right">
                             <button wire:click="descargar('{{ $r['nombre'] }}')"
