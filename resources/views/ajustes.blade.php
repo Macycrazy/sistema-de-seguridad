@@ -15,4 +15,9 @@
     <div class="mt-3">
         <livewire:ajustes.lista-de-umbrales />
     </div>
+
+    <h2 class="mt-10 font-mono text-xs font-bold uppercase tracking-widest text-slate-500">Retención de datos</h2>
+    <div class="mt-3">
+        <livewire:ajustes.lista-de-retencion />
+    </div>
 @endsection

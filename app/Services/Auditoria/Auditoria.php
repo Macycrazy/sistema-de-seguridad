@@ -39,6 +39,8 @@ class Auditoria
 
     public const CAMBIO_ORGANIGRAMA = 'cambio-organigrama';
 
+    public const DEPURO_DATOS = 'depuro-datos';
+
     /** La acción, en frase, para la pantalla. */
     public const ETIQUETAS = [
         self::CONSULTO_HISTORICO => 'Consultó un histórico',
@@ -53,6 +55,7 @@ class Auditoria
         self::CAMBIO_OFICINAS => 'Cambió las oficinas',
         self::CARGO_PERSONAL => 'Cargó personal',
         self::CAMBIO_ORGANIGRAMA => 'Cambió el organigrama',
+        self::DEPURO_DATOS => 'Depuró datos',
     ];
 
     /** El punto único de escritura. */
@@ -128,6 +131,11 @@ class Auditoria
     public function cambioOrganigrama(string $detalle): void
     {
         $this->anota(self::CAMBIO_ORGANIGRAMA, $detalle);
+    }
+
+    public function depuroDatos(string $detalle): void
+    {
+        $this->anota(self::DEPURO_DATOS, $detalle);
     }
 
     /** Cómo se nombra a una persona en el rastro: su cédula, que es lo que se buscó. */
