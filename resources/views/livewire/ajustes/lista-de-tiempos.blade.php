@@ -1,9 +1,6 @@
 <div>
     @if ($aviso)
-        <div class="mb-5 rounded border border-parte3/30 bg-parte3-suave px-4 py-3 text-sm font-semibold text-parte3"
-             role="status" wire:key="aviso">
-            {{ $aviso }}
-        </div>
+        <x-aviso class="mb-5" wire:key="aviso">{{ $aviso }}</x-aviso>
     @endif
 
     <p class="max-w-2xl text-sm text-slate-600">

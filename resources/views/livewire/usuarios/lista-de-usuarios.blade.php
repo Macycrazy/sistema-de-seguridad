@@ -22,17 +22,12 @@
 
     {{-- El aviso nunca repite la clave: la escribió quien gestiona, ya la sabe. --}}
     @if ($aviso !== '')
-        <div class="mb-5 rounded border border-parte3/30 bg-parte3-suave px-4 py-3 text-sm font-semibold text-parte3"
-             wire:key="aviso">
-            {{ $aviso }}
-        </div>
+        <x-aviso class="mb-5" wire:key="aviso">{{ $aviso }}</x-aviso>
     @endif
 
     {{-- Lo que no dejó hacer el servidor: desactivarse a uno mismo, o al último administrador. --}}
     @if ($errors->has('usuario') && ! $creando)
-        <div class="mb-5 rounded border border-alto/30 bg-alto-suave px-4 py-3 text-sm font-semibold text-alto">
-            {{ $errors->first('usuario') }}
-        </div>
+        <x-error class="mb-5">{{ $errors->first('usuario') }}</x-error>
     @endif
 
     {{-- EL ALTA --}}

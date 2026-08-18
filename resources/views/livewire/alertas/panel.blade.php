@@ -43,10 +43,7 @@
                     <div class="min-w-0 grow">
                         <div class="flex flex-wrap items-center gap-2">
                             <p class="font-semibold text-slate-900">{{ $alerta->titulo }}</p>
-                            <span class="rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide
-                                         {{ $urgente ? 'bg-alto-suave text-alto' : 'bg-slate-100 text-slate-500' }}">
-                                {{ $urgente ? 'Urgente' : 'Aviso' }}
-                            </span>
+                            <x-etiqueta :tipo="$urgente ? 'urgente' : 'aviso'" tamano="chico" />
                             <span class="font-mono text-[10px] uppercase tracking-widest text-slate-400">
                                 @switch($alerta->tipo)
                                     @case(\App\Services\Alertas\Alerta::AFORO) Aforo @break

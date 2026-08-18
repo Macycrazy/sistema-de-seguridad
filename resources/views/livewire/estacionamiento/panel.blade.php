@@ -55,7 +55,7 @@
                     <tr wire:key="veh-{{ $v->persona_id }}">
                         <td class="px-4 py-3 font-mono text-base font-bold tracking-wider text-slate-900">{{ $v->placa ?: '—' }}</td>
                         <td class="px-4 py-3 text-slate-600">
-                            <span class="rounded bg-parte1/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-parte1">{{ $v->vehiculo->etiquetaTipo() }}</span>
+                            <x-etiqueta :tipo="$v->tipo_vehiculo" tamano="chico" />
                             <span class="ml-1">{{ trim(($v->marca ?? '').' '.($v->modelo ?? '')) ?: '—' }}</span>
                             @if ($v->color)<span class="text-slate-400"> · {{ $v->color }}</span>@endif
                         </td>

@@ -14,10 +14,7 @@
     </div>
 
     @if ($confirmacion !== '')
-        <div class="mb-5 rounded border border-ok/30 bg-ok-suave px-4 py-3 text-sm font-semibold text-ok"
-             wire:key="confirmacion">
-            {{ $confirmacion }}
-        </div>
+        <x-aviso class="mb-5" wire:key="confirmacion">{{ $confirmacion }}</x-aviso>
     @endif
 
     <x-tarjeta parte="3">

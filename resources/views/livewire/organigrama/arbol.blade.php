@@ -1,15 +1,10 @@
 <div>
     @if ($aviso)
-        <div class="mb-5 rounded border border-parte3/30 bg-parte3-suave px-4 py-3 text-sm font-semibold text-parte3"
-             role="status" wire:key="aviso-org">
-            {{ $aviso }}
-        </div>
+        <x-aviso class="mb-5" wire:key="aviso-org">{{ $aviso }}</x-aviso>
     @endif
 
     @error('general')
-        <div class="mb-5 rounded border border-alto/40 bg-alto-suave px-4 py-3 text-sm text-alto" role="alert">
-            {{ $message }}
-        </div>
+        <x-error class="mb-5">{{ $message }}</x-error>
     @enderror
 
     <div class="flex flex-wrap items-center justify-between gap-4">
@@ -74,7 +69,7 @@
                                     <span class="ml-1 font-mono text-xs text-slate-400">{{ $unidad->codigo }}</span>
                                 @endif
                                 @unless ($unidad->activo)
-                                    <span class="ml-1 rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-slate-500">Inactiva</span>
+                                    <x-etiqueta tipo="inactivo" tamano="chico" class="ml-1">Inactiva</x-etiqueta>
                                 @endunless
                             </span>
                         </td>

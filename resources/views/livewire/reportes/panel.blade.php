@@ -178,7 +178,7 @@
                         <span class="min-w-0 grow truncate text-sm text-slate-800">
                             {{ $fila['persona']?->nombre ?? 'Persona retirada' }}
                             @if ($fila['persona']?->esInvitado())
-                                <span class="ml-1 rounded bg-parte3/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-parte3">Invitado</span>
+                                <x-etiqueta tipo="invitado" tamano="chico" class="ml-1" />
                             @endif
                         </span>
                         <span class="shrink-0 font-semibold tabular-nums text-slate-900">{{ $fila['visitas'] }}</span>
