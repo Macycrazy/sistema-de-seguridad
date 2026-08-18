@@ -157,6 +157,24 @@ class ReportesTest extends TestCase
     }
 
     #[Test]
+    public function por_vehiculo_separa_carro_moto_y_a_pie(): void
+    {
+        $ana = $this->persona('1');
+        Movimiento::create(['persona_id' => $ana->id, 'tipo' => Movimiento::ENTRADA, 'ocurrio_en' => '2026-08-10 08:00', 'tipo_vehiculo' => 'carro', 'placa' => 'AAA111']);
+        Movimiento::create(['persona_id' => $ana->id, 'tipo' => Movimiento::ENTRADA, 'ocurrio_en' => '2026-08-11 08:00', 'tipo_vehiculo' => 'moto', 'placa' => 'BBB222']);
+        $this->entrada($ana, '2026-08-12 08:00');   // a pie
+
+        $porVehiculo = app(Reportes::class)->porVehiculo(
+            CarbonImmutable::parse('2026-08-01'),
+            CarbonImmutable::parse('2026-08-31'),
+        );
+
+        $this->assertSame(1, $porVehiculo['carro']);
+        $this->assertSame(1, $porVehiculo['moto']);
+        $this->assertSame(1, $porVehiculo['aPie']);
+    }
+
+    #[Test]
     public function mas_frecuentes_ordena_por_numero_de_entradas(): void
     {
         $ana = $this->persona('1');

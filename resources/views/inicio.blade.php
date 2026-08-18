@@ -21,6 +21,13 @@
             </x-tarjeta>
         </a>
 
+        <a href="{{ route('estacionamiento') }}" class="block transition hover:shadow-md">
+            <x-tarjeta parte="1" class="h-full">
+                <p class="text-lg font-semibold">Estacionamiento</p>
+                <p class="mt-1 text-sm text-slate-500">Qué vehículos hay dentro ahora.</p>
+            </x-tarjeta>
+        </a>
+
         <a href="{{ route('registro') }}" class="block transition hover:shadow-md">
             <x-tarjeta parte="2" class="h-full">
                 <p class="text-lg font-semibold">Registro</p>

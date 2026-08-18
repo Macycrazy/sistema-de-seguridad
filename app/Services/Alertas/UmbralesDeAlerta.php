@@ -31,6 +31,11 @@ class UmbralesDeAlerta
             'Cuántas personas dentro a la vez disparan el aviso de aforo. En 0 el aviso queda desactivado.',
             0, 0, 999, 'personas',
         ],
+        'alerta_aforo_estacionamiento' => [
+            'Aforo del estacionamiento',
+            'Cuántos vehículos dentro a la vez disparan el aviso de estacionamiento lleno. En 0 el aviso queda desactivado.',
+            0, 0, 9999, 'vehículos',
+        ],
     ];
 
     /** @var array<string, int>|null Los valores de la base, leídos una sola vez. */
@@ -44,6 +49,11 @@ class UmbralesDeAlerta
     public function aforo(): int
     {
         return $this->valor('alerta_aforo');
+    }
+
+    public function aforoEstacionamiento(): int
+    {
+        return $this->valor('alerta_aforo_estacionamiento');
     }
 
     /**

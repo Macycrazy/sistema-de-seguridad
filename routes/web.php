@@ -38,6 +38,9 @@ Route::middleware('auth')->group(function () {
     // Parte 1 · la pantalla que el vigilante tiene abierta todo el turno.
     Route::view('/marcar', 'marcar')->name('marcar');
 
+    // El estacionamiento visto desde el portón. Sin permiso propio: es para el guardia, como marcar.
+    Route::view('/estacionamiento', 'estacionamiento')->name('estacionamiento');
+
     // MAQUETA · escanear la cédula con la cámara del teléfono. Es para enseñar la idea y
     // discutirla; no registra movimientos. No forma parte de lo que hay que entregar.
     Route::view('/maqueta/escaneo', 'maqueta-escaneo')->name('maqueta.escaneo');

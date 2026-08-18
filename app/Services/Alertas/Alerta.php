@@ -14,6 +14,8 @@ final class Alerta
 {
     public const AFORO = 'aforo';
 
+    public const ESTACIONAMIENTO = 'estacionamiento';
+
     public const PERMANENCIA = 'permanencia';
 
     /** Dos gravedades: «aviso» conviene mirarlo; «urgente» pide actuar ya. */

@@ -134,6 +134,13 @@ class Panel extends Component
         return app(Reportes::class)->porDepartamento($this->tramo()['desde'], $this->tramo()['hasta']);
     }
 
+    /** @return array{carro:int, moto:int, aPie:int} */
+    #[Computed]
+    public function porVehiculo(): array
+    {
+        return app(Reportes::class)->porVehiculo($this->tramo()['desde'], $this->tramo()['hasta']);
+    }
+
     /** La franja pico dicha en horas, «8:00 a. m. – 8:59 a. m.». Nula si el tramo está vacío. */
     #[Computed]
     public function franjaPico(): ?string
