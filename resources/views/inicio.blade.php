@@ -26,6 +26,15 @@
                 <p class="text-lg font-semibold">Registro</p>
             </x-tarjeta>
         </a>
+
+        @can('ver-registro')
+            <a href="{{ route('reportes') }}" class="block transition hover:shadow-md">
+                <x-tarjeta parte="2" class="h-full">
+                    <p class="text-lg font-semibold">Reportes</p>
+                    <p class="mt-1 text-sm text-slate-500">Las cuentas del registro por tramo de fechas.</p>
+                </x-tarjeta>
+            </a>
+        @endcan
     </div>
 
     {{-- ADMINISTRACIÓN · solo aparece si hay algo que administrar --}}
