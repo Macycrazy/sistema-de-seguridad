@@ -90,7 +90,7 @@ final class Alertas
                     // Al doble del umbral ya no es un olvido probable: sube a urgente.
                     severidad: $llevaHoras >= $horas * 2 ? Alerta::URGENTE : Alerta::AVISO,
                     titulo: ($persona?->nombre ?? 'Persona retirada').' lleva '.$llevaHoras.' h dentro',
-                    detalle: 'Entró '.$fila['desde']->translatedFormat('D d M \a \l\a\s H:i').' y no ha marcado salida.',
+                    detalle: 'Entró '.$fila['desde']->translatedFormat('D d M \a \l\a\s g:i a').' y no ha marcado salida.',
                     personaId: $fila['persona_id'],
                     personaNombre: $persona?->nombre,
                     desde: $fila['desde'],
