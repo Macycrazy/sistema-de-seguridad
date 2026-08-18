@@ -56,6 +56,10 @@ Route::middleware('auth')->group(function () {
     // Parte 2 · el registro es la lista completa del personal, con el histórico de cada quien.
     Route::view('/registro', 'registro')->middleware('can:ver-registro')->name('registro');
 
+    // El mirador del registro: las cuentas de un tramo de fechas. Mismo permiso que el registro:
+    // quien ve el detalle ve su resumen.
+    Route::view('/reportes', 'reportes')->middleware('can:ver-registro')->name('reportes');
+
     // Meter la nómina: alta manual e importación por Excel, mientras la asociación con el sistema
     // de carnets no la traiga sola.
     Route::view('/trabajadores', 'trabajadores')->middleware('can:gestionar-personal')->name('trabajadores');

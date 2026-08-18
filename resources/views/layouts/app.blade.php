@@ -76,6 +76,7 @@
                         $operacion = collect([
                             ['ruta' => 'marcar', 'texto' => 'Marcar', 'permiso' => null],
                             ['ruta' => 'registro', 'texto' => 'Registro', 'permiso' => 'ver-registro'],
+                            ['ruta' => 'reportes', 'texto' => 'Reportes', 'permiso' => 'ver-registro'],
                         ])->filter(fn ($m) => $puede($m['permiso']));
 
                         $administracion = collect([
@@ -157,6 +158,7 @@
                 ['ruta' => 'inicio', 'texto' => 'Inicio', 'permiso' => 'ver-registro', 'icono' => 'inicio'],
                 ['ruta' => 'marcar', 'texto' => 'Marcar', 'permiso' => null, 'icono' => 'marcar'],
                 ['ruta' => 'registro', 'texto' => 'Registro', 'permiso' => 'ver-registro', 'icono' => 'registro'],
+                ['ruta' => 'reportes', 'texto' => 'Reportes', 'permiso' => 'ver-registro', 'icono' => 'reportes'],
                 ['ruta' => 'trabajadores', 'texto' => 'Personal', 'permiso' => 'gestionar-personal', 'icono' => 'personal'],
                 ['ruta' => 'usuarios', 'texto' => 'Usuarios', 'permiso' => 'gestionar-usuarios', 'icono' => 'usuarios'],
                 ['ruta' => 'edificio', 'texto' => 'Edificio', 'permiso' => 'gestionar-edificio', 'icono' => 'edificio'],
@@ -169,6 +171,7 @@
                 'inicio' => '<path d="M3 10.8 12 4l9 6.8"/><path d="M5.5 9.5V20h13V9.5"/>',
                 'marcar' => '<rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="11" r="2"/><path d="M13 9.7h5M13 13h5M5.6 15.6c.6-1.5 3.2-1.5 3.8 0"/>',
                 'registro' => '<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1.1"/><circle cx="4" cy="12" r="1.1"/><circle cx="4" cy="18" r="1.1"/>',
+                'reportes' => '<path d="M4 20V4"/><path d="M4 20h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="5" width="3" height="12"/>',
                 'personal' => '<path d="M4 20c0-3.2 2.7-5 6-5s6 1.8 6 5"/><circle cx="10" cy="8" r="3.2"/><path d="M17 13.5c1.9.5 3 2 3 4.5"/>',
                 'edificio' => '<path d="M4 21V6l7-3v18"/><path d="M11 8h6v13"/><path d="M7 9h0M7 12h0M7 15h0M14 12h0M14 16h0"/>',
                 'ajustes' => '<circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M5 5l1.5 1.5M17.5 17.5 19 19M3 12h2M19 12h2M5 19l1.5-1.5M17.5 6.5 19 5"/>',
