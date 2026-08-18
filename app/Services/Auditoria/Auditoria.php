@@ -15,6 +15,18 @@ use App\Models\User;
  */
 class Auditoria
 {
+    // El rastro de sesión y de lectura (integrado del trabajo paralelo de Deiber Sella): quién
+    // entró, quién lo intentó sin lograrlo, y quién miró los datos de quién.
+    public const INGRESO_CORRECTO = 'ingreso-correcto';
+
+    public const INGRESO_FALLIDO = 'ingreso-fallido';
+
+    public const SALIO = 'salio';
+
+    public const CONSULTO_CEDULA = 'consulto-cedula';
+
+    public const VIO_FOTO = 'vio-foto';
+
     public const CONSULTO_HISTORICO = 'consulto-historico';
 
     public const EXPORTO_REGISTRO = 'exporto-registro';
@@ -45,6 +57,11 @@ class Auditoria
 
     /** La acción, en frase, para la pantalla. */
     public const ETIQUETAS = [
+        self::INGRESO_CORRECTO => 'Entró al sistema',
+        self::INGRESO_FALLIDO => 'Intento de ingreso fallido',
+        self::SALIO => 'Cerró la sesión',
+        self::CONSULTO_CEDULA => 'Consultó una cédula',
+        self::VIO_FOTO => 'Vio una foto',
         self::CONSULTO_HISTORICO => 'Consultó un histórico',
         self::EXPORTO_REGISTRO => 'Exportó el registro',
         self::CREO_USUARIO => 'Creó un usuario',
@@ -61,6 +78,16 @@ class Auditoria
         self::RESPALDO => 'Respaldo',
     ];
 
+    /**
+     * Cuántos segundos hacen que dos anotaciones iguales cuenten como una.
+     *
+     * Es para lo que se dispara solo, como la consulta de cédula en la puerta: el campo busca en
+     * cada pausa del tecleo, así que «25375258» pasa por «253752» y «2537525», y para quien mire
+     * la auditoría eso fue una sola consulta. Lo que se anota de más entierra lo que importa.
+     * (Idea tomada de Rastro::SEGUNDOS_DE_AGRUPACION, de Deiber.)
+     */
+    public const SEGUNDOS_DEDUP = 30;
+
     /** El punto único de escritura. */
     public function anota(string $accion, ?string $sobre = null, ?string $detalle = null): void
     {
@@ -74,7 +101,57 @@ class Auditoria
         ]);
     }
 
+    /**
+     * Anota, salvo que el mismo usuario ya haya anotado lo mismo hace un instante. Para las
+     * acciones que se repiten solas (la consulta de cédula, la foto vista): agrupa el ruido del
+     * tecleo sin tapar dos consultas de verdad separadas.
+     */
+    public function anotaUnaVez(string $accion, ?string $sobre = null, ?string $detalle = null): void
+    {
+        $yaEsta = Bitacora::query()
+            ->where('accion', $accion)
+            ->where('usuario_id', auth()->id())
+            ->where('sobre', $sobre)
+            ->where('ocurrio_en', '>=', now()->subSeconds(self::SEGUNDOS_DEDUP))
+            ->exists();
+
+        if (! $yaEsta) {
+            $this->anota($accion, $sobre, $detalle);
+        }
+    }
+
     // Atajos, para que cada enganche sea una línea que se lee sola.
+
+    public function ingresoCorrecto(): void
+    {
+        $this->anota(self::INGRESO_CORRECTO);
+    }
+
+    /**
+     * Un ingreso que no fue. Sin usuario cuando la clave no era —no se sabe quién estaba al
+     * teclado y decirlo sería inventar—; con el nombre de la cuenta cuando la clave sí era pero
+     * está desactivada, que eso sí se sabe y que alguien desactivado insista es un dato.
+     */
+    public function ingresoFallido(?string $cuenta = null, ?string $motivo = null): void
+    {
+        $this->anota(self::INGRESO_FALLIDO, $cuenta, $motivo);
+    }
+
+    public function salio(): void
+    {
+        $this->anota(self::SALIO);
+    }
+
+    /** La consulta de una cédula en la puerta. Con dedup: el tecleo dispara varias por consulta. */
+    public function consultoCedula(string $cedula): void
+    {
+        $this->anotaUnaVez(self::CONSULTO_CEDULA, $cedula);
+    }
+
+    public function vioFoto(Persona $persona): void
+    {
+        $this->anotaUnaVez(self::VIO_FOTO, $this->identifica($persona));
+    }
 
     public function consultoHistorico(Persona $persona): void
     {

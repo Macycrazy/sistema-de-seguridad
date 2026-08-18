@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Persona;
+use App\Services\Auditoria\Auditoria;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -30,6 +31,10 @@ class FotoPersonaController extends Controller
         $ruta = $persona->rutaFotoSegura();
 
         abort_if($ruta === null, 404);
+
+        // Quién miró la cara de quién queda anotado (el «bloque D» que este portero esperaba).
+        // Con dedup: el navegador puede volver a pedir la imagen sin que sea otra mirada.
+        app(Auditoria::class)->vioFoto($persona);
 
         return Storage::disk('local')->response($ruta, headers: [
             // La cara de una persona no se queda en la caché de un proxy ni del navegador.
