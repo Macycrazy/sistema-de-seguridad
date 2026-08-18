@@ -84,6 +84,7 @@
                             ['ruta' => 'edificio', 'texto' => 'Edificio', 'permiso' => 'gestionar-edificio'],
                             ['ruta' => 'ajustes', 'texto' => 'Ajustes', 'permiso' => 'gestionar-ajustes'],
                             ['ruta' => 'roles', 'texto' => 'Roles', 'permiso' => 'gestionar-permisos'],
+                            ['ruta' => 'auditoria', 'texto' => 'Auditoría', 'permiso' => 'ver-auditoria'],
                         ])->filter(fn ($m) => $puede($m['permiso']));
 
                         $grupos = collect([$operacion, $administracion])->filter->isNotEmpty()->values();
@@ -161,6 +162,7 @@
                 ['ruta' => 'edificio', 'texto' => 'Edificio', 'permiso' => 'gestionar-edificio', 'icono' => 'edificio'],
                 ['ruta' => 'ajustes', 'texto' => 'Ajustes', 'permiso' => 'gestionar-ajustes', 'icono' => 'ajustes'],
                 ['ruta' => 'roles', 'texto' => 'Roles', 'permiso' => 'gestionar-permisos', 'icono' => 'roles'],
+                ['ruta' => 'auditoria', 'texto' => 'Auditoría', 'permiso' => 'ver-auditoria', 'icono' => 'auditoria'],
             ])->filter(fn ($t) => $puede($t['permiso']))->values();
 
             $icono = fn ($clave) => match ($clave) {
@@ -172,6 +174,7 @@
                 'ajustes' => '<circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M5 5l1.5 1.5M17.5 17.5 19 19M3 12h2M19 12h2M5 19l1.5-1.5M17.5 6.5 19 5"/>',
                 'usuarios' => '<circle cx="9" cy="8" r="3"/><path d="M3.8 20c0-3 2.4-5 5.2-5s5.2 2 5.2 5"/><path d="M16 6.6a3 3 0 0 1 0 5.6M20.5 20c0-2.4-1.5-4.2-3.6-4.8"/>',
                 'roles' => '<path d="M12 3.2 19 6v5c0 4.4-3 7.4-7 8.8-4-1.4-7-4.4-7-8.8V6z"/><path d="M9 11.8l2 2 4-4"/>',
+                'auditoria' => '<path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h8M8 17h5"/>',
                 default => '',
             };
         @endphp

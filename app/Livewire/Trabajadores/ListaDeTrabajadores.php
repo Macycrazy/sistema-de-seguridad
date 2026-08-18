@@ -5,6 +5,7 @@ namespace App\Livewire\Trabajadores;
 use App\Exports\PlantillaTrabajadores;
 use App\Imports\TrabajadoresImport;
 use App\Models\Persona;
+use App\Services\Auditoria\Auditoria;
 use App\Services\GestionDeTrabajadores;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
@@ -125,6 +126,7 @@ class ListaDeTrabajadores extends Component
         $this->creando = false;
         $this->reset('cedula', 'nombre', 'ente', 'dependencia', 'piso');
         $this->erroresDeImportacion = [];
+        app(Auditoria::class)->cargoPersonal('alta manual · '.$trabajador->cedula);
         $this->aviso = $trabajador->wasRecentlyCreated
             ? 'Trabajador dado de alta.'
             : 'Ese trabajador ya existía; se actualizaron sus datos.';
@@ -148,6 +150,7 @@ class ListaDeTrabajadores extends Component
 
         $this->reset('archivo');
         $this->erroresDeImportacion = $import->errores;
+        app(Auditoria::class)->cargoPersonal('importación · '.$import->guardados.' cargados, '.$import->omitidos.' con error');
         $this->aviso = $import->guardados.' cargados'
             .($import->omitidos > 0 ? ', '.$import->omitidos.' con error' : '').'.';
     }

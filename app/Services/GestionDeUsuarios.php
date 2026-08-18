@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Persona;
 use App\Models\User;
+use App\Services\Auditoria\Auditoria;
 use App\Usuarios\Rol;
 use Illuminate\Validation\ValidationException;
 
@@ -72,7 +73,7 @@ class GestionDeUsuarios
             ]);
         }
 
-        return User::create([
+        $creado = User::create([
             'usuario' => $usuario,
             'nombre' => $nombre,
             'cedula' => $cedula,
@@ -80,6 +81,10 @@ class GestionDeUsuarios
             'activo' => true,
             'password' => $clave,
         ]);
+
+        app(Auditoria::class)->creoUsuario($creado);
+
+        return $creado;
     }
 
     /**
@@ -116,6 +121,7 @@ class GestionDeUsuarios
         }
 
         $usuario->update(['activo' => false]);
+        app(Auditoria::class)->desactivoUsuario($usuario);
     }
 
     public function reactivar(User $usuario, User $quienLoHace): void
@@ -123,6 +129,7 @@ class GestionDeUsuarios
         $this->exigirAlcance($usuario, $quienLoHace);
 
         $usuario->update(['activo' => true]);
+        app(Auditoria::class)->reactivoUsuario($usuario);
     }
 
     /**
@@ -157,7 +164,9 @@ class GestionDeUsuarios
             ]);
         }
 
+        $antes = $usuario->rol->value;
         $usuario->update(['rol' => $nuevo]);
+        app(Auditoria::class)->cambioRol($usuario, $antes, $nuevo->value);
     }
 
     /**
@@ -182,6 +191,7 @@ class GestionDeUsuarios
         $this->exigirClaveSuficiente($clave, $campo);
 
         $usuario->update(['password' => $clave]);
+        app(Auditoria::class)->cambioClave($usuario);
     }
 
     /**
@@ -200,6 +210,7 @@ class GestionDeUsuarios
         }
 
         $usuario->update(['password' => $nueva]);
+        app(Auditoria::class)->cambioClave($usuario);
     }
 
     public function administradoresActivos(): int

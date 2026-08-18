@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Ajustes;
 
+use App\Services\Auditoria\Auditoria;
 use App\Services\ReglasDeTiempo;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -61,6 +62,7 @@ class ListaDeTiempos extends Component
 
         if (! $huboError) {
             unset($this->reglas);
+            app(Auditoria::class)->cambioReglas();
             $this->aviso = 'Reglas guardadas. Valen desde el próximo marcaje.';
         }
     }

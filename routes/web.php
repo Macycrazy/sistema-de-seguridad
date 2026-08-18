@@ -66,6 +66,9 @@ Route::middleware('auth')->group(function () {
     // Las reglas de tiempo del marcaje, ajustables sin reprogramar.
     Route::view('/ajustes', 'ajustes')->middleware('can:gestionar-ajustes')->name('ajustes');
 
+    // La bitácora de auditoría: quién consultó, exportó o cambió qué.
+    Route::view('/auditoria', 'auditoria')->middleware('can:ver-auditoria')->name('auditoria');
+
     /*
      * Parte 3 · dar de alta, desactivar y cambiar claves y roles.
      *
