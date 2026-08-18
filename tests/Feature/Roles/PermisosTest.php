@@ -35,6 +35,7 @@ class PermisosTest extends TestCase
             'vigilante · registro' => [Rol::VIGILANTE, '/registro', 403],
             'vigilante · trabajadores' => [Rol::VIGILANTE, '/trabajadores', 403],
             'vigilante · edificio' => [Rol::VIGILANTE, '/edificio', 403],
+            'vigilante · ajustes' => [Rol::VIGILANTE, '/ajustes', 403],
             'vigilante · usuarios' => [Rol::VIGILANTE, '/usuarios', 403],
             'vigilante · roles' => [Rol::VIGILANTE, '/roles', 403],
 
@@ -44,6 +45,7 @@ class PermisosTest extends TestCase
             'supervisor · registro' => [Rol::SUPERVISOR, '/registro', 200],
             'supervisor · trabajadores' => [Rol::SUPERVISOR, '/trabajadores', 403],
             'supervisor · edificio' => [Rol::SUPERVISOR, '/edificio', 403],
+            'supervisor · ajustes' => [Rol::SUPERVISOR, '/ajustes', 403],
             'supervisor · usuarios' => [Rol::SUPERVISOR, '/usuarios', 200],
             'supervisor · roles' => [Rol::SUPERVISOR, '/roles', 403],
 
@@ -53,6 +55,7 @@ class PermisosTest extends TestCase
             'administrador · registro' => [Rol::ADMINISTRADOR, '/registro', 200],
             'administrador · trabajadores' => [Rol::ADMINISTRADOR, '/trabajadores', 200],
             'administrador · edificio' => [Rol::ADMINISTRADOR, '/edificio', 200],
+            'administrador · ajustes' => [Rol::ADMINISTRADOR, '/ajustes', 200],
             'administrador · usuarios' => [Rol::ADMINISTRADOR, '/usuarios', 200],
             'administrador · roles' => [Rol::ADMINISTRADOR, '/roles', 200],
         ];
@@ -75,6 +78,7 @@ class PermisosTest extends TestCase
             'vigilante · gestionar-usuarios' => [Rol::VIGILANTE, 'gestionar-usuarios', false],
             'vigilante · gestionar-personal' => [Rol::VIGILANTE, 'gestionar-personal', false],
             'vigilante · gestionar-edificio' => [Rol::VIGILANTE, 'gestionar-edificio', false],
+            'vigilante · gestionar-ajustes' => [Rol::VIGILANTE, 'gestionar-ajustes', false],
             'vigilante · ver-auditoria' => [Rol::VIGILANTE, 'ver-auditoria', false],
             'vigilante · gestionar-permisos' => [Rol::VIGILANTE, 'gestionar-permisos', false],
             'vigilante · ver-foto' => [Rol::VIGILANTE, 'ver-foto', true],
@@ -84,6 +88,7 @@ class PermisosTest extends TestCase
             'supervisor · gestionar-usuarios' => [Rol::SUPERVISOR, 'gestionar-usuarios', true],
             'supervisor · gestionar-personal' => [Rol::SUPERVISOR, 'gestionar-personal', false],
             'supervisor · gestionar-edificio' => [Rol::SUPERVISOR, 'gestionar-edificio', false],
+            'supervisor · gestionar-ajustes' => [Rol::SUPERVISOR, 'gestionar-ajustes', false],
             'supervisor · ver-auditoria' => [Rol::SUPERVISOR, 'ver-auditoria', false],
             'supervisor · gestionar-permisos' => [Rol::SUPERVISOR, 'gestionar-permisos', false],
             'supervisor · ver-foto' => [Rol::SUPERVISOR, 'ver-foto', true],
@@ -93,6 +98,7 @@ class PermisosTest extends TestCase
             'administrador · gestionar-usuarios' => [Rol::ADMINISTRADOR, 'gestionar-usuarios', true],
             'administrador · gestionar-personal' => [Rol::ADMINISTRADOR, 'gestionar-personal', true],
             'administrador · gestionar-edificio' => [Rol::ADMINISTRADOR, 'gestionar-edificio', true],
+            'administrador · gestionar-ajustes' => [Rol::ADMINISTRADOR, 'gestionar-ajustes', true],
             'administrador · ver-auditoria' => [Rol::ADMINISTRADOR, 'ver-auditoria', true],
             'administrador · gestionar-permisos' => [Rol::ADMINISTRADOR, 'gestionar-permisos', true],
             'administrador · ver-foto' => [Rol::ADMINISTRADOR, 'ver-foto', true],

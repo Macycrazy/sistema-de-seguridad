@@ -185,16 +185,16 @@ class Marcar extends Component
         return $persona ? $this->marcaje->motivoDeLaEsperaParaEntrar($persona) : null;
     }
 
-    /** Los minutos que tienen que pasar entre dos entradas. Lo decide el servicio. */
+    /** Los minutos que tienen que pasar entre dos entradas. Lo decide el servicio (ajustable). */
     public function minutosEntreEntradas(): int
     {
-        return Marcaje::MINUTOS_ENTRE_ENTRADAS;
+        return $this->marcaje->minutosEntreEntradas();
     }
 
     /** Los minutos que tienen que pasar entre la entrada y su salida. Otro plazo, otro número. */
     public function minutosEntreEntradaYSalida(): int
     {
-        return Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA;
+        return $this->marcaje->minutosEntreEntradaYSalida();
     }
 
     /**

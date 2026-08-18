@@ -63,6 +63,9 @@ Route::middleware('auth')->group(function () {
     // El catálogo de oficinas del edificio, que la puerta ofrece al marcar el piso de un invitado.
     Route::view('/edificio', 'edificio')->middleware('can:gestionar-edificio')->name('edificio');
 
+    // Las reglas de tiempo del marcaje, ajustables sin reprogramar.
+    Route::view('/ajustes', 'ajustes')->middleware('can:gestionar-ajustes')->name('ajustes');
+
     /*
      * Parte 3 · dar de alta, desactivar y cambiar claves y roles.
      *
