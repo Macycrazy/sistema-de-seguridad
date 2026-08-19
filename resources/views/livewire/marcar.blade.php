@@ -416,11 +416,6 @@
                         @if ($esperaSalida)
                             Entró hace menos de {{ $this->minutosEntreEntradaYSalida() }} minutos.
                             Se le puede marcar la salida <strong>a partir de las {{ $esperaSalida }}</strong>.
-                            {{-- El porqué, en pequeño: nadie entra y se va al minuto, así que un
-                                 par de asientos pegados casi siempre es un error de la puerta. --}}
-                            <span class="mt-1 block font-normal text-slate-500">
-                                Nadie entra y se va al minuto: casi siempre es el carnet leído dos veces.
-                            </span>
                         @elseif ($estaDentro)
                             Ya tiene la entrada marcada: solo se le puede marcar la salida.
                         @elseif ($espera)
