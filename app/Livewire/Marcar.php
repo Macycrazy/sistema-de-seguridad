@@ -78,6 +78,15 @@ class Marcar extends Component
      */
     public string $piso = '';
 
+    /**
+     * En la SALIDA: si deja el vehículo estacionado y se va caminando.
+     *
+     * Solo aplica a quien entró en algo. De la puerta no sale un vehículo que no entró por ella,
+     * así que las únicas dos respuestas posibles son «en lo que entró» o «a pie», y esta las
+     * distingue. Empieza en «false» porque lo normal es irse en lo mismo.
+     */
+    public bool $saleAPie = false;
+
     /** Se marcó «a pie»: hoy no trajo ningún vehículo. Es lo más común. */
     public const A_PIE = '';
 
@@ -619,6 +628,9 @@ class Marcar extends Component
     protected function olvidarVehiculo(): void
     {
         $this->traeHoy = self::A_PIE;
+        // Cada persona empieza con «sale en lo mismo»: es lo normal, y dejar puesto el «a pie»
+        // del anterior le marcaría a este una salida que no es.
+        $this->saleAPie = false;
         $this->tipoVehiculo = DatosVehiculo::CARRO;
         $this->marca = '';
         $this->modelo = '';
@@ -749,9 +761,27 @@ class Marcar extends Component
             return $this->vehiculo();
         }
 
+        // Deja el vehículo estacionado y se va caminando: el asiento de salida no lleva ninguno.
+        if ($this->saleAPie) {
+            return DatosVehiculo::desde();
+        }
+
         $entrada = $persona->ultimaEntrada();
 
         return $entrada ? DatosVehiculo::desdeModelo($entrada) : $this->vehiculo();
+    }
+
+    /**
+     * Se dijo que hoy viene en carro o en moto, teniendo la ficha sin vehículos anotados.
+     *
+     * Pone las dos cosas a la vez —que trae algo, y de qué clase— porque son una sola decisión
+     * del vigilante. Sin esto, la pantalla enseñaba las casillas de teclear pero «traeHoy» seguía
+     * en «a pie», así que lo tecleado se descartaba sin avisar al guardar.
+     */
+    public function elegirClase(string $tipo): void
+    {
+        $this->traeHoy = self::OTRO;
+        $this->tipoVehiculo = $tipo === DatosVehiculo::MOTO ? DatosVehiculo::MOTO : DatosVehiculo::CARRO;
     }
 
     /** Vuelve al estado inicial: campo vacío y listo para teclear. */
@@ -762,8 +792,8 @@ class Marcar extends Component
         // vigilante no se acordaría de que quedó en «E» del anterior—.
         $this->reset([
             'cedula', 'nacionalidad', 'personaId', 'invitadoNuevo', 'avisoInvitado', 'nombre',
-            'motivo', 'piso', 'nivel', 'pisoAMano', 'confirmacion', 'traeHoy', 'tipoVehiculo',
-            'marca', 'modelo', 'color', 'placa',
+            'motivo', 'piso', 'nivel', 'pisoAMano', 'confirmacion', 'traeHoy', 'saleAPie',
+            'tipoVehiculo', 'marca', 'modelo', 'color', 'placa',
         ]);
         $this->resetValidation();
 

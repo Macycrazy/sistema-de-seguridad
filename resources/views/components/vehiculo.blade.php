@@ -7,6 +7,9 @@
     // Qué está marcado ahora mismo. Se pasa a mano porque un componente de Blade no ve las
     // propiedades del componente de Livewire que lo usa.
     'traeHoy' => '',
+    // Y de qué clase, para cuando no hay lista y se escoge entre carro y moto. Con el nombre
+    // completo: los @props se evalúan antes que el «use» de abajo.
+    'tipoVehiculo' => \App\Services\DatosVehiculo::CARRO,
 ])
 
 @php
@@ -129,37 +132,88 @@
         </div>
     @endif
 
-    {{-- Las casillas de teclear. Con lista, solo salen si se marcó «Otro…». --}}
-    @if (! $tieneLista || $traeHoy === Marcar::OTRO)
+    {{--
+        SIN LISTA —el alta de un invitado, o quien vino a pie la vez pasada y no tiene nada
+        anotado— se pregunta lo mismo que a los demás, pero con las clases en vez de con placas:
+        vino a pie, en carro o en moto.
+
+        Antes aquí salían directamente las casillas de teclear, y eso escondía dos problemas. Uno:
+        no había forma de decir «vino a pie», salvo dejarlo todo en blanco y confiar. Y dos, peor:
+        el botón «Carro» aparecía marcado aunque no hubiera vehículo, así que la pantalla parecía
+        estar anotando un carro que nadie había dicho que existiera.
+    --}}
+    @unless ($tieneLista)
+        <p class="mb-2 font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
+            ¿Qué trae hoy?
+        </p>
+
+        <div class="mb-4 flex flex-wrap gap-2" role="group" aria-label="Qué trae hoy">
+            @php $enVehiculo = $traeHoy === Marcar::OTRO; @endphp
+
+            <button type="button"
+                    wire:click="$set('traeHoy', @js(Marcar::A_PIE))"
+                    aria-pressed="{{ $enVehiculo ? 'false' : 'true' }}"
+                    class="whitespace-nowrap rounded-full border px-4 py-2 text-sm transition
+                           focus:outline-none focus-visible:ring-4 focus-visible:ring-parte1/25
+                           {{ $enVehiculo
+                                ? 'border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50'
+                                : 'border-parte1 bg-parte1-suave font-semibold text-parte1' }}">
+                Vino a pie
+            </button>
+
+            @foreach ($tipos as $valor => $texto)
+                @php $marcada = $enVehiculo && $tipoVehiculo === $valor; @endphp
+
+                <button type="button"
+                        wire:key="clase-{{ $valor }}"
+                        wire:click="elegirClase(@js($valor))"
+                        aria-pressed="{{ $marcada ? 'true' : 'false' }}"
+                        class="whitespace-nowrap rounded-full border px-4 py-2 text-sm transition
+                               focus:outline-none focus-visible:ring-4 focus-visible:ring-parte1/25
+                               {{ $marcada
+                                    ? 'border-parte1 bg-parte1-suave font-semibold text-parte1'
+                                    : 'border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50' }}">
+                    {{ $texto }}
+                </button>
+            @endforeach
+        </div>
+
+        @if ($errorTipo)
+            <p class="mb-3 text-sm text-alto">{{ $errorTipo }}</p>
+        @endif
+    @endunless
+
+    {{-- Las casillas de teclear. Solo salen cuando se dijo que viene en algo. --}}
+    @if ($traeHoy === Marcar::OTRO)
         <div @class(['mt-4 border-t border-slate-100 pt-4' => $tieneLista])>
             @if ($tieneLista)
                 <p class="mb-3 text-sm text-slate-500">
                     Al marcarlo se le suma a su ficha, y la próxima vez ya sale en la lista.
                 </p>
-            @endif
 
-            <div class="mb-4">
-                <p class="mb-1.5 font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
-                    Tipo
-                </p>
-                <div class="flex flex-wrap gap-2">
-                    @foreach ($tipos as $valor => $texto)
-                        <label class="cursor-pointer">
-                            <input type="radio" name="tipoVehiculo" value="{{ $valor }}"
-                                   wire:model.live="tipoVehiculo" class="peer sr-only">
-                            <span class="block rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600
-                                         peer-checked:border-parte1 peer-checked:bg-parte1-suave peer-checked:text-parte1
-                                         peer-focus-visible:ring-4 peer-focus-visible:ring-parte1/25">
-                                {{ $texto }}
-                            </span>
-                        </label>
-                    @endforeach
+                <div class="mb-4">
+                    <p class="mb-1.5 font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
+                        Tipo
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach ($tipos as $valor => $texto)
+                            <label class="cursor-pointer">
+                                <input type="radio" name="tipoVehiculo" value="{{ $valor }}"
+                                       wire:model.live="tipoVehiculo" class="peer sr-only">
+                                <span class="block rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600
+                                             peer-checked:border-parte1 peer-checked:bg-parte1-suave peer-checked:text-parte1
+                                             peer-focus-visible:ring-4 peer-focus-visible:ring-parte1/25">
+                                    {{ $texto }}
+                                </span>
+                            </label>
+                        @endforeach
+                    </div>
+
+                    @if ($errorTipo)
+                        <p class="mt-1.5 text-sm text-alto">{{ $errorTipo }}</p>
+                    @endif
                 </div>
-
-                @if ($errorTipo)
-                    <p class="mt-1.5 text-sm text-alto">{{ $errorTipo }}</p>
-                @endif
-            </div>
+            @endif
 
             {{-- En el teléfono, dos y dos: cuatro casillas en fila quedan tan estrechas que no
                  se lee ni la etiqueta. Desde tableta en adelante, las cuatro en fila. --}}

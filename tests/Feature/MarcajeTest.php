@@ -403,14 +403,12 @@ class MarcajeTest extends TestCase
     }
 
     /**
-     * Quien entró en un vehículo tiene que salir en ese mismo vehículo.
+     * Quien entró en un vehículo sale en ese vehículo, o A PIE.
      *
-     * El asiento de salida dice en qué se fue, y si dijera otra cosa el registro contaría una
-     * historia imposible: entró en la moto y salió a pie, dejando una moto que nadie sacó. Además
-     * el estacionamiento se cuenta con esos asientos, así que una salida mal anotada deja un
-     * vehículo dentro para siempre.
+     * Salir a pie habiendo entrado en la moto es una tarde cualquiera: la deja estacionada, se va
+     * a almorzar y la recoge después. La regla no está para impedir lo que pasa de verdad.
      */
-    public function test_quien_entro_en_un_vehiculo_tiene_que_salir_en_el_mismo(): void
+    public function test_quien_entro_en_un_vehiculo_puede_salir_en_el_o_a_pie(): void
     {
         $persona = $this->conMoto($this->trabajador());
         $moto = DatosVehiculo::desde(DatosVehiculo::MOTO, 'Bera', 'BR-150', 'Negro', 'AC456DF');
@@ -418,18 +416,51 @@ class MarcajeTest extends TestCase
         $this->marcaje->registrar($persona, Movimiento::ENTRADA, vehiculo: $moto);
         $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
 
-        // Salir a pie cuando entró en la moto: no.
+        // Deja la moto y se va caminando: el asiento queda sin vehículo.
+        $aPie = $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
+
+        $this->assertNull($aPie->placa);
+
+        // Y otro día, saliendo en la misma moto, también.
+        $this->travel(Marcaje::MINUTOS_ENTRE_SALIDA_Y_ENTRADA)->minutes();
+        $this->marcaje->registrar($persona->fresh(), Movimiento::ENTRADA, vehiculo: $moto);
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
+
+        $enMoto = $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA, vehiculo: $moto);
+
+        $this->assertSame('AC456DF', $enMoto->placa);
+    }
+
+    /** Lo que sigue sin poder ser: salir en un vehículo DISTINTO del que entró. Ese no entró. */
+    public function test_no_se_sale_en_un_vehiculo_distinto_del_que_entro(): void
+    {
+        $persona = $this->conMoto($this->trabajador());
+        $persona->vehiculos()->create([
+            'tipo' => DatosVehiculo::CARRO,
+            'marca' => 'Toyota',
+            'modelo' => 'Corolla',
+            'color' => 'Gris',
+            'placa' => 'AB123CD',
+        ]);
+
+        $this->marcaje->registrar(
+            $persona->fresh(),
+            Movimiento::ENTRADA,
+            vehiculo: DatosVehiculo::desde(DatosVehiculo::MOTO, 'Bera', 'BR-150', 'Negro', 'AC456DF'),
+        );
+
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
+
         try {
-            $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
-            $this->fail('Se marcó la salida a pie después de haber entrado en la moto.');
+            $this->marcaje->registrar(
+                $persona->fresh(),
+                Movimiento::SALIDA,
+                vehiculo: DatosVehiculo::desde(DatosVehiculo::CARRO, 'Toyota', 'Corolla', 'Gris', 'AB123CD'),
+            );
+            $this->fail('Salió en el carro habiendo entrado en la moto.');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('tipoVehiculo', $e->errors());
         }
-
-        // Con la moto, que es en lo que entró: sí.
-        $salida = $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA, vehiculo: $moto);
-
-        $this->assertSame('AC456DF', $salida->placa);
     }
 
     /** Y al revés: quien entró a pie no puede salir en un vehículo que nunca metió. */
