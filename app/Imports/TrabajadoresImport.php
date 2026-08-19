@@ -38,6 +38,10 @@ class TrabajadoresImport implements ToCollection
         'dependencia' => ['departamento', 'dependencia', 'gerencia', 'dependenciageneral', 'adscripcion'],
         'piso' => ['piso', 'ubicacion'],
         'ente' => ['ente', 'organismo', 'organizacion'],
+        // La letra de la cédula: V/E. El export de carnets la trae en «Nacionalidad». Importa
+        // porque en la puerta la búsqueda es por (nacionalidad, cédula): un extranjero cargado
+        // como venezolano no casaría al elegir su letra.
+        'nacionalidad' => ['nacionalidad', 'identifier', 'nac'],
     ];
 
     public function __construct(private GestionDeTrabajadores $gestion) {}
@@ -109,6 +113,7 @@ class TrabajadoresImport implements ToCollection
                 ente: $ente,
                 dependencia: $valor('dependencia'),
                 piso: $valor('piso'),
+                nacionalidad: $valor('nacionalidad'),
             );
 
             $this->guardados++;

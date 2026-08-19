@@ -38,8 +38,22 @@ class TrabajadoresImportTest extends TestCase
 
         $this->assertSame(2, $import->guardados);
         $this->assertSame(0, $import->omitidos);
-        $this->assertDatabaseHas('personas', ['cedula' => '12345678', 'nombre' => 'ANA PÉREZ', 'tipo' => 'trabajador']);
+        $this->assertDatabaseHas('personas', ['cedula' => '12345678', 'nombre' => 'ANA PÉREZ', 'tipo' => 'trabajador', 'nacionalidad' => 'V']);
         $this->assertDatabaseHas('personas', ['cedula' => '23456789', 'nombre' => 'LUIS MORA']);
+    }
+
+    #[Test]
+    public function toma_la_nacionalidad_de_la_columna_del_carnets(): void
+    {
+        // El export de carnets trae «Nacionalidad» (V/E). En la puerta la búsqueda es por
+        // (nacionalidad, cédula), así que un extranjero tiene que entrar como E, no como V.
+        $import = $this->importar([
+            ['Nacionalidad', 'Nombre', 'Apellido', 'Cédula', 'Departamento'],
+            ['E', 'John', 'Smith', '84.123.456', 'Tecnología'],
+        ]);
+
+        $this->assertSame(1, $import->guardados);
+        $this->assertDatabaseHas('personas', ['cedula' => '84123456', 'nacionalidad' => 'E']);
     }
 
     #[Test]

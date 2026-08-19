@@ -48,12 +48,14 @@ class GestionDeTrabajadores
         ?string $ente = null,
         ?string $dependencia = null,
         ?string $piso = null,
+        ?string $nacionalidad = null,
     ): Persona {
         $cedula = Persona::normalizarCedula($cedula);
         $nombre = trim($nombre);
         $ente = $this->enteValido($ente);
         $dependencia = $this->recorta($dependencia, 120);
         $piso = Persona::normalizarPiso($piso);
+        $nacionalidad = trim((string) $nacionalidad);
 
         $this->exigirCedula($cedula);
 
@@ -74,17 +76,22 @@ class GestionDeTrabajadores
             ]);
         }
 
-        $trabajador = Persona::updateOrCreate(
-            ['cedula' => $cedula],
-            [
-                'tipo' => Persona::TRABAJADOR,
-                'nombre' => mb_strtoupper($nombre),
-                'ente' => $ente,
-                'dependencia' => $dependencia ? mb_strtoupper($dependencia) : null,
-                'piso' => $piso,
-                'activo' => true,
-            ],
-        );
+        $atributos = [
+            'tipo' => Persona::TRABAJADOR,
+            'nombre' => mb_strtoupper($nombre),
+            'ente' => $ente,
+            'dependencia' => $dependencia ? mb_strtoupper($dependencia) : null,
+            'piso' => $piso,
+            'activo' => true,
+        ];
+
+        // La nacionalidad solo se fija si vino: así el alta manual (que no la pregunta) no pisa la
+        // que ya tuviera, y el import de la nómina de carnets —que sí la trae— la deja correcta.
+        if ($nacionalidad !== '') {
+            $atributos['nacionalidad'] = Persona::normalizarNacionalidad($nacionalidad);
+        }
+
+        $trabajador = Persona::updateOrCreate(['cedula' => $cedula], $atributos);
 
         $this->enlazarDepartamento($trabajador);
         $this->traerLaFoto($trabajador);
