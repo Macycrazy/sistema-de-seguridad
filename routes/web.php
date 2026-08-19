@@ -103,4 +103,7 @@ Route::middleware('auth')->group(function () {
 
     // Respaldos de la base: crear, descargar y borrar. Un respaldo es toda la data, solo admin.
     Route::view('/respaldos', 'respaldos')->middleware('can:gestionar-respaldos')->name('respaldos');
+
+    // Asociación con el sistema de carnets: probar la conexión y la lectura del QR.
+    Route::view('/asociacion', 'asociacion')->middleware('can:gestionar-ajustes')->name('asociacion');
 });

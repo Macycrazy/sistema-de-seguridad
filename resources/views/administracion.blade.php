@@ -18,6 +18,7 @@
             ['ruta' => 'auditoria', 'permiso' => 'ver-auditoria', 'titulo' => 'Auditoría', 'texto' => 'Quién consultó, exportó o cambió qué.'],
             ['ruta' => 'roles', 'permiso' => 'gestionar-permisos', 'titulo' => 'Roles', 'texto' => 'Qué puede hacer cada rol.'],
             ['ruta' => 'respaldos', 'permiso' => 'gestionar-respaldos', 'titulo' => 'Respaldos', 'texto' => 'Copias de seguridad de la base de datos.'],
+            ['ruta' => 'asociacion', 'permiso' => 'gestionar-ajustes', 'titulo' => 'Asociación con carnets', 'texto' => 'Probar la conexión con el sistema de carnets y el QR.'],
         ];
     @endphp
 
