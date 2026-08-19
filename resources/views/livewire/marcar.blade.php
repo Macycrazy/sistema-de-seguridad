@@ -362,14 +362,42 @@
                  sin vehículo sin tocar los de los días anteriores.
 
                  Va fuera de la fila de la foto para que las casillas tengan el ancho entero de
-                 la tarjeta, igual que en el alta. --}}
+                 la tarjeta, igual que en el alta.
+
+                 CUANDO LO QUE TOCA ES LA SALIDA no se pregunta nada: se sale en lo mismo con lo
+                 que se entró, y el servidor lo exige. Ofrecer una lista donde solo una respuesta
+                 vale es invitar al vigilante a equivocarse y luego decirle que no. Se enseña lo
+                 que entró y ya. --}}
             <div class="mt-5">
-                <x-vehiculo
-                    :error="$errors->first('placa')"
-                    :error-tipo="$errors->first('tipoVehiculo')"
-                    :vehiculos="$this->vehiculos"
-                    :trae-hoy="$traeHoy"
-                />
+                @if ($this->sugerido === 'salida')
+                    <div class="rounded border border-slate-200 p-4">
+                        <p class="font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
+                            Entró en
+                        </p>
+
+                        @php $entrada = $persona->ultimaEntrada(); @endphp
+
+                        <p class="mt-1 text-slate-900">
+                            @if ($entrada?->tieneVehiculo())
+                                <span class="font-semibold">{{ $entrada->vehiculo()->etiquetaTipo() }}</span>
+                                <span class="font-mono tracking-wide">· {{ $entrada->placa }}</span>
+                            @else
+                                A pie
+                            @endif
+                        </p>
+
+                        <p class="mt-1 text-sm text-slate-500">
+                            Sale en lo mismo con lo que entró.
+                        </p>
+                    </div>
+                @else
+                    <x-vehiculo
+                        :error="$errors->first('placa')"
+                        :error-tipo="$errors->first('tipoVehiculo')"
+                        :vehiculos="$this->vehiculos"
+                        :trae-hoy="$traeHoy"
+                    />
+                @endif
             </div>
 
             {{-- LOS DOS BOTONES --}}
@@ -439,11 +467,6 @@
                         @if ($esperaSalida)
                             Entró hace menos de {{ $this->minutosEntreEntradaYSalida() }} minutos.
                             Se le puede marcar la salida <strong>a partir de las {{ $esperaSalida }}</strong>.
-                            {{-- El porqué, en pequeño: nadie entra y se va al minuto, así que un
-                                 par de asientos pegados casi siempre es un error de la puerta. --}}
-                            <span class="mt-1 block font-normal text-slate-500">
-                                Nadie entra y se va al minuto: casi siempre es el carnet leído dos veces.
-                            </span>
                         @elseif ($estaDentro)
                             Ya tiene la entrada marcada: solo se le puede marcar la salida.
                         @elseif ($espera)

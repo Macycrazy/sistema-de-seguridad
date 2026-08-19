@@ -206,6 +206,33 @@ Dos reglas que conviene tener claras:
 2. **Con vehículo y sin elegir, se asume `carro`**, que es lo más común. Cualquier valor que no
    sea `moto` se guarda como `carro`.
 
+### Se sale en lo mismo con lo que se entró
+
+Quien entró en un vehículo **sale en ese vehículo**, y quien entró a pie **sale a pie**. Lo exige
+`Marcaje::registrar()` y la pantalla ni siquiera lo pregunta: cuando lo que toca es la salida, en
+lugar de la lista se enseña «Entró en · Moto AE321JK».
+
+No es prolijidad. **El estacionamiento se calcula con estos asientos** —un vehículo está dentro si
+su dueño está dentro y su entrada traía vehículo—, así que una salida anotada «a pie» deja una moto
+dentro del portón para siempre, y el guardia acaba contando vehículos que ya no están.
+
+La comparación es **por placa**, no por el objeto entero: lo que identifica al vehículo es la
+placa, y la marca o el color pudieron corregirse en la ficha entre la entrada y la salida.
+
+### Una placa es de una sola persona del personal
+
+Si la placa ya está registrada a un **trabajador**, no se le puede marcar a nadie más. El aviso
+dice de quién es, que es lo que el vigilante necesita para resolverlo en la puerta.
+
+> **Esto cambia una decisión anterior.** La migración que creó la tabla `vehiculos` dejaba a
+> propósito que dos personas compartieran placa —«un carro familiar lo trae hoy uno y mañana
+> otro»— y el índice único sigue siendo `(persona_id, placa)`, que lo permite. La regla vive ahora
+> en el servicio, no en la base. **Si en el CIIP hay carros compartidos de verdad, esto hay que
+> hablarlo**, porque hoy el segundo en llegar no puede marcar.
+
+Solo mira a los trabajadores: la placa de un invitado no reserva nada, porque un invitado es
+cualquiera que pasó una vez y su ficha no es un registro de propiedad.
+
 ### Un vehículo no cambia de clase
 
 **El tipo va pegado a la placa, no al día.** Si una persona ya tiene un vehículo anotado, marcar
@@ -473,18 +500,39 @@ y cubren la parte 1 completa sin tocar la pantalla:
 | `Marcaje::registrar()` | Quién registró qué movimiento (además del `usuario_id` de la tabla). |
 | `FotoPersonaController` | Quién miró la cara de quién. Es el único sitio por donde sale una foto. |
 
-**Las pruebas corren en SQLite en memoria** (`phpunit.xml`), no en PostgreSQL. Para la parte 1
-da igual porque no usa SQL propio de Postgres, pero la parte 2 va a usar `ILIKE` en su búsqueda por
-nombre, y eso **no existe en SQLite**. Cuando llegue ese momento hay que decidir entre cambiar las
-pruebas a una base PostgreSQL de prueba, o usar `whereRaw` con algo que valga en las dos.
+---
 
-> **Ya mordió una vez, y conviene saber cómo.** `cuantosDentroPorTipo()` se escribió con
-> `pluck(DB::raw('count(*)'), ...)`. SQLite llama a esa columna `count(*)` y PostgreSQL la llama
-> `count`, así que **las pruebas pasaban en verde y la pantalla reventaba** en el servidor de
-> verdad. La regla que evita toda esta familia de fallos es corta: **a toda columna calculada,
-> alias.** `selectRaw('... count(*) as cuantos')` y luego `pluck('cuantos', ...)`. Y lo que no
-> tenga prueba que lo cubra —porque la base de las pruebas no es la de producción— se comprueba a
-> mano contra PostgreSQL antes de darlo por hecho.
+## Las pruebas corren en PostgreSQL
+
+En `registro_accesos_pruebas`, la misma base que el sistema y en el mismo servidor. Solo la
+conexión y el nombre están fijados en `phpunit.xml`; el servidor, el puerto y las credenciales
+salen del `.env` de cada quien. Hay que crear esa base una vez —el README lo dice— y está vacía a
+propósito: cada corrida la migra y la deja como estaba.
+
+**Antes corrían en un SQLite en memoria**, y era más rápido. Se cambió porque probar una base
+distinta de la de producción falla de las dos maneras posibles, y las dos pasaron aquí:
+
+| Lo que pasó | Cómo se vio |
+|---|---|
+| `pluck(DB::raw('count(*)'))` | SQLite llama a esa columna `count(*)` y PostgreSQL `count`. **Las pruebas en verde y la pantalla rota** en el servidor. |
+| `DISTINCT ON`, `ILIKE`, `extract(...)`, `::date` | Solo existen en PostgreSQL. **67 pruebas rojas** sin que el sistema tuviera nada malo. |
+| `lower('GESTIÓN')` | El de SQLite solo baja letras ASCII; el de PostgreSQL, también los acentos. **Creaba unidades duplicadas en una base y no en la otra** — sin error, sin ruido. |
+
+El tercero es el que decidió el cambio: los otros dos se caen con estruendo y este se equivoca en
+silencio.
+
+**Aun así, el SQL se escribe portable.** No por si volvemos a SQLite, sino porque lo portable suele
+ser también lo claro, y porque «el último movimiento de cada persona» estaba escrito de tres formas
+distintas hasta que se unificó en `Movimiento::ultimoDeCadaPersona()`. Dos reglas que salieron de
+esto:
+
+- **A toda columna calculada, alias**: `selectRaw('count(*) as cuantos')`, nunca `count(*)` a secas.
+- **Lo que dependa de mayúsculas o acentos, en PHP** con `mb_strtolower()`, no con el `lower()` del
+  SQL.
+
+Y una nota de máquina: la exportación a Excel arma el archivo en memoria y no cabe en los 128 MB
+que trae PHP por omisión. `phpunit.xml` sube el `memory_limit` a 1 GB para que nadie tenga que
+acordarse.
 
 ---
 

@@ -139,7 +139,19 @@ class Organigrama
             return null;
         }
 
-        $existente = Departamento::whereRaw('lower(nombre) = lower(?)', [$nombre])->first();
+        /*
+         * La comparación se hace en PHP, con mb_strtolower, y no con el lower() del SQL.
+         *
+         * El motivo es una diferencia entre bases que muerde justo aquí: el lower() de SQLite solo
+         * baja letras ASCII, así que «GESTIÓN HUMANA» no casaba con «Gestión Humana» —la Ó se
+         * quedaba en mayúscula— y esto creaba una unidad duplicada. El de PostgreSQL sí las baja,
+         * de modo que el sistema hacía una cosa y las pruebas otra.
+         *
+         * Se pueden traer todas sin miedo: un organigrama son decenas de unidades, no miles.
+         */
+        $existente = Departamento::all()->first(
+            fn (Departamento $unidad) => mb_strtolower($unidad->nombre) === mb_strtolower($nombre)
+        );
 
         return $existente ?? $this->crear($nombre, $ente);
     }

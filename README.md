@@ -112,7 +112,15 @@ php artisan key:generate
 
 ```bash
 createdb -h 127.0.0.1 -U <tu_usuario_postgres> registro_accesos
+createdb -h 127.0.0.1 -U <tu_usuario_postgres> registro_accesos_pruebas
 ```
+
+Son **dos**: la de trabajar y la de las pruebas. Las pruebas corren en PostgreSQL igual que el
+sistema —antes iban en un SQLite en memoria, y probar una base distinta de la de producción salió
+caro—, y se llevan la suya por delante en cada corrida. La de trabajar no se toca nunca.
+
+El servidor, el puerto y las credenciales de la de pruebas salen de tu propio `.env`: solo su
+nombre está fijado, en `phpunit.xml`.
 
 **6 · Poner los datos de tu base en el `.env`** — solo estas cuatro líneas:
 

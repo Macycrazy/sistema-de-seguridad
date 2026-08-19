@@ -79,7 +79,10 @@ class ListaDeTrabajadores extends Component
                 $soloDigitos = preg_replace('/\D/', '', $aguja);
 
                 $q->where(function ($q) use ($aguja, $soloDigitos) {
-                    $q->where('nombre', 'ilike', '%'.$aguja.'%');
+                    // Sin distinguir mayúsculas, y sin «ilike»: ese operador es de PostgreSQL y
+                    // en SQLite —donde corren las pruebas— es un error de sintaxis. «lower()» lo
+                    // entienden las dos, y hace exactamente lo mismo que hacía ilike.
+                    $q->whereRaw('lower(nombre) like ?', ['%'.mb_strtolower($aguja).'%']);
 
                     if ($soloDigitos !== '') {
                         $q->orWhere('cedula', 'like', '%'.$soloDigitos.'%');
