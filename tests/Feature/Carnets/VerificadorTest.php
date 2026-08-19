@@ -45,28 +45,51 @@ class VerificadorTest extends TestCase
     }
 
     #[Test]
-    public function verificar_devuelve_el_veredicto_de_carnets(): void
+    public function verificar_devuelve_el_veredicto_activo_con_identidad(): void
     {
-        Http::fake(['*/verificar/qr' => Http::response([
-            'estado' => 'activo', 'nombre' => 'ANA PÉREZ', 'cedula' => 'V-12.345.678', 'card_code' => '000123456',
+        Http::fake(['*/Trabajador_*' => Http::response([
+            'activo' => true, 'nacionalidad' => 'V', 'cedula' => '24270727',
+            'nombre' => 'JORGE DAVID CASTILLO GARCÍA', 'cargo' => 'ASESOR', 'gerencia' => 'GERENCIA DE PROTOCOLO',
         ], 200)]);
 
-        $r = app(Verificador::class)->verificar('http://carnets:8000', 'http://carnets/Trabajador_abc123');
+        $r = app(Verificador::class)->verificar('http://carnets:8000', 'http://carnets/Trabajador_abc123def');
 
         $this->assertTrue($r['ok']);
-        $this->assertSame('activo', $r['datos']['estado']);
-        $this->assertSame('ANA PÉREZ', $r['datos']['nombre']);
+        $this->assertTrue($r['datos']['activo']);
+        $this->assertSame('24270727', $r['datos']['cedula']);
+        $this->assertSame('V', $r['datos']['nacionalidad']);
     }
 
     #[Test]
-    public function verificar_avisa_si_el_endpoint_pide_sesion(): void
+    public function verificar_devuelve_no_activo(): void
     {
-        // 302 = redirección al login: el endpoint todavía exige sesión de navegador.
-        Http::fake(['*/verificar/qr' => Http::response('', 302)]);
+        Http::fake(['*/Trabajador_*' => Http::response(['activo' => false], 200)]);
 
-        $r = app(Verificador::class)->verificar('http://carnets:8000', 'http://carnets/Trabajador_abc123');
+        $r = app(Verificador::class)->verificar('http://carnets:8000', 'http://carnets/Trabajador_zzz');
 
-        $this->assertFalse($r['ok']);
-        $this->assertStringContainsString('302', $r['mensaje']);
+        $this->assertTrue($r['ok']);
+        $this->assertFalse($r['datos']['activo']);
+    }
+
+    #[Test]
+    public function usa_la_url_configurada_y_solo_el_token_del_qr(): void
+    {
+        Http::fake(['*' => Http::response(['activo' => false], 200)]);
+
+        // El QR trae otro host (carnets.viejo); debe llamarse a la URL CONFIGURADA con solo el token.
+        app(Verificador::class)->verificar('http://carnets.nuevo:8000', 'http://carnets.viejo/Trabajador_abc123');
+
+        Http::assertSent(fn ($req) => $req->url() === 'http://carnets.nuevo:8000/Trabajador_abc123'
+            && $req->hasHeader('Accept', 'application/json'));
+    }
+
+    #[Test]
+    public function el_token_se_extrae_del_contenido_del_qr(): void
+    {
+        $v = app(Verificador::class);
+
+        $this->assertSame('abc123def', $v->token('http://carnets/Trabajador_abc123def'));
+        $this->assertSame('abc123', $v->token('Trabajador_abc123'));
+        $this->assertSame('abc123', $v->token('abc123'));   // ya venía pelado
     }
 }
