@@ -473,18 +473,39 @@ y cubren la parte 1 completa sin tocar la pantalla:
 | `Marcaje::registrar()` | Quién registró qué movimiento (además del `usuario_id` de la tabla). |
 | `FotoPersonaController` | Quién miró la cara de quién. Es el único sitio por donde sale una foto. |
 
-**Las pruebas corren en SQLite en memoria** (`phpunit.xml`), no en PostgreSQL. Para la parte 1
-da igual porque no usa SQL propio de Postgres, pero la parte 2 va a usar `ILIKE` en su búsqueda por
-nombre, y eso **no existe en SQLite**. Cuando llegue ese momento hay que decidir entre cambiar las
-pruebas a una base PostgreSQL de prueba, o usar `whereRaw` con algo que valga en las dos.
+---
 
-> **Ya mordió una vez, y conviene saber cómo.** `cuantosDentroPorTipo()` se escribió con
-> `pluck(DB::raw('count(*)'), ...)`. SQLite llama a esa columna `count(*)` y PostgreSQL la llama
-> `count`, así que **las pruebas pasaban en verde y la pantalla reventaba** en el servidor de
-> verdad. La regla que evita toda esta familia de fallos es corta: **a toda columna calculada,
-> alias.** `selectRaw('... count(*) as cuantos')` y luego `pluck('cuantos', ...)`. Y lo que no
-> tenga prueba que lo cubra —porque la base de las pruebas no es la de producción— se comprueba a
-> mano contra PostgreSQL antes de darlo por hecho.
+## Las pruebas corren en PostgreSQL
+
+En `registro_accesos_pruebas`, la misma base que el sistema y en el mismo servidor. Solo la
+conexión y el nombre están fijados en `phpunit.xml`; el servidor, el puerto y las credenciales
+salen del `.env` de cada quien. Hay que crear esa base una vez —el README lo dice— y está vacía a
+propósito: cada corrida la migra y la deja como estaba.
+
+**Antes corrían en un SQLite en memoria**, y era más rápido. Se cambió porque probar una base
+distinta de la de producción falla de las dos maneras posibles, y las dos pasaron aquí:
+
+| Lo que pasó | Cómo se vio |
+|---|---|
+| `pluck(DB::raw('count(*)'))` | SQLite llama a esa columna `count(*)` y PostgreSQL `count`. **Las pruebas en verde y la pantalla rota** en el servidor. |
+| `DISTINCT ON`, `ILIKE`, `extract(...)`, `::date` | Solo existen en PostgreSQL. **67 pruebas rojas** sin que el sistema tuviera nada malo. |
+| `lower('GESTIÓN')` | El de SQLite solo baja letras ASCII; el de PostgreSQL, también los acentos. **Creaba unidades duplicadas en una base y no en la otra** — sin error, sin ruido. |
+
+El tercero es el que decidió el cambio: los otros dos se caen con estruendo y este se equivoca en
+silencio.
+
+**Aun así, el SQL se escribe portable.** No por si volvemos a SQLite, sino porque lo portable suele
+ser también lo claro, y porque «el último movimiento de cada persona» estaba escrito de tres formas
+distintas hasta que se unificó en `Movimiento::ultimoDeCadaPersona()`. Dos reglas que salieron de
+esto:
+
+- **A toda columna calculada, alias**: `selectRaw('count(*) as cuantos')`, nunca `count(*)` a secas.
+- **Lo que dependa de mayúsculas o acentos, en PHP** con `mb_strtolower()`, no con el `lower()` del
+  SQL.
+
+Y una nota de máquina: la exportación a Excel arma el archivo en memoria y no cabe en los 128 MB
+que trae PHP por omisión. `phpunit.xml` sube el `memory_limit` a 1 GB para que nadie tenga que
+acordarse.
 
 ---
 
