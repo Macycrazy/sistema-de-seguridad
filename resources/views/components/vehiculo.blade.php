@@ -82,32 +82,35 @@
                 <label class="cursor-pointer" wire:key="veh-{{ $v->id }}">
                     <input type="radio" name="traeHoy" value="{{ $v->placa }}"
                            wire:model.live="traeHoy" class="peer sr-only">
-                    {{-- La clase y el COLOR encima, la placa debajo: es como se reconoce un
-                         vehículo de lejos —«la moto negra»— y es lo que el vigilante tiene
-                         delante cuando señala cuál trae hoy.
+                    {{-- La clase y la MARCA encima; el color y la placa debajo. Es como se
+                         reconoce un vehículo de lejos —«el Toyota gris»— y es lo que el vigilante
+                         tiene delante cuando señala cuál trae hoy.
 
-                         El color no puede quedarse en el «title»: en un teléfono no hay puntero
-                         que pase por encima, así que ahí no lo vería nunca nadie. En el title se
-                         quedan marca y modelo, que sirven para desempatar dos del mismo tipo pero
-                         no caben en una pastilla.
+                         Nada de esto puede quedarse en el «title»: en un teléfono no hay puntero
+                         que pase por encima, así que ahí no lo ve nunca nadie. Ahí se queda solo
+                         el modelo, que es lo único que no cabe sin que la pastilla crezca a tres
+                         renglones — y con eso los dos vehículos de una persona dejan de caber en
+                         la misma fila. «Corolla» o «BR-150» rara vez hacen falta para reconocer un
+                         carro que se tiene delante; la marca sí.
 
                          OJO: «peer-checked» solo alcanza a los HERMANOS del radio, no a lo que
                          haya dentro de ellos. Por eso el marcado lo llevan el borde y el fondo de
                          esta pastilla —que sí es hermana— y no los renglones de adentro, donde no
                          se aplicaría nada. --}}
-                    <span title="{{ trim($v->marca.' '.$v->modelo) ?: 'Sin marca ni modelo anotados' }}"
+                    @php
+                        // Las dos líneas se arman enteras aquí y no a trozos en el HTML: así el
+                        // texto sale seguido —«Carro Toyota», «Gris · AB123CD»— y no partido por
+                        // los saltos de línea de Blade, que es lo que se lee y lo que se comprueba.
+                        $claseYMarca = trim(($v->esMoto() ? 'Moto' : 'Carro').' '.$v->marca);
+                        $colorYPlaca = trim(($v->color ? $v->color.' · ' : '').$v->placa);
+                    @endphp
+
+                    <span title="{{ $v->modelo ?: 'Sin modelo anotado' }}"
                           class="block whitespace-nowrap rounded-full border border-slate-300 px-4 py-1.5 text-center
                                  peer-checked:border-parte1 peer-checked:bg-parte1-suave
                                  peer-focus-visible:ring-4 peer-focus-visible:ring-parte1/25">
-                        <span class="block text-sm text-slate-700">
-                            <span class="font-semibold">{{ $v->esMoto() ? 'Moto' : 'Carro' }}</span>
-                            @if ($v->color)
-                                <span class="text-slate-500">· {{ $v->color }}</span>
-                            @endif
-                        </span>
-                        <span class="block font-mono text-[0.625rem] uppercase tracking-widest text-slate-500">
-                            {{ $v->placa }}
-                        </span>
+                        <span class="block text-sm font-semibold text-slate-700">{{ $claseYMarca }}</span>
+                        <span class="block font-mono text-[0.625rem] uppercase tracking-widest text-slate-500">{{ $colorYPlaca }}</span>
                     </span>
                 </label>
             @endforeach
