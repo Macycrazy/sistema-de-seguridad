@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Persona;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -27,6 +28,10 @@ class FotoPersonaTest extends TestCase
 
         // Disco de mentira: las pruebas no escriben en storage/app/private de verdad.
         Storage::fake('local');
+
+        // Sin origen de carnets por omisión: así estas pruebas ejercen la copia local (el respaldo).
+        // La prueba de la foto directa lo configura aparte.
+        config(['carnets.fotos' => '']);
     }
 
     private function trabajador(array $atributos = []): Persona
@@ -52,6 +57,21 @@ class FotoPersonaTest extends TestCase
         $cache = $respuesta->headers->get('Cache-Control');
         $this->assertStringContainsString('no-store', $cache);
         $this->assertStringContainsString('private', $cache);
+    }
+
+    public function test_la_foto_sale_directo_del_carnets_aunque_no_haya_copia_local(): void
+    {
+        // Con el carnets configurado, la foto se pide EN VIVO por cédula, sin depender de una copia
+        // guardada. Así se ve la actual y sirve para quien se acaba de escanear.
+        config(['carnets.fotos' => 'http://carnets/imgs/usuarios']);
+        Http::fake(['*/12345678.jpg' => Http::response('foto-del-carnet', 200)]);
+
+        $persona = $this->trabajador(['foto_ruta' => null]);   // sin copia local
+
+        $respuesta = $this->get(route('persona.foto', $persona))->assertOk();
+
+        $this->assertSame('foto-del-carnet', $respuesta->getContent());
+        $this->assertStringContainsString('no-store', (string) $respuesta->headers->get('Cache-Control'));
     }
 
     public function test_sin_foto_da_404(): void

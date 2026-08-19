@@ -49,6 +49,12 @@
         <div x-data="escanerCarnet($wire)" class="mb-4 border-b border-slate-100 pb-4">
             <div x-show="!abierto">
                 <x-boton type="button" x-on:click="abrir()" class="w-full">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                         stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
+                        <rect x="3" y="6.5" width="18" height="13" rx="2.5"/>
+                        <circle cx="12" cy="13" r="3.2"/>
+                        <path d="M9 6.5 10.2 4h3.6L15 6.5"/>
+                    </svg>
                     Escanear carnet con la cámara
                 </x-boton>
                 <p class="mt-2 text-center font-mono text-xs uppercase tracking-widest text-slate-400">
@@ -56,12 +62,26 @@
                 </p>
             </div>
 
-            <div x-show="abierto" x-cloak class="space-y-3">
-                <video x-ref="video" playsinline muted
-                       class="w-full rounded border-2 border-parte1 bg-slate-900"></video>
-                <canvas x-ref="canvas" class="hidden"></canvas>
-                <p x-text="mensaje" class="text-center font-mono text-xs uppercase tracking-widest text-slate-500"></p>
-                <x-boton type="button" variante="secundario" x-on:click="cerrar()" class="w-full">
+            {{-- El visor: la cámara a pantalla completa del recuadro, con un marco central que dice
+                 dónde apuntar el QR y el resto oscurecido para que cante. El mensaje va sobre un
+                 degradado abajo, sin tapar la imagen. --}}
+            <div x-show="abierto" x-cloak>
+                <div class="relative overflow-hidden rounded-xl bg-slate-900 shadow-inner" style="aspect-ratio: 4 / 3">
+                    <video x-ref="video" playsinline muted
+                           class="absolute inset-0 h-full w-full object-cover"></video>
+                    <canvas x-ref="canvas" class="hidden"></canvas>
+
+                    <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+                        <div class="h-40 w-40 rounded-2xl border-4 border-white/85"
+                             style="box-shadow: 0 0 0 1000px rgba(2, 6, 23, 0.45)"></div>
+                    </div>
+
+                    <p x-text="mensaje"
+                       class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-4 pb-3 pt-10
+                              text-center font-mono text-xs uppercase tracking-widest text-white"></p>
+                </div>
+
+                <x-boton type="button" variante="secundario" x-on:click="cerrar()" class="mt-3 w-full">
                     Cerrar cámara
                 </x-boton>
             </div>
@@ -177,16 +197,20 @@
 
                      Redonda y sobre el azul de la parte 1: en el teléfono es lo primero que se
                      mira, y un cuadro gris se confundía con un hueco por rellenar. --}}
-                <div class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full
+                <div class="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full
                             border-2 border-slate-200 bg-parte1-suave">
-                    @if ($persona->tieneFoto())
+                    {{-- Las iniciales van debajo; la foto —directo del carnets— encima. Si el carnets
+                         no tiene foto de esa persona, la imagen falla al cargar y se quita sola,
+                         dejando ver las iniciales. Se pide para el trabajador (el invitado no tiene
+                         carnet), o si ya hubiera una copia local. --}}
+                    <span class="font-mono text-xl font-bold text-parte1">
+                        {{ $persona->iniciales() }}
+                    </span>
+                    @if ($persona->esTrabajador() || $persona->tieneFoto())
                         <img src="{{ route('persona.foto', $persona) }}"
                              alt="Foto de {{ $persona->nombre }}"
-                             class="h-full w-full object-cover">
-                    @else
-                        <span class="font-mono text-xl font-bold text-parte1">
-                            {{ $persona->iniciales() }}
-                        </span>
+                             onerror="this.remove()"
+                             class="absolute inset-0 h-full w-full object-cover">
                     @endif
                 </div>
 

@@ -87,18 +87,24 @@ class CarnetEscaneadoTest extends TestCase
     }
 
     #[Test]
-    public function una_cedula_ya_registrada_como_invitado_no_se_convierte_en_trabajador(): void
+    public function un_invitado_que_resulta_ser_trabajador_se_corrige_con_el_carnet(): void
     {
+        // Estaba como invitado en seguridad, pero el carnet dice que es personal activo: se corrige
+        // a trabajador y se le rellenan los datos. Justo para eso se escanea.
         Persona::create(['cedula' => '24270727', 'tipo' => Persona::INVITADO, 'nombre' => 'VISITA', 'activo' => true]);
 
         Http::fake(['*/Trabajador_*' => Http::response([
-            'activo' => true, 'nacionalidad' => 'V', 'cedula' => '24270727', 'nombre' => 'OTRO',
+            'activo' => true, 'nacionalidad' => 'V', 'cedula' => '24270727',
+            'nombre' => 'JORGE CASTILLO', 'gerencia' => 'GERENCIA DE PROTOCOLO',
         ], 200)]);
 
         Livewire::test(Marcar::class)
             ->call('carnetEscaneado', 'http://carnets/Trabajador_abc')
-            ->assertHasErrors('cedula');
+            ->assertHasNoErrors();
 
-        $this->assertSame(Persona::INVITADO, Persona::where('cedula', '24270727')->first()->tipo);
+        $persona = Persona::where('cedula', '24270727')->first();
+        $this->assertSame(Persona::TRABAJADOR, $persona->tipo);
+        $this->assertSame('JORGE CASTILLO', $persona->nombre);
+        $this->assertSame('GERENCIA DE PROTOCOLO', $persona->dependencia);
     }
 }

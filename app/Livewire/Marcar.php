@@ -319,19 +319,12 @@ class Marcar extends Component
             return;
         }
 
-        // Una cédula ya registrada como INVITADO no se convierte en trabajador sin querer.
-        $existente = Persona::where('cedula', $cedula)->first();
-
-        if ($existente && $existente->esInvitado()) {
-            $this->addError('cedula', 'Esa cédula está registrada como invitado, no como trabajador.');
-
-            return;
-        }
-
         $nacionalidad = Persona::normalizarNacionalidad($datos['nacionalidad'] ?? Persona::VENEZOLANO);
 
-        // Se corrobora contra lo que ya se tiene: si existe, se actualiza con lo que dice carnets;
-        // si no, se da de alta. La puerta es el único sitio donde entra gente que aún no estaba.
+        // Se corrobora y se RELLENA contra el carnets, que es la autoridad sobre quién es personal:
+        // si existe se actualizan sus datos; si no, se da de alta. Y si estaba como INVITADO pero el
+        // carnet dice que es trabajador activo, se corrige a trabajador —justamente para eso se
+        // escanea—. La puerta es el único sitio por donde entra gente que aún no estaba.
         Persona::updateOrCreate(
             ['cedula' => $cedula],
             [
