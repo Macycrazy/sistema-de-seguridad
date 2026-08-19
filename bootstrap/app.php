@@ -13,6 +13,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Detrás de un proxy HTTPS local (Caddy) que termina el TLS y reenvía por HTTP al puerto
+        // interno. Sin confiar en él, Laravel vería «http» y generaría enlaces/Livewire/assets en
+        // http dentro de una página https —contenido mixto que el navegador bloquea, y sin lo cual
+        // la cámara (que exige HTTPS) no serviría de nada—. Se confía solo en el proxy local.
+        $middleware->trustProxies(at: ['127.0.0.1', '::1']);
+
         // Sin sesión no se ve nada del sistema: se va derecho a la puerta. Y quien ya entró no
         // vuelve a ver la pantalla de ingreso.
         $middleware->redirectGuestsTo('/ingresar');
