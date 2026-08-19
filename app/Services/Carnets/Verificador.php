@@ -54,6 +54,15 @@ class Verificador
     /**
      * Verifica el contenido de un QR contra carnets y devuelve su veredicto.
      *
+     * Usa la página pública a la que apunta el propio QR: GET {CARNETS_URL}/Trabajador_{token} con
+     * «Accept: application/json». Carnets responde el contrato:
+     *   activo   → {"activo":true, "nacionalidad":"V", "cedula":"24270727", "nombre":"...",
+     *               "cargo":"...", "gerencia":"..."}
+     *   inactivo → {"activo":false}
+     *
+     * Se llama a la dirección CONFIGURADA (CARNETS_URL), no al host que trae la URL del QR: así la
+     * integración sobrevive a que carnets cambie de IP o de dominio. Del QR solo se usa el token.
+     *
      * @return array{ok:bool, mensaje?:string, datos?:array<string, mixed>}
      */
     public function verificar(?string $url, string $contenidoQr): array
@@ -64,25 +73,42 @@ class Verificador
             return ['ok' => false, 'mensaje' => 'Falta la dirección del sistema de carnets.'];
         }
 
+        $token = $this->token($contenidoQr);
+
+        if ($token === '') {
+            return ['ok' => false, 'mensaje' => 'Ese QR no trae un token de carnet reconocible.'];
+        }
+
         try {
             $respuesta = Http::timeout(self::TIMEOUT)
-                ->asForm()
-                ->post($url.'/verificar/qr', ['codigo' => $contenidoQr]);
+                ->acceptJson()
+                ->get($url.'/Trabajador_'.$token);
 
             if (! $respuesta->successful()) {
-                // 302/401/403 casi siempre = el endpoint pide sesión de navegador y hay que
-                // exponerlo para llamada por token del lado de carnets.
-                return [
-                    'ok' => false,
-                    'mensaje' => 'Carnets respondió HTTP '.$respuesta->status()
-                        .'. Si es 302/401/403, el endpoint todavía pide sesión: hay que abrirlo para llamada por token.',
-                ];
+                return ['ok' => false, 'mensaje' => 'Carnets respondió HTTP '.$respuesta->status().'.'];
             }
 
             return ['ok' => true, 'datos' => (array) $respuesta->json()];
         } catch (Throwable $e) {
             return ['ok' => false, 'mensaje' => 'No se pudo consultar: '.$this->motivo($e)];
         }
+    }
+
+    /**
+     * El token del carnet a partir del contenido del QR.
+     *
+     * El QR trae una URL «…/Trabajador_{token}»; nos quedamos con lo que va tras «Trabajador_» y lo
+     * dejamos en letras y dígitos. Si el QR ya fuese solo el token, también vale.
+     */
+    public function token(string $contenidoQr): string
+    {
+        $contenido = trim($contenidoQr);
+
+        if (($pos = mb_strpos($contenido, 'Trabajador_')) !== false) {
+            $contenido = mb_substr($contenido, $pos + strlen('Trabajador_'));
+        }
+
+        return preg_replace('/[^A-Za-z0-9]/', '', $contenido) ?? '';
     }
 
     /** La URL configurada por omisión (config/carnets.php → CARNETS_URL). */

@@ -47,21 +47,30 @@
 
         @if ($verificacion)
             @if ($verificacion['ok'] ?? false)
-                @php $d = $verificacion['datos'] ?? []; @endphp
-                <x-tarjeta class="mt-4">
-                    <div class="flex items-center gap-2">
-                        <x-etiqueta :tipo="($d['estado'] ?? '') === 'activo' ? 'entrada' : 'inactivo'">
-                            {{ strtoupper($d['estado'] ?? 'desconocido') }}
-                        </x-etiqueta>
-                        <span class="font-semibold text-slate-900">{{ $d['nombre'] ?? '—' }}</span>
-                    </div>
-                    <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
-                        <div><dt class="inline text-slate-500">Cédula:</dt> <dd class="inline text-slate-800">{{ $d['cedula'] ?? '—' }}</dd></div>
-                        <div><dt class="inline text-slate-500">Carnet:</dt> <dd class="inline font-mono text-slate-800">{{ $d['card_code'] ?? '—' }}</dd></div>
-                        <div><dt class="inline text-slate-500">Cargo:</dt> <dd class="inline text-slate-800">{{ $d['cargo'] ?? '—' }}</dd></div>
-                        <div><dt class="inline text-slate-500">Gerencia:</dt> <dd class="inline text-slate-800">{{ $d['gerencia'] ?? '—' }}</dd></div>
-                    </dl>
-                </x-tarjeta>
+                @php $d = $verificacion['datos'] ?? []; $activo = ($d['activo'] ?? false) === true; @endphp
+                @if ($activo)
+                    <x-tarjeta class="mt-4">
+                        <div class="flex items-center gap-2">
+                            <x-etiqueta tipo="entrada">ACTIVO</x-etiqueta>
+                            <span class="font-semibold text-slate-900">{{ $d['nombre'] ?? '—' }}</span>
+                        </div>
+                        <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                            <div><dt class="inline text-slate-500">Cédula:</dt> <dd class="inline font-mono text-slate-800">{{ ($d['nacionalidad'] ?? '') }}-{{ $d['cedula'] ?? '—' }}</dd></div>
+                            <div><dt class="inline text-slate-500">Cargo:</dt> <dd class="inline text-slate-800">{{ $d['cargo'] ?? '—' }}</dd></div>
+                            <div class="col-span-2"><dt class="inline text-slate-500">Gerencia:</dt> <dd class="inline text-slate-800">{{ $d['gerencia'] ?? '—' }}</dd></div>
+                        </dl>
+                        <p class="mt-3 border-t border-slate-200 pt-3 text-xs text-slate-500">
+                            En la puerta: se marcaría con esta cédula y se actualizaría su ficha.
+                        </p>
+                    </x-tarjeta>
+                @else
+                    <x-tarjeta class="mt-4">
+                        <div class="flex items-center gap-2">
+                            <x-etiqueta tipo="inactivo">NO ACTIVO</x-etiqueta>
+                            <span class="text-sm text-slate-600">Carnet inexistente o dado de baja. En la puerta iría por el flujo de invitado o se rechazaría.</span>
+                        </div>
+                    </x-tarjeta>
+                @endif
             @else
                 <x-error class="mt-4">{{ $verificacion['mensaje'] ?? 'No se pudo verificar.' }}</x-error>
             @endif
