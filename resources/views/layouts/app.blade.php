@@ -226,5 +226,9 @@
             </nav>
         @endif
     @endauth
+
+    {{-- Scripts propios de una página (p. ej. el lector de QR de la puerta). Van al final del
+         cuerpo para no frenar el pintado. --}}
+    @stack('scripts')
 </body>
 </html>
