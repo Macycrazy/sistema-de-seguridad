@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Persona;
 use App\Services\Auditoria\Auditoria;
+use App\Services\Carnets\FotoDelCarnet;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -24,10 +26,24 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class FotoPersonaController extends Controller
 {
-    public function __invoke(Persona $persona): StreamedResponse
+    public function __invoke(Persona $persona): Response|StreamedResponse
     {
         Gate::authorize('ver-foto');
 
+        $sinCache = ['Cache-Control' => 'private, no-store, max-age=0'];
+
+        // Directo del carnets, que es la fuente: se pide en vivo por cédula, así se ve siempre la
+        // foto actual y no una copia que se haya quedado vieja. El servidor la trae por dentro (no
+        // el navegador), así que sirve aunque la página vaya por HTTPS y el carnets por HTTP.
+        $directa = app(FotoDelCarnet::class)->bytes($persona->cedula);
+
+        if ($directa !== null) {
+            app(Auditoria::class)->vioFoto($persona);
+
+            return response($directa['bytes'], 200, $sinCache + ['Content-Type' => $directa['mime']]);
+        }
+
+        // Respaldo: la copia que quedó al darlo de alta, por si el carnets no responde ahora.
         $ruta = $persona->rutaFotoSegura();
 
         abort_if($ruta === null, 404);
@@ -36,9 +52,6 @@ class FotoPersonaController extends Controller
         // Con dedup: el navegador puede volver a pedir la imagen sin que sea otra mirada.
         app(Auditoria::class)->vioFoto($persona);
 
-        return Storage::disk('local')->response($ruta, headers: [
-            // La cara de una persona no se queda en la caché de un proxy ni del navegador.
-            'Cache-Control' => 'private, no-store, max-age=0',
-        ]);
+        return Storage::disk('local')->response($ruta, headers: $sinCache);
     }
 }

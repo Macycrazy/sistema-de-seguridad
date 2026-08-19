@@ -23,10 +23,12 @@ class FotoDelCarnet
     private const EXTENSIONES = ['jpg', 'jpeg', 'png'];
 
     /**
-     * Deja la foto de esa cédula en el disco privado y devuelve su ruta («fotos/12345678.jpg»),
-     * o null si no se pudo traer.
+     * Lee la foto de esa cédula EN VIVO del carnets, sin guardarla. Es lo que usa la pantalla para
+     * mostrar siempre la foto directo de la fuente, no una copia que se pueda quedar vieja.
+     *
+     * @return array{bytes:string, mime:string}|null
      */
-    public function traer(string $cedula): ?string
+    public function bytes(string $cedula): ?array
     {
         $cedula = Persona::normalizarCedula($cedula);
         $origen = trim((string) config('carnets.fotos'));
@@ -39,14 +41,33 @@ class FotoDelCarnet
             $bytes = $this->leer($origen, $cedula, $extension);
 
             if ($bytes !== null && $bytes !== '') {
-                $ruta = Persona::CARPETA_FOTOS.'/'.$cedula.'.'.$extension;
-                Storage::disk('local')->put($ruta, $bytes);
-
-                return $ruta;
+                return [
+                    'bytes' => $bytes,
+                    'mime' => $extension === 'png' ? 'image/png' : 'image/jpeg',
+                ];
             }
         }
 
         return null;
+    }
+
+    /**
+     * Deja la foto de esa cédula en el disco privado y devuelve su ruta («fotos/12345678.jpg»),
+     * o null si no se pudo traer. La copia local queda como respaldo por si el carnets no responde.
+     */
+    public function traer(string $cedula): ?string
+    {
+        $foto = $this->bytes($cedula);
+
+        if ($foto === null) {
+            return null;
+        }
+
+        $extension = $foto['mime'] === 'image/png' ? 'png' : 'jpg';
+        $ruta = Persona::CARPETA_FOTOS.'/'.Persona::normalizarCedula($cedula).'.'.$extension;
+        Storage::disk('local')->put($ruta, $foto['bytes']);
+
+        return $ruta;
     }
 
     /** Lee los bytes de la foto, del disco o por HTTP según cómo esté configurado el origen. */
