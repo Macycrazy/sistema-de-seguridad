@@ -44,4 +44,24 @@ class PantallaEstacionamientoTest extends TestCase
             ->assertSee('AB123CD')
             ->assertSee('ANA PÉREZ');
     }
+
+    #[Test]
+    public function buscar_por_placa_deja_solo_la_que_coincide(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::VIGILANTE]));
+
+        foreach ([['1', 'ABC123'], ['2', 'XYZ789']] as [$ci, $placa]) {
+            $p = Persona::create(['cedula' => $ci, 'tipo' => Persona::TRABAJADOR, 'nombre' => 'DUEÑO '.$ci, 'activo' => true]);
+            Movimiento::create([
+                'persona_id' => $p->id, 'tipo' => Movimiento::ENTRADA,
+                'ocurrio_en' => CarbonImmutable::now()->subHour(),
+                'tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => $placa,
+            ]);
+        }
+
+        Livewire::test(Panel::class)
+            ->set('busqueda', 'abc')
+            ->assertSee('ABC123')
+            ->assertDontSee('XYZ789');
+    }
 }

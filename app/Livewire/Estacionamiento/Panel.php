@@ -2,7 +2,9 @@
 
 namespace App\Livewire\Estacionamiento;
 
+use App\Services\DatosVehiculo;
 use App\Services\Estacionamiento\Estacionamiento;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -16,32 +18,79 @@ use Livewire\Component;
  */
 class Panel extends Component
 {
-    /** @return Collection<int, object> */
+    /** Buscar un vehículo por su placa: «¿está el carro ABC123?», «¿de quién es este que estorba?». */
+    public string $busqueda = '';
+
+    /** Si se muestra el registro del día (entradas y salidas), aparte de lo que hay dentro. */
+    public bool $verHistorial = false;
+
+    /** Todo lo que hay dentro ahora. Se calcula una vez por render y de aquí sale lo demás. */
     #[Computed]
-    public function vehiculos(): Collection
+    public function dentro(): Collection
     {
         return app(Estacionamiento::class)->vehiculosDentro();
     }
 
+    /** Lo que se muestra: todo, o solo lo que coincide con la placa buscada. */
     #[Computed]
-    public function porTipo(): array
+    public function vehiculos(): Collection
     {
-        return app(Estacionamiento::class)->porTipoDentro();
+        $aguja = mb_strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $this->busqueda) ?? '');
+
+        if ($aguja === '') {
+            return $this->dentro();
+        }
+
+        return $this->dentro()
+            ->filter(fn ($v) => str_contains(mb_strtoupper((string) $v->placa), $aguja))
+            ->values();
     }
 
+    /**
+     * El cupo por bucket: cuántos dentro, el aforo, cuántos libres y si está lleno. Los conteos
+     * salen de lo que hay dentro (sin filtrar por la búsqueda).
+     *
+     * @return array{total:array, carro:array, moto:array}
+     */
     #[Computed]
-    public function aforo(): int
+    public function resumen(): array
     {
-        return app(Estacionamiento::class)->aforo();
+        $aforos = app(Estacionamiento::class)->aforos();
+        $carro = $this->dentro()->where('tipo_vehiculo', DatosVehiculo::CARRO)->count();
+        $moto = $this->dentro()->where('tipo_vehiculo', DatosVehiculo::MOTO)->count();
+
+        return [
+            'total' => $this->cupo($carro + $moto, $aforos['total']),
+            'carro' => $this->cupo($carro, $aforos['carro']),
+            'moto' => $this->cupo($moto, $aforos['moto']),
+        ];
+    }
+
+    /** El registro de vehículos del día: entradas y salidas. Solo si se pidió verlo. */
+    #[Computed]
+    public function historial(): Collection
+    {
+        return app(Estacionamiento::class)->delDia(CarbonImmutable::today());
     }
 
     public function actualizar(): void
     {
-        unset($this->vehiculos, $this->porTipo);
+        unset($this->dentro, $this->vehiculos, $this->resumen, $this->historial);
     }
 
     public function render()
     {
         return view('livewire.estacionamiento.panel');
+    }
+
+    /** @return array{dentro:int, aforo:int, libres:?int, lleno:bool} */
+    private function cupo(int $dentro, int $aforo): array
+    {
+        return [
+            'dentro' => $dentro,
+            'aforo' => $aforo,
+            'libres' => $aforo > 0 ? max(0, $aforo - $dentro) : null,
+            'lleno' => $aforo > 0 && $dentro >= $aforo,
+        ];
     }
 }

@@ -126,6 +126,20 @@ class AlertasTest extends TestCase
     }
 
     #[Test]
+    public function avisa_por_tipo_cuando_se_llenan_los_puestos_de_carros(): void
+    {
+        app(UmbralesDeAlerta::class)->guardar('alerta_aforo_carro', 1);
+
+        foreach (['1', '2'] as $ci) {
+            $p = $this->persona($ci);
+            $this->marca($p, Movimiento::ENTRADA, CarbonImmutable::now()->subMinutes(20));
+            $p->movimientos()->latest('id')->first()->update(['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'P'.$ci]);
+        }
+
+        $this->assertNotNull(app(Alertas::class)->activas()->firstWhere('titulo', 'Sin puestos de carros'));
+    }
+
+    #[Test]
     public function las_urgentes_van_primero(): void
     {
         app(UmbralesDeAlerta::class)->guardar('alerta_aforo', 1);

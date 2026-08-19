@@ -33,8 +33,18 @@ class UmbralesDeAlerta
         ],
         'alerta_aforo_estacionamiento' => [
             'Aforo del estacionamiento',
-            'Cuántos vehículos dentro a la vez disparan el aviso de estacionamiento lleno. En 0 el aviso queda desactivado.',
+            'Cuántos vehículos dentro a la vez (en total) disparan el aviso de estacionamiento lleno. En 0 el aviso queda desactivado.',
             0, 0, 9999, 'vehículos',
+        ],
+        'alerta_aforo_carro' => [
+            'Puestos de carros',
+            'Cuántos carros caben. Carros y motos no ocupan el mismo sitio, así que se cuentan aparte. En 0 no se avisa por carros.',
+            0, 0, 9999, 'carros',
+        ],
+        'alerta_aforo_moto' => [
+            'Puestos de motos',
+            'Cuántas motos caben, aparte de los carros. En 0 no se avisa por motos.',
+            0, 0, 9999, 'motos',
         ],
     ];
 
@@ -54,6 +64,16 @@ class UmbralesDeAlerta
     public function aforoEstacionamiento(): int
     {
         return $this->valor('alerta_aforo_estacionamiento');
+    }
+
+    public function aforoCarros(): int
+    {
+        return $this->valor('alerta_aforo_carro');
+    }
+
+    public function aforoMotos(): int
+    {
+        return $this->valor('alerta_aforo_moto');
     }
 
     /**
