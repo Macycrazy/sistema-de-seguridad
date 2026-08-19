@@ -5,7 +5,7 @@
     El foco vive en el campo de la cédula: se teclea, Enter, y el botón que corresponde ya
     está resaltado. El vigilante no debería necesitar el ratón.
 --}}
-<div class="mx-auto max-w-3xl">
+<div class="mx-auto max-w-3xl" x-data="{ ayuda: false }">
 
     {{-- Quién hay dentro. Es el dato que el vigilante mira de reojo, y va separado en
          trabajadores e invitados porque en una emergencia no valen lo mismo: a los de casa se
@@ -15,7 +15,15 @@
          Cada uno con el color que ya significa lo suyo en todo el sistema: el azul de la parte 1
          para el personal, el ámbar para el invitado. --}}
     <div class="mb-6 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-        <h1 class="text-3xl font-bold tracking-tight">Marcar</h1>
+        <div class="flex items-center gap-2.5">
+            <h1 class="text-3xl font-bold tracking-tight">Marcar</h1>
+            {{-- El botón de ayuda: abre un recuadro con los pasos. Para el vigilante nuevo, o el
+                 que se traba. No estorba: está cerrado hasta que se toca. --}}
+            <button type="button" x-on:click="ayuda = true"
+                    class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-slate-300
+                           text-sm font-bold text-slate-500 transition hover:bg-slate-50 hover:text-slate-800"
+                    aria-label="¿Cómo se usa?">?</button>
+        </div>
 
         <dl class="flex items-baseline gap-5">
             <div class="flex items-baseline gap-2">
@@ -167,6 +175,16 @@
             </p>
         </form>
     </x-tarjeta>
+
+    {{-- Pantalla en blanco: la guía sola. Mientras no haya nadie en pantalla ni se esté anotando
+         un invitado, se dice qué hacer, en el hueco donde después saldrá la persona. Así el
+         vigilante nuevo no se queda mirando una pantalla que no le dice nada. --}}
+    @if (! $this->persona && ! $invitadoNuevo)
+        <div class="mt-5 rounded border border-dashed border-slate-300 bg-white px-4 py-8 text-center">
+            <p class="text-base font-semibold text-slate-700">Escanea el carnet o escribe la cédula</p>
+            <p class="mt-1 text-sm text-slate-500">Aquí saldrá la persona, con su foto, para marcarle la entrada o la salida.</p>
+        </div>
+    @endif
 
     {{-- QUIÉN ES --}}
     @if ($this->persona)
@@ -641,4 +659,39 @@
             </form>
         </x-tarjeta>
     @endif
+
+    {{-- El recuadro de ayuda (pop-up). Se abre con el «?» de arriba y se cierra tocando fuera, la
+         equis, Escape o «Entendido». Corto y con los tres pasos: para el vigilante nuevo. --}}
+    <div x-show="ayuda" x-cloak x-transition.opacity
+         x-on:click.self="ayuda = false" x-on:keydown.escape.window="ayuda = false"
+         class="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-4 sm:items-center">
+        <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div class="flex items-start justify-between gap-4">
+                <h2 class="text-xl font-bold tracking-tight">Cómo marcar</h2>
+                <button type="button" x-on:click="ayuda = false" aria-label="Cerrar"
+                        class="-mr-1 -mt-1 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700">✕</button>
+            </div>
+
+            <ol class="mt-5 space-y-4">
+                <li class="flex items-start gap-3">
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-marca text-sm font-bold text-white">1</span>
+                    <p class="text-slate-700"><b class="font-semibold text-slate-900">Escanea el carnet</b> con la cámara, o escribe la cédula.</p>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-marca text-sm font-bold text-white">2</span>
+                    <p class="text-slate-700"><b class="font-semibold text-slate-900">Mira la foto</b> y confirma que es la persona.</p>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-marca text-sm font-bold text-white">3</span>
+                    <p class="text-slate-700"><b class="font-semibold text-slate-900">Pulsa Entrada o Salida.</b> El sistema ya resalta el botón que toca.</p>
+                </li>
+            </ol>
+
+            <p class="mt-5 rounded-lg bg-invitado-suave px-3 py-2.5 text-sm font-medium text-invitado">
+                ¿No tiene carnet y no aparece? Es un <b>invitado</b>: escribe su nombre, el motivo y a qué piso va.
+            </p>
+
+            <x-boton type="button" x-on:click="ayuda = false" class="mt-6 w-full">Entendido</x-boton>
+        </div>
+    </div>
 </div>
