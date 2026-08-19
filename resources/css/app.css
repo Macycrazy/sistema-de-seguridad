@@ -49,3 +49,7 @@
         hyphens: auto;
     }
 }
+
+/* Alpine: esconder lo marcado con x-cloak hasta que Alpine toma el control (el panel de la
+   cámara del escáner del carnet), para que no parpadee al cargar la página. */
+[x-cloak] { display: none !important; }

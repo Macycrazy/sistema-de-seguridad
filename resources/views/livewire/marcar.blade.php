@@ -120,6 +120,29 @@
                 Buscando…
             </p>
         </form>
+
+        {{--
+            Escanear el carnet con la cámara, en vez de teclear la cédula. Lee el QR, lo verifica
+            contra el sistema de carnets y trae la ficha. La cámara solo funciona por HTTPS —por eso
+            el puesto se sirve así—; el lector va empaquetado (resources/js/app.js), sin CDN.
+        --}}
+        <div x-data="escanerCarnet($wire)" class="mt-4 border-t border-slate-100 pt-4">
+            <div x-show="!abierto">
+                <x-boton type="button" variante="secundario" x-on:click="abrir()" class="w-full">
+                    Escanear carnet con la cámara
+                </x-boton>
+            </div>
+
+            <div x-show="abierto" x-cloak class="space-y-3">
+                <video x-ref="video" playsinline muted
+                       class="w-full rounded border-2 border-parte1 bg-slate-900"></video>
+                <canvas x-ref="canvas" class="hidden"></canvas>
+                <p x-text="mensaje" class="text-center font-mono text-xs uppercase tracking-widest text-slate-500"></p>
+                <x-boton type="button" variante="secundario" x-on:click="cerrar()" class="w-full">
+                    Cerrar cámara
+                </x-boton>
+            </div>
+        </div>
     </x-tarjeta>
 
     {{-- QUIÉN ES --}}

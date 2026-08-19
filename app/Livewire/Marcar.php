@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\Movimiento;
 use App\Models\Persona;
 use App\Services\Auditoria\Auditoria;
+use App\Services\Carnets\Verificador;
 use App\Services\DatosVehiculo;
 use App\Services\Marcaje;
 use Illuminate\Support\Collection;
@@ -277,6 +278,74 @@ class Marcar extends Component
             return;
         }
 
+        $this->localizar($cedula);
+    }
+
+    /**
+     * Llega el contenido de un QR escaneado del carnet. Se verifica contra el sistema de carnets
+     * (por su API interna) y, si es personal activo, se actualiza/da de alta la ficha con lo que
+     * carnets dice y se sigue el flujo normal, como si se hubiera tecleado la cédula.
+     *
+     * El QR trae un token, no la cédula: solo carnets sabe a quién pertenece. Por eso aquí no se
+     * confía en el token pelado, sino en el veredicto de carnets.
+     */
+    public function carnetEscaneado(string $contenido): void
+    {
+        $this->confirmacion = '';
+        $this->resetValidation();
+        $this->olvidarPersona();
+
+        $veredicto = app(Verificador::class)->verificar(config('carnets.url'), $contenido);
+
+        if (! ($veredicto['ok'] ?? false)) {
+            $this->addError('cedula', $veredicto['mensaje'] ?? 'No se pudo consultar el carnet.');
+
+            return;
+        }
+
+        $datos = $veredicto['datos'] ?? [];
+
+        if (($datos['activo'] ?? false) !== true) {
+            $this->addError('cedula', 'Ese carnet no es de personal activo. Si va a pasar, regístralo como invitado.');
+
+            return;
+        }
+
+        $cedula = Persona::normalizarCedula((string) ($datos['cedula'] ?? ''));
+
+        if ($cedula === '') {
+            $this->addError('cedula', 'El carnet no trajo una cédula válida.');
+
+            return;
+        }
+
+        // Una cédula ya registrada como INVITADO no se convierte en trabajador sin querer.
+        $existente = Persona::where('cedula', $cedula)->first();
+
+        if ($existente && $existente->esInvitado()) {
+            $this->addError('cedula', 'Esa cédula está registrada como invitado, no como trabajador.');
+
+            return;
+        }
+
+        $nacionalidad = Persona::normalizarNacionalidad($datos['nacionalidad'] ?? Persona::VENEZOLANO);
+
+        // Se corrobora contra lo que ya se tiene: si existe, se actualiza con lo que dice carnets;
+        // si no, se da de alta. La puerta es el único sitio donde entra gente que aún no estaba.
+        Persona::updateOrCreate(
+            ['cedula' => $cedula],
+            [
+                'tipo' => Persona::TRABAJADOR,
+                'nombre' => mb_strtoupper(trim((string) ($datos['nombre'] ?? ''))),
+                'nacionalidad' => $nacionalidad,
+                'dependencia' => $datos['gerencia'] ?? null,
+                'activo' => true,
+            ],
+        );
+
+        // Se muestra como si se hubiera tecleado la cédula: el flujo de marcaje sigue igual.
+        $this->nacionalidad = $nacionalidad;
+        $this->cedula = $cedula;
         $this->localizar($cedula);
     }
 
