@@ -534,22 +534,25 @@ class MarcarPantallaTest extends TestCase
     }
 
     /**
-     * El color se lee en la propia pastilla, no en un «title»: la pantalla se usa en un teléfono
-     * y ahí no hay puntero que pase por encima, así que un title no lo ve nunca nadie.
+     * La pastilla dice la clase, la MARCA, el color y la placa. Todo eso se lee en la pantalla y
+     * no en un «title»: se usa en un teléfono, y ahí no hay puntero que pase por encima, así que
+     * un title no lo ve nunca nadie.
      *
-     * Se comprueba con el punto de separación delante —«· Gris»— a propósito: «Gris» a secas
-     * también aparecería si el color volviera a esconderse en el title, y la prueba pasaría sin
-     * que se viera nada en pantalla.
+     * Se comprueban las dos líneas enteras —«Carro Toyota», «Gris · AB123CD»— y no las palabras
+     * sueltas: «Toyota» a secas también aparecería si volviera a esconderse en el title, y la
+     * prueba pasaría sin que se viera nada en pantalla. Ya pasó una vez.
      */
-    public function test_la_pastilla_del_vehiculo_dice_de_que_color_es(): void
+    public function test_la_pastilla_del_vehiculo_dice_marca_color_y_placa(): void
     {
         $this->conCarroYMoto($this->trabajador());
 
         Livewire::test(Marcar::class)
             ->set('cedula', '12345678')
             ->call('buscar')
-            ->assertSee('· Gris')
-            ->assertSee('· Negro');
+            ->assertSee('Carro Toyota')
+            ->assertSee('Gris · AB123CD')
+            ->assertSee('Moto Bera')
+            ->assertSee('Negro · AC456DF');
     }
 
     /**
@@ -1019,11 +1022,15 @@ class MarcarPantallaTest extends TestCase
         ]);
 
         // No hay que volver a preguntárselo: su carro sale en la casilla y solo se señala.
+        //
+        // Antes se comprobaba «Toyota Corolla», que estaba en el «title» de la pastilla: la prueba
+        // pasaba y en el teléfono no se veía nada, porque ahí no hay puntero. Ahora se comprueba
+        // lo que de verdad se lee en la pantalla.
         Livewire::test(Marcar::class)
             ->set('cedula', '87654321')
             ->call('buscar')
-            ->assertSee('AB123CD')
-            ->assertSee('Toyota Corolla')
+            ->assertSee('Carro Toyota')
+            ->assertSee('Gris · AB123CD')
             ->set('traeHoy', 'AB123CD')
             ->call('marcarEntrada')
             ->assertSee('Entrada registrada');
