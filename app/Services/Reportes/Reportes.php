@@ -44,7 +44,12 @@ final class Reportes
         $base = $this->entradasEntre($desde, $hasta);
         $entradas = (clone $base)->count();
         $personas = (clone $base)->distinct()->count('persona_id');
-        $dias = (clone $base)->selectRaw('count(distinct ocurrio_en::date) as n')->value('n');
+        // Los días con movimiento se cuentan en PHP: «ocurrio_en::date» es el casteo de
+        // PostgreSQL y SQLite no lo entiende. Ver el comentario largo en porFranja().
+        $dias = (clone $base)->pluck('ocurrio_en')
+            ->map(fn ($momento) => CarbonImmutable::parse($momento)->toDateString())
+            ->unique()
+            ->count();
 
         return [
             'entradas' => $entradas,
@@ -67,10 +72,10 @@ final class Reportes
      */
     public function porDia(CarbonImmutable $desde, CarbonImmutable $hasta): Collection
     {
+        // Agrupado por fecha en PHP, por lo mismo que en porFranja(): el «::date» es de PostgreSQL.
         $conteo = $this->entradasEntre($desde, $hasta)
-            ->selectRaw('ocurrio_en::date as d, count(*) as n')
-            ->groupByRaw('ocurrio_en::date')
-            ->pluck('n', 'd');
+            ->pluck('ocurrio_en')
+            ->countBy(fn ($momento) => CarbonImmutable::parse($momento)->toDateString());
 
         $dias = collect();
         for ($dia = $desde->startOfDay(); $dia->lessThanOrEqualTo($hasta); $dia = $dia->addDay()) {
@@ -93,10 +98,21 @@ final class Reportes
      */
     public function porFranja(CarbonImmutable $desde, CarbonImmutable $hasta): array
     {
+        /*
+         * La hora se saca en PHP y no en el SQL.
+         *
+         * Iba con «extract(hour from ocurrio_en)::int», que es de PostgreSQL: SQLite no entiende
+         * ni «extract» ni el «::», así que la pantalla de reportes reventaba entera en las
+         * pruebas. Cada base tiene su propia forma de sacar la hora —strftime, extract, hour()— y
+         * escribir un «si la base es tal, entonces» es justo lo que se queda desfasado.
+         *
+         * Se traen las horas y se cuentan aquí. El tramo de un reporte son los movimientos de un
+         * día, una semana o un mes: miles de filas en el peor caso, que es nada. Si algún día se
+         * pidieran años enteros, ESTO es lo que habría que volver a bajar al SQL.
+         */
         $conteo = $this->entradasEntre($desde, $hasta)
-            ->selectRaw('extract(hour from ocurrio_en)::int as h, count(*) as n')
-            ->groupByRaw('extract(hour from ocurrio_en)')
-            ->pluck('n', 'h');
+            ->pluck('ocurrio_en')
+            ->countBy(fn ($momento) => (int) CarbonImmutable::parse($momento)->format('G'));
 
         $franjas = [];
         for ($hora = 0; $hora < 24; $hora++) {

@@ -7,7 +7,6 @@ use App\Services\Alertas\UmbralesDeAlerta;
 use App\Services\DatosVehiculo;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Qué hay en el estacionamiento ahora mismo, a partir de lo que el marcaje ya guarda.
@@ -30,21 +29,19 @@ final class Estacionamiento
      */
     public function vehiculosDentro(): Collection
     {
-        // El último movimiento de cada persona (DISTINCT ON), y de ahí solo los que están dentro
-        // (entrada) y traían vehículo.
-        $ultimos = Movimiento::query()
-            ->selectRaw('distinct on (persona_id) persona_id, tipo, tipo_vehiculo, marca, modelo, color, placa, ocurrio_en')
-            ->orderBy('persona_id')
-            ->orderByDesc('ocurrio_en')
-            ->orderByDesc('id');
-
-        return DB::query()
-            ->fromSub($ultimos, 'u')
-            ->join('personas', 'personas.id', '=', 'u.persona_id')
-            ->where('u.tipo', Movimiento::ENTRADA)
-            ->whereNotNull('u.tipo_vehiculo')
-            ->orderByDesc('u.ocurrio_en')
-            ->get(['u.persona_id', 'u.tipo_vehiculo', 'u.marca', 'u.modelo', 'u.color', 'u.placa', 'u.ocurrio_en', 'personas.nombre', 'personas.cedula'])
+        // El último movimiento de cada persona, y de ahí solo los que están dentro (entrada) y
+        // traían vehículo. El «último de cada persona» vive en el modelo y vale en las dos bases;
+        // aquí iba antes un «distinct on», que es solo de PostgreSQL.
+        return Movimiento::ultimoDeCadaPersona()
+            ->join('personas', 'personas.id', '=', 'movimientos.persona_id')
+            ->where('movimientos.tipo', Movimiento::ENTRADA)
+            ->whereNotNull('movimientos.tipo_vehiculo')
+            ->orderByDesc('movimientos.ocurrio_en')
+            ->get([
+                'movimientos.persona_id', 'movimientos.tipo_vehiculo', 'movimientos.marca',
+                'movimientos.modelo', 'movimientos.color', 'movimientos.placa',
+                'movimientos.ocurrio_en', 'personas.nombre', 'personas.cedula',
+            ])
             ->map(function ($fila) {
                 // El mismo objeto de datos que usa la puerta, para que la placa y la descripción se
                 // lean igual en las dos pantallas.

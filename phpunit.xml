@@ -17,14 +17,39 @@
             <directory>app</directory>
         </include>
     </source>
+    <!--
+        La exportación a Excel arma el archivo en memoria y se pasa de los 128 MB que trae PHP por
+        omisión: la prueba del reporte del día moría con «Allowed memory size exhausted», y con
+        ella el proceso entero. Se sube aquí para que no haya que acordarse de pasarle un «-d» a
+        cada quien.
+    -->
+    <ini name="memory_limit" value="1G"/>
     <php>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
+
+        <!--
+            LAS PRUEBAS CORREN EN POSTGRESQL, igual que el sistema.
+
+            Antes corrían en un SQLite en memoria. Era más rápido, pero probaba otra base distinta
+            de la de producción, y eso ya costó caro: consultas que pasaban en verde y reventaban
+            en el servidor, y al revés — sintaxis de Postgres que tumbaba 67 pruebas sin que nada
+            estuviera mal en el sistema. Peor todavía, un lower() que en una base casaba los
+            acentos y en la otra no, y creaba unidades duplicadas sin decir nada.
+
+            Solo se fija la CONEXIÓN y el NOMBRE de la base. El servidor, el puerto y las
+            credenciales salen del .env de cada quien, que ya los tiene puestos para el sistema.
+
+            Hay que crear esa base UNA vez, y está vacía a propósito: cada prueba la migra y la
+            deja como estaba. Nunca toca «registro_accesos», que es la de trabajar.
+
+                createdb -h 127.0.0.1 -p 5433 -U tu_usuario registro_accesos_pruebas
+        -->
+        <env name="DB_CONNECTION" value="pgsql"/>
+        <env name="DB_DATABASE" value="registro_accesos_pruebas"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

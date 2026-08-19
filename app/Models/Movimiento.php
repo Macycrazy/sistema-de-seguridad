@@ -6,6 +6,8 @@ use App\Services\DatosVehiculo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Query\Builder as ConsultaCruda;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Una entrada o una salida: el asiento que deja el botón de la puerta.
@@ -37,6 +39,31 @@ class Movimiento extends Model
 
     /** Sin created_at/updated_at: la hora del asiento es «ocurrio_en». */
     public $timestamps = false;
+
+    /**
+     * El ÚLTIMO movimiento de cada persona, como consulta lista para seguir filtrando.
+     *
+     * Es la base de casi todo lo que pregunta «quién está dentro ahora»: el contador de la puerta,
+     * las alertas y el estacionamiento. Los tres lo resolvían por su cuenta, y dos de ellos con un
+     * «distinct on» de PostgreSQL —que no existe en SQLite, donde corren las pruebas—. Con esto
+     * está escrito una vez, y en un SQL que las dos bases entienden.
+     *
+     * El último se busca por «max(id)» y no por la hora más alta: el id lo pone la base al
+     * insertar, así que no puede haber empate ni depende de que dos asientos del mismo segundo se
+     * ordenen bien. Vale porque los movimientos no se editan ni se borran nunca.
+     *
+     * Quien la use tiene que nombrar la tabla en sus filtros —«movimientos.tipo»—, porque por
+     * dentro hay un join y «tipo» a secas sería ambiguo.
+     */
+    public static function ultimoDeCadaPersona(): ConsultaCruda
+    {
+        $ultimos = DB::table('movimientos')
+            ->selectRaw('persona_id, max(id) as ultimo_id')
+            ->groupBy('persona_id');
+
+        return DB::table('movimientos')
+            ->joinSub($ultimos, 'u', fn ($union) => $union->on('movimientos.id', '=', 'u.ultimo_id'));
+    }
 
     protected $fillable = [
         'persona_id',
