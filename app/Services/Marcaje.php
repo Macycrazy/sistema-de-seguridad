@@ -234,6 +234,12 @@ class Marcaje
         $vehiculo ??= DatosVehiculo::desde();
         $vehiculo->exigirValido();
         $this->exigirQueElVehiculoNoCambieDeClase($persona, $vehiculo);
+        $this->exigirQueElVehiculoNoSeaDeOtro($persona, $vehiculo);
+
+        // En la salida, el vehículo no se elige: es el mismo con el que entró.
+        if ($tipo === Movimiento::SALIDA && $persona->estaDentro()) {
+            $this->exigirQueSalgaEnLoQueEntro($persona, $vehiculo);
+        }
 
         // La ficha y el asiento se guardan juntos o no se guarda ninguno: si falla la
         // actualización del invitado, no queremos un movimiento suelto apuntando a un dato viejo.
@@ -367,6 +373,100 @@ class Marcaje
                 'La placa %s ya está anotada como %s. Si hoy llegó en otro vehículo, cambia la placa.',
                 $anotado->placa,
                 mb_strtolower($anotado->datos()->etiquetaTipo()),
+            ),
+        ]);
+    }
+
+    /**
+     * Un vehículo registrado a un TRABAJADOR no lo usa nadie más.
+     *
+     * Si dos personas pudieran entrar con la misma placa, el estacionamiento contaría dos veces el
+     * mismo vehículo y «¿de quién es este carro?» dejaría de tener una sola respuesta. Y en un
+     * sistema que existe para probar quién estuvo dónde, un vehículo que aparece a nombre de dos
+     * es un dato que no prueba nada.
+     *
+     * OJO, esto cambia una decisión anterior: la migración que creó la tabla dejaba a propósito
+     * que dos personas compartieran placa —«un carro familiar lo trae hoy uno y mañana otro»—.
+     * Ese caso deja de estar permitido cuando el vehículo es de alguien del personal. Si de verdad
+     * hay carros compartidos en el CIIP, esto hay que hablarlo, no rodearlo.
+     *
+     * Solo mira a los trabajadores: la placa de un invitado no reserva nada, porque un invitado es
+     * cualquiera que pasó una vez y su ficha no es un registro de propiedad.
+     *
+     * @throws ValidationException
+     */
+    protected function exigirQueElVehiculoNoSeaDeOtro(Persona $persona, DatosVehiculo $vehiculo): void
+    {
+        if ($vehiculo->vacio()) {
+            return;
+        }
+
+        $duenio = Persona::query()
+            ->where('tipo', Persona::TRABAJADOR)
+            ->where('id', '!=', $persona->id)
+            ->whereHas('vehiculos', fn ($v) => $v->where('placa', $vehiculo->placa))
+            ->first();
+
+        if (! $duenio) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'placa' => sprintf(
+                'La placa %s está registrada a nombre de %s. Si el vehículo cambió de dueño, hay '
+                .'que quitárselo primero en su ficha.',
+                $vehiculo->placa,
+                $duenio->nombre,
+            ),
+        ]);
+    }
+
+    /**
+     * Quien entró en un vehículo sale en ese mismo vehículo. Quien entró a pie, sale a pie.
+     *
+     * El asiento de salida dice en qué se fue, y si dijera otra cosa el registro contaría una
+     * historia imposible: entró en la moto y salió a pie, dejando una moto que nadie sacó. No es
+     * solo prolijidad — el estacionamiento se calcula con estos asientos, así que una salida mal
+     * anotada deja un vehículo dentro para siempre.
+     *
+     * Se compara por PLACA y no por el objeto entero: lo que identifica al vehículo es la placa, y
+     * la marca o el color pudieron corregirse en la ficha entre la entrada y la salida.
+     *
+     * @throws ValidationException
+     */
+    protected function exigirQueSalgaEnLoQueEntro(Persona $persona, DatosVehiculo $vehiculo): void
+    {
+        $entrada = $persona->ultimaEntrada();
+
+        if (! $entrada) {
+            return;
+        }
+
+        $placaDeEntrada = $entrada->placa;
+        $placaDeSalida = $vehiculo->placa;
+
+        if ($placaDeEntrada === $placaDeSalida) {
+            return;
+        }
+
+        // Entró a pie y se le está marcando la salida en algo.
+        if ($placaDeEntrada === null) {
+            throw ValidationException::withMessages([
+                'tipoVehiculo' => sprintf(
+                    'Entró a pie, así que no se le puede marcar la salida en el vehículo %s.',
+                    $placaDeSalida,
+                ),
+            ]);
+        }
+
+        throw ValidationException::withMessages([
+            'tipoVehiculo' => sprintf(
+                'Entró en %s y tiene que salir en %s. %s',
+                $placaDeEntrada,
+                $placaDeEntrada,
+                $placaDeSalida === null
+                    ? 'No se le puede marcar la salida a pie.'
+                    : 'No se le puede marcar la salida en '.$placaDeSalida.'.',
             ),
         ]);
     }

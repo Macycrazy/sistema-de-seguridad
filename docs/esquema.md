@@ -206,6 +206,33 @@ Dos reglas que conviene tener claras:
 2. **Con vehículo y sin elegir, se asume `carro`**, que es lo más común. Cualquier valor que no
    sea `moto` se guarda como `carro`.
 
+### Se sale en lo mismo con lo que se entró
+
+Quien entró en un vehículo **sale en ese vehículo**, y quien entró a pie **sale a pie**. Lo exige
+`Marcaje::registrar()` y la pantalla ni siquiera lo pregunta: cuando lo que toca es la salida, en
+lugar de la lista se enseña «Entró en · Moto AE321JK».
+
+No es prolijidad. **El estacionamiento se calcula con estos asientos** —un vehículo está dentro si
+su dueño está dentro y su entrada traía vehículo—, así que una salida anotada «a pie» deja una moto
+dentro del portón para siempre, y el guardia acaba contando vehículos que ya no están.
+
+La comparación es **por placa**, no por el objeto entero: lo que identifica al vehículo es la
+placa, y la marca o el color pudieron corregirse en la ficha entre la entrada y la salida.
+
+### Una placa es de una sola persona del personal
+
+Si la placa ya está registrada a un **trabajador**, no se le puede marcar a nadie más. El aviso
+dice de quién es, que es lo que el vigilante necesita para resolverlo en la puerta.
+
+> **Esto cambia una decisión anterior.** La migración que creó la tabla `vehiculos` dejaba a
+> propósito que dos personas compartieran placa —«un carro familiar lo trae hoy uno y mañana
+> otro»— y el índice único sigue siendo `(persona_id, placa)`, que lo permite. La regla vive ahora
+> en el servicio, no en la base. **Si en el CIIP hay carros compartidos de verdad, esto hay que
+> hablarlo**, porque hoy el segundo en llegar no puede marcar.
+
+Solo mira a los trabajadores: la placa de un invitado no reserva nada, porque un invitado es
+cualquiera que pasó una vez y su ficha no es un registro de propiedad.
+
 ### Un vehículo no cambia de clase
 
 **El tipo va pegado a la placa, no al día.** Si una persona ya tiene un vehículo anotado, marcar

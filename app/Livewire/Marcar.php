@@ -646,7 +646,13 @@ class Marcar extends Component
                 // Al trabajador no se le pregunta: su piso ya está en la ficha.
                 piso: $persona->esInvitado() ? $this->piso : null,
                 // El vehículo se le pregunta a todos: el personal también estaciona aquí.
-                vehiculo: $this->vehiculo(),
+                //
+                // Salvo en la SALIDA: ahí no se pregunta, se sale en lo mismo con lo que se
+                // entró. Se toma del asiento de entrada y no de la casilla, para que la pantalla
+                // mande exactamente lo que el servidor va a exigir — si dependiera de la casilla,
+                // un vehículo borrado de la ficha entre la entrada y la salida haría que se
+                // enviara «a pie» y el marcaje fallaría sin que nadie entienda por qué.
+                vehiculo: $this->vehiculoParaEste($tipo, $persona),
             );
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
@@ -667,6 +673,23 @@ class Marcar extends Component
 
         $this->limpiar();
         $this->confirmacion = $confirmacion;
+    }
+
+    /**
+     * Con qué vehículo se registra ESTE movimiento.
+     *
+     * En la entrada, lo que diga la casilla. En la salida no hay nada que decir: se sale en lo
+     * mismo con lo que se entró, así que se copia del asiento de entrada.
+     */
+    protected function vehiculoParaEste(string $tipo, Persona $persona): DatosVehiculo
+    {
+        if ($tipo !== Movimiento::SALIDA || ! $persona->estaDentro()) {
+            return $this->vehiculo();
+        }
+
+        $entrada = $persona->ultimaEntrada();
+
+        return $entrada ? DatosVehiculo::desdeModelo($entrada) : $this->vehiculo();
     }
 
     /** Vuelve al estado inicial: campo vacío y listo para teclear. */

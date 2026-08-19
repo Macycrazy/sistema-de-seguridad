@@ -386,7 +386,9 @@ class MarcajeTest extends TestCase
         $this->assertSame('AB123CD', $lunes->placa);
         $this->assertSame('Toyota', $lunes->marca);
         $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
-        $this->marcaje->registrar($invitado->fresh(), Movimiento::SALIDA);
+
+        // Sale en el mismo carro con el que entró: es la regla, y aquí no se está probando eso.
+        $this->marcaje->registrar($invitado->fresh(), Movimiento::SALIDA, vehiculo: $suToyota);
 
         // El jueves viene en otro carro: el asiento del lunes tiene que seguir diciendo el suyo.
         $this->travel(1)->day();
@@ -398,6 +400,92 @@ class MarcajeTest extends TestCase
 
         $this->assertSame('XY987ZW', $jueves->placa);
         $this->assertSame('AB123CD', $lunes->fresh()->placa);
+    }
+
+    /**
+     * Quien entró en un vehículo tiene que salir en ese mismo vehículo.
+     *
+     * El asiento de salida dice en qué se fue, y si dijera otra cosa el registro contaría una
+     * historia imposible: entró en la moto y salió a pie, dejando una moto que nadie sacó. Además
+     * el estacionamiento se cuenta con esos asientos, así que una salida mal anotada deja un
+     * vehículo dentro para siempre.
+     */
+    public function test_quien_entro_en_un_vehiculo_tiene_que_salir_en_el_mismo(): void
+    {
+        $persona = $this->conMoto($this->trabajador());
+        $moto = DatosVehiculo::desde(DatosVehiculo::MOTO, 'Bera', 'BR-150', 'Negro', 'AC456DF');
+
+        $this->marcaje->registrar($persona, Movimiento::ENTRADA, vehiculo: $moto);
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
+
+        // Salir a pie cuando entró en la moto: no.
+        try {
+            $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA);
+            $this->fail('Se marcó la salida a pie después de haber entrado en la moto.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('tipoVehiculo', $e->errors());
+        }
+
+        // Con la moto, que es en lo que entró: sí.
+        $salida = $this->marcaje->registrar($persona->fresh(), Movimiento::SALIDA, vehiculo: $moto);
+
+        $this->assertSame('AC456DF', $salida->placa);
+    }
+
+    /** Y al revés: quien entró a pie no puede salir en un vehículo que nunca metió. */
+    public function test_quien_entro_a_pie_no_sale_en_vehiculo(): void
+    {
+        $persona = $this->conMoto($this->trabajador());
+
+        $this->marcaje->registrar($persona, Movimiento::ENTRADA);
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
+
+        $this->expectException(ValidationException::class);
+
+        $this->marcaje->registrar(
+            $persona->fresh(),
+            Movimiento::SALIDA,
+            vehiculo: DatosVehiculo::desde(DatosVehiculo::MOTO, 'Bera', 'BR-150', 'Negro', 'AC456DF'),
+        );
+    }
+
+    /**
+     * Una placa registrada a un trabajador no la usa nadie más.
+     *
+     * Si dos personas pudieran entrar con la misma placa, el estacionamiento contaría dos veces el
+     * mismo vehículo y «¿de quién es este carro?» dejaría de tener una respuesta.
+     */
+    public function test_no_se_entra_con_el_vehiculo_registrado_a_otro_trabajador(): void
+    {
+        $duenio = $this->conMoto($this->trabajador());
+        $otro = $this->trabajador(['cedula' => '22222222', 'nombre' => 'Luis Hernández Mora']);
+
+        try {
+            $this->marcaje->registrar(
+                $otro,
+                Movimiento::ENTRADA,
+                vehiculo: DatosVehiculo::desde(DatosVehiculo::MOTO, 'Bera', 'BR-150', 'Negro', 'AC456DF'),
+            );
+            $this->fail('Se marcó una entrada con la placa de otro trabajador.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('placa', $e->errors());
+            // El aviso dice de quién es, que es lo que el vigilante necesita para resolverlo.
+            $this->assertStringContainsString($duenio->nombre, $e->errors()['placa'][0]);
+        }
+
+        // La placa sigue siendo de uno solo: no se le copió al otro.
+        $this->assertSame(0, $otro->fresh()->vehiculos()->count());
+    }
+
+    /** Al dueño, la suya no le estorba: es la misma placa y sigue siendo suya. */
+    public function test_al_dueno_su_propia_placa_no_le_estorba(): void
+    {
+        $persona = $this->conMoto($this->trabajador());
+        $moto = DatosVehiculo::desde(DatosVehiculo::MOTO, 'Bera', 'BR-150', 'Negro', 'AC456DF');
+
+        $entrada = $this->marcaje->registrar($persona, Movimiento::ENTRADA, vehiculo: $moto);
+
+        $this->assertSame('AC456DF', $entrada->placa);
     }
 
     public function test_un_vehiculo_que_no_tenia_se_le_suma_a_la_ficha(): void
