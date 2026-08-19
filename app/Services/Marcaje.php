@@ -473,10 +473,6 @@ class Marcaje
      */
     public function cuantosDentroPorTipo(): array
     {
-        $ultimos = DB::table('movimientos')
-            ->selectRaw('persona_id, max(id) as ultimo_id')
-            ->groupBy('persona_id');
-
         /*
          * OJO con el alias de la cuenta: es obligatorio, no cosmético.
          *
@@ -485,8 +481,7 @@ class Marcaje
          * en SQLite y el sistema en PostgreSQL, así que el fallo pasaba las pruebas y luego
          * reventaba la pantalla. Con alias, las dos dicen «cuantos».
          */
-        $cuenta = DB::table('movimientos')
-            ->joinSub($ultimos, 'u', fn ($union) => $union->on('movimientos.id', '=', 'u.ultimo_id'))
+        $cuenta = Movimiento::ultimoDeCadaPersona()
             ->join('personas', 'personas.id', '=', 'movimientos.persona_id')
             ->where('movimientos.tipo', Movimiento::ENTRADA)
             ->groupBy('personas.tipo')

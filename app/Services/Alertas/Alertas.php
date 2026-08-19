@@ -7,7 +7,6 @@ use App\Models\Persona;
 use App\Services\Estacionamiento\Estacionamiento;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 /**
  * El motor de alertas: mira el estado de ahora mismo y dice qué merece atención.
@@ -112,23 +111,16 @@ final class Alertas
     /**
      * Quién está dentro en este momento, con la hora de su entrada.
      *
-     * «Dentro» es aquel cuyo último movimiento fue una entrada. Se resuelve con un DISTINCT ON de
-     * Postgres: el primer registro por persona, ordenando por hora descendente, es su último
-     * movimiento; si es una entrada, está dentro.
+     * «Dentro» es aquel cuyo último movimiento fue una entrada. El último de cada persona lo
+     * resuelve Movimiento::ultimoDeCadaPersona(), en un SQL que entienden tanto PostgreSQL como
+     * SQLite — antes iba con un «distinct on», que es solo de Postgres y tumbaba las pruebas.
      *
      * @return Collection<int, object{persona_id:int, ocurrio_en:string}>
      */
     private function dentroAhora(): Collection
     {
-        $ultimos = Movimiento::query()
-            ->selectRaw('distinct on (persona_id) persona_id, tipo, ocurrio_en')
-            ->orderBy('persona_id')
-            ->orderByDesc('ocurrio_en')
-            ->orderByDesc('id');
-
-        return DB::query()
-            ->fromSub($ultimos, 'u')
-            ->where('tipo', Movimiento::ENTRADA)
-            ->get();
+        return Movimiento::ultimoDeCadaPersona()
+            ->where('movimientos.tipo', Movimiento::ENTRADA)
+            ->get(['movimientos.persona_id', 'movimientos.tipo', 'movimientos.ocurrio_en']);
     }
 }
