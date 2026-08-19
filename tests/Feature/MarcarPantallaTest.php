@@ -534,6 +534,90 @@ class MarcarPantallaTest extends TestCase
     }
 
     /**
+     * Al invitado que vuelve se le puede anotar OTRO vehículo, y se le suma a su ficha.
+     *
+     * Un invitado no viene siempre en lo mismo —hoy en su carro, el jueves en el de un amigo—, y
+     * la puerta tiene que poder anotarlo sin que nadie entre a arreglar la ficha antes.
+     */
+    public function test_al_invitado_que_vuelve_se_le_puede_anotar_otro_vehiculo(): void
+    {
+        $invitado = Persona::create([
+            'cedula' => '87654321',
+            'tipo' => Persona::INVITADO,
+            'nombre' => 'Carlos Pérez',
+            'motivo' => 'Videoconferencia',
+            'piso' => '2-1',
+            'activo' => true,
+        ]);
+
+        $invitado->vehiculos()->create([
+            'tipo' => 'carro',
+            'marca' => 'Toyota',
+            'modelo' => 'Corolla',
+            'color' => 'Gris',
+            'placa' => 'AB123CD',
+        ]);
+
+        // Hoy viene en otro: se marca «Otro…» y se teclea.
+        Livewire::test(Marcar::class)
+            ->set('cedula', '87654321')
+            ->call('buscar')
+            ->assertSee('Otro…')
+            ->set('traeHoy', Marcar::OTRO)
+            ->set('tipoVehiculo', 'moto')
+            ->set('marca', 'Empire')
+            ->set('modelo', 'Horse')
+            ->set('color', 'Rojo')
+            ->set('placa', 'AE321JK')
+            ->call('marcarEntrada')
+            ->assertHasNoErrors()
+            ->assertSee('Entrada registrada');
+
+        // Le quedan los dos, y la próxima vez los dos salen en la casilla.
+        $this->assertSame(
+            ['AB123CD', 'AE321JK'],
+            $invitado->fresh()->vehiculos->pluck('placa')->sort()->values()->all(),
+        );
+
+        $this->assertDatabaseHas('movimientos', ['placa' => 'AE321JK', 'tipo_vehiculo' => 'moto']);
+    }
+
+    /**
+     * En la salida solo hay dos respuestas posibles, y la pantalla ofrece las dos: irse en lo que
+     * entró, o dejarlo estacionado e irse caminando.
+     */
+    public function test_al_salir_se_puede_dejar_el_vehiculo_estacionado(): void
+    {
+        $this->conCarroYMoto($this->trabajador());
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->set('traeHoy', 'AB123CD')
+            ->call('marcarEntrada');
+
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            // Se enseña en qué entró, con todos sus datos, y las dos formas de salir.
+            ->assertSee('Toyota Corolla')
+            ->assertSee('AB123CD')
+            ->assertSee('¿Cómo sale?')
+            ->assertSee('A pie, lo deja estacionado')
+            // Deja el carro y se va caminando.
+            ->set('saleAPie', true)
+            ->call('marcarSalida')
+            ->assertHasNoErrors()
+            ->assertSee('Salida registrada');
+
+        $salida = Movimiento::where('tipo', Movimiento::SALIDA)->latest('id')->sole();
+
+        $this->assertNull($salida->placa);
+    }
+
+    /**
      * La pastilla dice la clase, la MARCA, el color y la placa. Todo eso se lee en la pantalla y
      * no en un «title»: se usa en un teléfono, y ahí no hay puntero que pase por encima, así que
      * un title no lo ve nunca nadie.
