@@ -206,18 +206,29 @@ Dos reglas que conviene tener claras:
 2. **Con vehículo y sin elegir, se asume `carro`**, que es lo más común. Cualquier valor que no
    sea `moto` se guarda como `carro`.
 
-### Se sale en lo mismo con lo que se entró
+### De la puerta no sale un vehículo que no entró por ella
 
-Quien entró en un vehículo **sale en ese vehículo**, y quien entró a pie **sale a pie**. Lo exige
-`Marcaje::registrar()` y la pantalla ni siquiera lo pregunta: cuando lo que toca es la salida, en
-lugar de la lista se enseña «Entró en · Moto AE321JK».
+La regla **no es simétrica**, y eso es a propósito:
 
-No es prolijidad. **El estacionamiento se calcula con estos asientos** —un vehículo está dentro si
-su dueño está dentro y su entrada traía vehículo—, así que una salida anotada «a pie» deja una moto
-dentro del portón para siempre, y el guardia acaba contando vehículos que ya no están.
+| Entró | Puede salir | Por qué |
+|---|---|---|
+| A pie | Solo a pie | Un vehículo que nunca entró no puede salir |
+| En la moto | En la moto **o a pie** | Dejarla estacionada e irse caminando es una tarde cualquiera |
+| En la moto | **No** en el carro | Ese carro no entró |
+
+Lo exige `Marcaje::registrar()`. La pantalla no ofrece la lista entera cuando toca la salida: solo
+las dos respuestas posibles —«en lo que entró» o «a pie, lo deja estacionado»—, y a quien entró a
+pie no le pregunta nada.
 
 La comparación es **por placa**, no por el objeto entero: lo que identifica al vehículo es la
 placa, y la marca o el color pudieron corregirse en la ficha entre la entrada y la salida.
+
+> **Ojo con el contador del estacionamiento.** Se calcula con estos asientos —hay vehículo dentro
+> si su dueño está dentro y su entrada traía vehículo—, así que **quien entra en carro y sale a pie
+> deja de contar aunque su carro siga estacionado**. El contador dirá menos vehículos de los que
+> hay. Es el precio de permitir esa salida, y hay que saberlo antes de fiarse del número. Si algún
+> día hace falta que cuadre, el estacionamiento tendría que mirar el último movimiento *del
+> vehículo*, no el de su dueño.
 
 ### Una placa es de una sola persona del personal
 

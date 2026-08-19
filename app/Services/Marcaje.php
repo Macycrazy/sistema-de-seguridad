@@ -422,15 +422,22 @@ class Marcaje
     }
 
     /**
-     * Quien entró en un vehículo sale en ese mismo vehículo. Quien entró a pie, sale a pie.
+     * De la puerta no sale un vehículo que no entró por ella.
      *
-     * El asiento de salida dice en qué se fue, y si dijera otra cosa el registro contaría una
-     * historia imposible: entró en la moto y salió a pie, dejando una moto que nadie sacó. No es
-     * solo prolijidad — el estacionamiento se calcula con estos asientos, así que una salida mal
-     * anotada deja un vehículo dentro para siempre.
+     * La regla NO es simétrica, y eso es a propósito:
+     *
+     *   · entró a pie          → sale a pie. Un vehículo que nunca entró no puede salir.
+     *   · entró en la moto     → sale en la moto, O A PIE. Dejarla estacionada e irse caminando
+     *                            es una tarde cualquiera: se va a almorzar y la recoge después.
+     *   · entró en la moto     → NO sale en el carro. Ese carro no entró.
      *
      * Se compara por PLACA y no por el objeto entero: lo que identifica al vehículo es la placa, y
      * la marca o el color pudieron corregirse en la ficha entre la entrada y la salida.
+     *
+     * OJO CON EL ESTACIONAMIENTO. Se calcula con estos asientos —hay vehículo dentro si su dueño
+     * está dentro y su entrada traía vehículo—, así que quien entra en carro y sale a pie deja de
+     * contar aunque su carro siga estacionado. El contador dirá menos vehículos de los que hay.
+     * Es el precio de permitir esa salida, y hay que saberlo antes de fiarse del número.
      *
      * @throws ValidationException
      */
@@ -449,7 +456,8 @@ class Marcaje
             return;
         }
 
-        // Entró a pie y se le está marcando la salida en algo.
+        // Entró a pie y se le está marcando la salida en algo. Ese vehículo no entró nunca por la
+        // puerta, así que no puede salir por ella.
         if ($placaDeEntrada === null) {
             throw ValidationException::withMessages([
                 'tipoVehiculo' => sprintf(
@@ -459,14 +467,20 @@ class Marcaje
             ]);
         }
 
+        // Entró en algo y sale a pie: se permite. Dejó el vehículo estacionado y se fue
+        // caminando, que es una tarde cualquiera — se va a almorzar, lo recoge después. La regla
+        // no está para impedir lo que pasa de verdad, sino para atajar el asiento imposible.
+        if ($placaDeSalida === null) {
+            return;
+        }
+
+        // Entró en uno y sale en OTRO. Eso sí es imposible: el segundo vehículo no entró.
         throw ValidationException::withMessages([
             'tipoVehiculo' => sprintf(
-                'Entró en %s y tiene que salir en %s. %s',
+                'Entró en %s, así que no se le puede marcar la salida en %s. Si se va caminando, '
+                .'márcale la salida a pie.',
                 $placaDeEntrada,
-                $placaDeEntrada,
-                $placaDeSalida === null
-                    ? 'No se le puede marcar la salida a pie.'
-                    : 'No se le puede marcar la salida en '.$placaDeSalida.'.',
+                $placaDeSalida,
             ),
         ]);
     }
