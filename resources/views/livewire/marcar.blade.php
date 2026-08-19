@@ -448,6 +448,7 @@
                     <x-vehiculo
                         :error="$errors->first('placa')"
                         :error-tipo="$errors->first('tipoVehiculo')"
+                        :tipo-vehiculo="$tipoVehiculo"
                         :vehiculos="$this->vehiculos"
                         :trae-hoy="$traeHoy"
                     />
@@ -618,10 +619,13 @@
                     />
                 </div>
 
-                {{-- En el alta no hay nada anotado todavía, así que la clase se elige libre. --}}
+                {{-- En el alta no hay nada anotado todavía, así que se escoge entre a pie, carro
+                     y moto, y solo si dice que trae algo salen las casillas de teclear. --}}
                 <x-vehiculo
                     :error="$errors->first('placa')"
                     :error-tipo="$errors->first('tipoVehiculo')"
+                    :tipo-vehiculo="$tipoVehiculo"
+                    :trae-hoy="$traeHoy"
                 />
 
                 {{-- En el teléfono, uno debajo del otro y a todo el ancho: en fila, «Guardar y

@@ -771,6 +771,19 @@ class Marcar extends Component
         return $entrada ? DatosVehiculo::desdeModelo($entrada) : $this->vehiculo();
     }
 
+    /**
+     * Se dijo que hoy viene en carro o en moto, teniendo la ficha sin vehículos anotados.
+     *
+     * Pone las dos cosas a la vez —que trae algo, y de qué clase— porque son una sola decisión
+     * del vigilante. Sin esto, la pantalla enseñaba las casillas de teclear pero «traeHoy» seguía
+     * en «a pie», así que lo tecleado se descartaba sin avisar al guardar.
+     */
+    public function elegirClase(string $tipo): void
+    {
+        $this->traeHoy = self::OTRO;
+        $this->tipoVehiculo = $tipo === DatosVehiculo::MOTO ? DatosVehiculo::MOTO : DatosVehiculo::CARRO;
+    }
+
     /** Vuelve al estado inicial: campo vacío y listo para teclear. */
     public function limpiar(): void
     {

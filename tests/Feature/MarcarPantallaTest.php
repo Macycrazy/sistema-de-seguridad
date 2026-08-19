@@ -301,6 +301,8 @@ class MarcarPantallaTest extends TestCase
         Livewire::test(Marcar::class)
             ->set('cedula', '12345678')
             ->call('buscar')
+            // Las casillas salen al decir que hoy viene en algo, no antes.
+            ->call('elegirClase', 'carro')
             ->assertSee('ej. Toyota')
             ->assertSee('ej. Corolla')
             ->assertSee('ej. Gris')
@@ -531,6 +533,48 @@ class MarcarPantallaTest extends TestCase
             'persona_id' => $persona->id,
             'tipo' => Movimiento::ENTRADA,
         ]);
+    }
+
+    /**
+     * El invitado que vino a pie la primera vez puede volver en carro, y hay que poder anotarlo.
+     *
+     * No tiene nada en la ficha —vino caminando—, así que la pantalla no le ofrece lista. Aun así
+     * tiene que poder decirse «hoy vino en carro», y lo que se teclee tiene que guardarse.
+     */
+    public function test_el_invitado_que_vino_a_pie_puede_volver_en_carro(): void
+    {
+        $invitado = Persona::create([
+            'cedula' => '87654321',
+            'tipo' => Persona::INVITADO,
+            'nombre' => 'Carlos Pérez',
+            'motivo' => 'Videoconferencia',
+            'piso' => '2-1',
+            'activo' => true,
+        ]);
+
+        // La primera visita fue a pie: no le quedó ningún vehículo anotado.
+        $this->assertSame(0, $invitado->vehiculos()->count());
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '87654321')
+            ->call('buscar')
+            // Las tres opciones tienen que estar, aunque no tenga nada anotado.
+            ->assertSee('Vino a pie')
+            ->assertSee('Carro')
+            ->assertSee('Moto')
+            // Hoy vino en carro: se escoge la clase y se teclea.
+            ->call('elegirClase', 'carro')
+            ->set('marca', 'Chevrolet')
+            ->set('modelo', 'Aveo')
+            ->set('color', 'Azul')
+            ->set('placa', 'XY987ZW')
+            ->call('marcarEntrada')
+            ->assertHasNoErrors()
+            ->assertSee('Entrada registrada');
+
+        // El asiento lleva el carro, y la ficha se lo queda para la próxima visita.
+        $this->assertDatabaseHas('movimientos', ['placa' => 'XY987ZW', 'tipo_vehiculo' => 'carro']);
+        $this->assertSame('XY987ZW', $invitado->fresh()->vehiculos()->sole()->placa);
     }
 
     /**
