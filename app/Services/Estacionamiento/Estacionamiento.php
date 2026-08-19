@@ -72,15 +72,72 @@ final class Estacionamiento
         ];
     }
 
-    /** El aforo configurado (0 = sin tope). */
+    /** El aforo total configurado (0 = sin tope). */
     public function aforo(): int
     {
         return $this->umbrales->aforoEstacionamiento();
+    }
+
+    /**
+     * Los tres aforos: el total, y los de carros y motos por separado —que no ocupan el mismo
+     * sitio—. 0 en cualquiera significa «sin tope» para ese cupo.
+     *
+     * @return array{total:int, carro:int, moto:int}
+     */
+    public function aforos(): array
+    {
+        return [
+            'total' => $this->umbrales->aforoEstacionamiento(),
+            'carro' => $this->umbrales->aforoCarros(),
+            'moto' => $this->umbrales->aforoMotos(),
+        ];
+    }
+
+    /**
+     * El movimiento de vehículos del día: entradas Y salidas que llevaban vehículo, más reciente
+     * primero. Es el registro del estacionamiento —quién entró y quién sacó su vehículo hoy—, no
+     * solo lo que hay dentro ahora.
+     *
+     * @return Collection<int, object>
+     */
+    public function delDia(CarbonImmutable $fecha): Collection
+    {
+        return Movimiento::query()
+            ->join('personas', 'personas.id', '=', 'movimientos.persona_id')
+            ->whereNotNull('movimientos.tipo_vehiculo')
+            ->whereBetween('movimientos.ocurrio_en', [$fecha->startOfDay(), $fecha->endOfDay()])
+            ->orderByDesc('movimientos.ocurrio_en')
+            ->orderByDesc('movimientos.id')
+            ->get([
+                'movimientos.tipo as sentido', 'movimientos.tipo_vehiculo', 'movimientos.marca',
+                'movimientos.modelo', 'movimientos.color', 'movimientos.placa',
+                'movimientos.ocurrio_en', 'personas.nombre',
+            ])
+            ->map(function ($fila) {
+                $fila->vehiculo = DatosVehiculo::desdeModelo($fila);
+                $fila->esEntrada = $fila->sentido === Movimiento::ENTRADA;
+
+                return $fila;
+            });
     }
 
     /** «Desde cuándo» está un vehículo, para la lista. */
     public function desde(string $ocurrioEn): CarbonImmutable
     {
         return CarbonImmutable::parse($ocurrioEn);
+    }
+
+    /** Cuánto lleva dentro, dicho corto: «3 h 20 min», «45 min». */
+    public function tiempoDentro(string $ocurrioEn): string
+    {
+        $minutos = (int) $this->desde($ocurrioEn)->diffInMinutes(CarbonImmutable::now());
+        $horas = intdiv($minutos, 60);
+        $resto = $minutos % 60;
+
+        return match (true) {
+            $horas > 0 && $resto > 0 => $horas.' h '.$resto.' min',
+            $horas > 0 => $horas.' h',
+            default => max(0, $resto).' min',
+        };
     }
 }

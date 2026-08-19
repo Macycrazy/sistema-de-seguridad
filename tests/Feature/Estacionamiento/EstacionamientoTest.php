@@ -4,6 +4,7 @@ namespace Tests\Feature\Estacionamiento;
 
 use App\Models\Movimiento;
 use App\Models\Persona;
+use App\Services\Alertas\UmbralesDeAlerta;
 use App\Services\DatosVehiculo;
 use App\Services\Estacionamiento\Estacionamiento;
 use Carbon\CarbonImmutable;
@@ -75,5 +76,41 @@ class EstacionamientoTest extends TestCase
         $this->assertSame('AB123CD', $fila->placa);
         $this->assertSame('PERSONA 12345678', $fila->nombre);
         $this->assertSame('Carro', $fila->vehiculo->etiquetaTipo());
+    }
+
+    #[Test]
+    public function el_historial_del_dia_trae_entradas_y_salidas_de_vehiculos(): void
+    {
+        $ana = $this->persona('1');
+        $this->marca($ana, Movimiento::ENTRADA, CarbonImmutable::now()->subHours(2), ['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'AB123CD']);
+        $this->marca($ana, Movimiento::SALIDA, CarbonImmutable::now()->subMinutes(10), ['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'AB123CD']);
+        // Quien entró a pie no aparece en el estacionamiento.
+        $this->marca($this->persona('2'), Movimiento::ENTRADA, CarbonImmutable::now()->subHour());
+
+        $historial = app(Estacionamiento::class)->delDia(CarbonImmutable::today());
+
+        $this->assertCount(2, $historial);
+        $this->assertFalse($historial->first()->esEntrada);   // más reciente: la salida
+    }
+
+    #[Test]
+    public function el_tiempo_dentro_se_dice_corto(): void
+    {
+        $hace = CarbonImmutable::now()->subHours(2)->subMinutes(15)->toDateTimeString();
+
+        $this->assertStringContainsString('2 h', app(Estacionamiento::class)->tiempoDentro($hace));
+    }
+
+    #[Test]
+    public function los_aforos_por_tipo_se_leen(): void
+    {
+        $umbrales = app(UmbralesDeAlerta::class);
+        $umbrales->guardar('alerta_aforo_carro', 40);
+        $umbrales->guardar('alerta_aforo_moto', 10);
+
+        $aforos = app(Estacionamiento::class)->aforos();
+
+        $this->assertSame(40, $aforos['carro']);
+        $this->assertSame(10, $aforos['moto']);
     }
 }

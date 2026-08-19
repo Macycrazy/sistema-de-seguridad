@@ -53,16 +53,25 @@ final class Alertas
             ));
         }
 
-        // ESTACIONAMIENTO — se llena aparte del aforo de personas: mucha gente entra caminando.
-        $aforoEst = $this->umbrales->aforoEstacionamiento();
-        if ($aforoEst > 0) {
-            $vehiculos = $this->estacionamiento->cuantosDentro();
-            if ($vehiculos > $aforoEst) {
+        // ESTACIONAMIENTO — se llena aparte del aforo de personas (mucha gente entra caminando), y
+        // carros y motos se cuentan por separado, que no ocupan el mismo sitio. Se avisa por el
+        // total y por cada tipo, según qué aforos estén puestos.
+        $aforos = $this->estacionamiento->aforos();
+        $porTipo = $this->estacionamiento->porTipoDentro();
+
+        $cupos = [
+            ['aforo' => $aforos['total'], 'dentro' => $porTipo['carro'] + $porTipo['moto'], 'que' => 'vehículos', 'titulo' => 'Estacionamiento lleno'],
+            ['aforo' => $aforos['carro'], 'dentro' => $porTipo['carro'], 'que' => 'carros', 'titulo' => 'Sin puestos de carros'],
+            ['aforo' => $aforos['moto'], 'dentro' => $porTipo['moto'], 'que' => 'motos', 'titulo' => 'Sin puestos de motos'],
+        ];
+
+        foreach ($cupos as $cupo) {
+            if ($cupo['aforo'] > 0 && $cupo['dentro'] > $cupo['aforo']) {
                 $alertas->push(new Alerta(
                     tipo: Alerta::ESTACIONAMIENTO,
                     severidad: Alerta::URGENTE,
-                    titulo: 'Estacionamiento lleno',
-                    detalle: $vehiculos.' vehículos dentro; el aforo son '.$aforoEst.'.',
+                    titulo: $cupo['titulo'],
+                    detalle: $cupo['dentro'].' '.$cupo['que'].' dentro; el aforo son '.$cupo['aforo'].'.',
                 ));
             }
         }
