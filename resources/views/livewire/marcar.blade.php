@@ -62,23 +62,22 @@
                 </p>
             </div>
 
-            {{-- El visor: la cámara a pantalla completa del recuadro, con un marco central que dice
-                 dónde apuntar el QR y el resto oscurecido para que cante. El mensaje va sobre un
-                 degradado abajo, sin tapar la imagen. --}}
+            {{-- El visor: grande, para que se vea bien. Sin marco oscuro por encima —la imagen va
+                 clara y entera—; solo una guía fina de enfoque. Vertical y alto (ocupa casi toda la
+                 pantalla del teléfono), con el mensaje sobre un degradado suave abajo. --}}
             <div x-show="abierto" x-cloak>
-                <div class="relative overflow-hidden rounded-xl bg-slate-900 shadow-inner" style="aspect-ratio: 4 / 3">
+                <div class="relative w-full overflow-hidden rounded-xl bg-slate-100"
+                     style="aspect-ratio: 3 / 4; max-height: 78vh">
                     <video x-ref="video" playsinline muted
                            class="absolute inset-0 h-full w-full object-cover"></video>
                     <canvas x-ref="canvas" class="hidden"></canvas>
 
-                    <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-                        <div class="h-40 w-40 rounded-2xl border-4 border-white/85"
-                             style="box-shadow: 0 0 0 1000px rgba(2, 6, 23, 0.45)"></div>
-                    </div>
+                    {{-- Guía de enfoque suave: un marco claro y fino, sin oscurecer nada. --}}
+                    <div class="pointer-events-none absolute inset-4 rounded-2xl border-2 border-white/70"></div>
 
                     <p x-text="mensaje"
-                       class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-4 pb-3 pt-10
-                              text-center font-mono text-xs uppercase tracking-widest text-white"></p>
+                       class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-4 pb-4 pt-12
+                              text-center font-mono text-sm font-semibold uppercase tracking-widest text-white"></p>
                 </div>
 
                 <x-boton type="button" variante="secundario" x-on:click="cerrar()" class="mt-3 w-full">
