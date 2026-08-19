@@ -67,7 +67,7 @@ enum Permiso: string
             self::GESTIONAR_USUARIOS => 'Dar de alta, desactivar y cambiar claves y roles.',
             self::GESTIONAR_PERSONAL => 'Cargar y dar de alta a los trabajadores que se marcan en la puerta.',
             self::GESTIONAR_VISITAS => 'Agendar a quién se espera y ver la lista de visitas del día en la puerta.',
-            self::GESTIONAR_EDIFICIO => 'Las oficinas del edificio que se ofrecen al marcar el piso de un invitado.',
+            self::GESTIONAR_EDIFICIO => 'Las oficinas del edificio que se ofrecen al marcar el piso de un visitante.',
             self::GESTIONAR_AJUSTES => 'Las reglas de tiempo del marcaje: los plazos entre entradas y salidas.',
             self::GESTIONAR_RESPALDOS => 'Crear y descargar copias de seguridad de la base. Un respaldo es TODA la data.',
             self::VER_AUDITORIA => 'Quién consultó qué cédula, quién exportó y quién corrigió.',

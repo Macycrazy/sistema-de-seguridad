@@ -32,7 +32,7 @@
             </div>
 
             <div class="flex items-baseline gap-2">
-                <dt class="font-mono text-xs uppercase tracking-widest text-slate-500">Invitados</dt>
+                <dt class="font-mono text-xs uppercase tracking-widest text-slate-500">Visitantes</dt>
                 <dd class="text-xl font-bold text-invitado">{{ $this->dentroPorTipo['invitado'] }}</dd>
             </div>
         </dl>
@@ -582,7 +582,7 @@
                     <div class="min-w-0 flex-1">
                         <p class="flex flex-wrap items-center gap-2 font-semibold text-invitado">
                             <x-etiqueta tipo="invitado" />
-                            Esta cédula no está en el sistema: es un invitado.
+                            Esta cédula no está en el sistema: es un visitante.
                         </p>
                         <p class="mt-1 text-sm text-slate-600">
                             Hacen falta tres datos: nombre, motivo y el piso al que va. La próxima vez
@@ -688,7 +688,7 @@
             </ol>
 
             <p class="mt-5 rounded-lg bg-invitado-suave px-3 py-2.5 text-sm font-medium text-invitado">
-                ¿No tiene carnet y no aparece? Es un <b>invitado</b>: escribe su nombre, el motivo y a qué piso va.
+                ¿No tiene carnet y no aparece? Es un <b>visitante</b>: escribe su nombre, el motivo y a qué piso va.
             </p>
 
             <x-boton type="button" x-on:click="ayuda = false" class="mt-6 w-full">Entendido</x-boton>

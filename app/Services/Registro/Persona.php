@@ -93,7 +93,7 @@ final readonly class Persona
     public function adscripcion(): string
     {
         if ($this->tipo === TipoDePersona::Invitado) {
-            return $this->visitaA ? 'Visita a '.$this->visitaA : 'Invitado';
+            return $this->visitaA ? 'Visita a '.$this->visitaA : 'Visitante';
         }
 
         $partes = array_filter([$this->dependencia, $this->piso ? 'Piso '.$this->piso : null]);
