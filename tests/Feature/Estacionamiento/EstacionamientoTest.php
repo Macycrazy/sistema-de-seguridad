@@ -94,6 +94,30 @@ class EstacionamientoTest extends TestCase
     }
 
     #[Test]
+    public function pernoctan_los_que_entraron_antes_de_hoy_y_siguen_dentro(): void
+    {
+        $ana = $this->persona('1');
+        $this->marca($ana, Movimiento::ENTRADA, CarbonImmutable::yesterday()->setTime(20, 0), ['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'AB123CD']);
+        // Otro que entró hoy: ese no pernocta.
+        $this->marca($this->persona('2'), Movimiento::ENTRADA, CarbonImmutable::now(), ['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'XY9']);
+
+        $pernoctan = app(Estacionamiento::class)->pernoctan();
+
+        $this->assertCount(1, $pernoctan);
+        $this->assertSame('AB123CD', $pernoctan->first()->placa);
+    }
+
+    #[Test]
+    public function quien_pernocto_pero_ya_salio_no_cuenta(): void
+    {
+        $ana = $this->persona('1');
+        $this->marca($ana, Movimiento::ENTRADA, CarbonImmutable::yesterday()->setTime(20, 0), ['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'AB123CD']);
+        $this->marca($ana, Movimiento::SALIDA, CarbonImmutable::now());   // ya se fue
+
+        $this->assertTrue(app(Estacionamiento::class)->pernoctan()->isEmpty());
+    }
+
+    #[Test]
     public function el_tiempo_dentro_se_dice_corto(): void
     {
         $hace = CarbonImmutable::now()->subHours(2)->subMinutes(15)->toDateTimeString();
