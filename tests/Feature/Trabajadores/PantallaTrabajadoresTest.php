@@ -3,6 +3,7 @@
 namespace Tests\Feature\Trabajadores;
 
 use App\Livewire\Trabajadores\ListaDeTrabajadores;
+use App\Models\Oficina;
 use App\Models\Persona;
 use App\Models\User;
 use App\Usuarios\Rol;
@@ -146,6 +147,25 @@ class PantallaTrabajadoresTest extends TestCase
             ->set('filtroEstado', 'inactivo')
             ->assertSee('ROSA MARCA')
             ->assertDontSee('ANA TECNO');
+    }
+
+    #[Test]
+    public function al_poner_la_gerencia_se_ofrecen_sus_pisos(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        Oficina::query()->delete();   // la migración siembra el catálogo; partimos limpio
+        Oficina::create(['codigo' => '4-1', 'nombre' => 'Sala A', 'gerencia' => 'GESTIÓN HUMANA', 'orden' => 1]);
+        Oficina::create(['codigo' => '4-2', 'gerencia' => 'GESTIÓN HUMANA', 'orden' => 2]);
+        Oficina::create(['codigo' => '2-1', 'gerencia' => 'TECNOLOGÍA', 'orden' => 3]);
+        $t = Persona::create(['cedula' => '12345678', 'tipo' => Persona::TRABAJADOR, 'nombre' => 'ANA', 'activo' => true]);
+
+        Livewire::test(ListaDeTrabajadores::class)
+            ->call('editar', $t->id)
+            ->set('dependencia', 'Gestión Humana')
+            // El piso ofrece los dos de esa gerencia, no el de Tecnología.
+            ->assertSee('4-1')
+            ->assertSee('4-2')
+            ->assertDontSee('2-1');
     }
 
     #[Test]

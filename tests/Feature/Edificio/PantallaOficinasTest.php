@@ -40,6 +40,21 @@ class PantallaOficinasTest extends TestCase
     }
 
     #[Test]
+    public function asocia_una_gerencia_al_piso_en_mayusculas(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+
+        Livewire::test(ListaDeOficinas::class)
+            ->set('codigo', '4-1')
+            ->set('nombre', 'Sala')
+            ->set('gerencia', 'Gestión Humana')
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('oficinas', ['codigo' => '4-1', 'gerencia' => 'GESTIÓN HUMANA']);
+    }
+
+    #[Test]
     public function agregar_sin_codigo_muestra_el_error(): void
     {
         $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
