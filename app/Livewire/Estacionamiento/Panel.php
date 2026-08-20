@@ -2,10 +2,12 @@
 
 namespace App\Livewire\Estacionamiento;
 
+use App\Models\Puesto;
 use App\Services\DatosVehiculo;
 use App\Services\Estacionamiento\Estacionamiento;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -23,6 +25,9 @@ class Panel extends Component
 
     /** Si se muestra el registro del día (entradas y salidas), aparte de lo que hay dentro. */
     public bool $verHistorial = false;
+
+    /** Lo que se dice tras asignar un puesto a un vehículo. */
+    public string $aviso = '';
 
     /** Todo lo que hay dentro ahora. Se calcula una vez por render y de aquí sale lo demás. */
     #[Computed]
@@ -80,9 +85,73 @@ class Panel extends Component
         return app(Estacionamiento::class)->pernoctan();
     }
 
+    /**
+     * Las opciones de puesto para cada vehículo dentro, listas para el desplegable de su fila:
+     * «Sin asignar», su puesto actual (si tiene) y las plazas libres que admiten su tipo. Se arma
+     * una sola vez por render y no una consulta por fila.
+     *
+     * @return array<int, array<string, string>>
+     */
+    #[Computed]
+    public function opcionesPorVehiculo(): array
+    {
+        $ocupados = app(Estacionamiento::class)->puestosOcupados()->all();
+
+        $libres = Puesto::query()
+            ->where('activo', true)
+            ->when($ocupados !== [], fn ($q) => $q->whereNotIn('id', $ocupados))
+            ->orderBy('orden')->orderBy('codigo')
+            ->get();
+
+        $etiqueta = fn (Puesto $p) => $p->codigo.($p->zona ? ' · '.$p->zona : '').' ('.$p->etiquetaTipo().')';
+        $mapa = [];
+
+        foreach ($this->dentro() as $vehiculo) {
+            $opciones = ['' => 'Sin asignar'];
+
+            // Su plaza actual va primero, para que se vea seleccionada (está ocupada, así que no
+            // sale entre las libres).
+            if ($vehiculo->puesto_id) {
+                $opciones[$vehiculo->puesto_id] = ($vehiculo->puesto ?? '—').' (actual)';
+            }
+
+            foreach ($libres as $puesto) {
+                if ($puesto->admite($vehiculo->tipo_vehiculo)) {
+                    $opciones[$puesto->id] = $etiqueta($puesto);
+                }
+            }
+
+            $mapa[$vehiculo->persona_id] = $opciones;
+        }
+
+        return $mapa;
+    }
+
+    /** Si hay algún puesto en el catálogo, para saber si mostrar la columna de asignación. */
+    #[Computed]
+    public function hayPuestos(): bool
+    {
+        return Puesto::query()->where('activo', true)->exists();
+    }
+
+    /** Asigna, cambia o quita el puesto de un vehículo que está dentro. */
+    public function asignarPuesto(int $personaId, string $puestoId): void
+    {
+        try {
+            app(Estacionamiento::class)->asignarPuesto($personaId, $puestoId === '' ? null : (int) $puestoId);
+        } catch (ValidationException $e) {
+            $this->aviso = $e->validator->errors()->first();
+
+            return;
+        }
+
+        $this->aviso = 'Puesto actualizado.';
+        $this->actualizar();
+    }
+
     public function actualizar(): void
     {
-        unset($this->dentro, $this->vehiculos, $this->resumen, $this->historial, $this->pernoctan);
+        unset($this->dentro, $this->vehiculos, $this->resumen, $this->historial, $this->pernoctan, $this->opcionesPorVehiculo);
     }
 
     public function render()

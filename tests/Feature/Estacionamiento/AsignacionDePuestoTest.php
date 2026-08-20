@@ -76,6 +76,60 @@ class AsignacionDePuestoTest extends TestCase
     }
 
     #[Test]
+    public function se_asigna_el_puesto_despues_de_entrar_desde_el_estacionamiento(): void
+    {
+        $puesto = Puesto::create(['codigo' => 'A-1', 'orden' => 1]);
+        $ana = $this->persona();
+        // Entra sin puesto: en la puerta no se sabe dónde va a estacionar.
+        app(Marcaje::class)->registrar(persona: $ana, tipo: Movimiento::ENTRADA, vehiculo: $this->carro());
+
+        app(Estacionamiento::class)->asignarPuesto($ana->id, $puesto->id);
+
+        $this->assertSame($puesto->id, (int) Movimiento::where('persona_id', $ana->id)->where('tipo', Movimiento::ENTRADA)->value('puesto_id'));
+        $this->assertEqualsCanonicalizing([$puesto->id], app(Estacionamiento::class)->puestosOcupados()->all());
+    }
+
+    #[Test]
+    public function no_se_le_asigna_un_puesto_ya_ocupado_por_otro(): void
+    {
+        $puesto = Puesto::create(['codigo' => 'A-1', 'orden' => 1]);
+        $ana = $this->persona('1');
+        app(Marcaje::class)->registrar(persona: $ana, tipo: Movimiento::ENTRADA, vehiculo: $this->carro('AAA111'), puestoId: $puesto->id);
+
+        $luis = $this->persona('2');
+        app(Marcaje::class)->registrar(persona: $luis, tipo: Movimiento::ENTRADA, vehiculo: $this->carro('BBB222'));
+
+        $this->expectException(ValidationException::class);
+        app(Estacionamiento::class)->asignarPuesto($luis->id, $puesto->id);
+    }
+
+    #[Test]
+    public function reasignar_al_mismo_puesto_no_falla(): void
+    {
+        $puesto = Puesto::create(['codigo' => 'A-1', 'orden' => 1]);
+        $ana = $this->persona();
+        app(Marcaje::class)->registrar(persona: $ana, tipo: Movimiento::ENTRADA, vehiculo: $this->carro(), puestoId: $puesto->id);
+
+        // No revienta: sigue siendo su plaza.
+        app(Estacionamiento::class)->asignarPuesto($ana->id, $puesto->id);
+
+        $this->assertSame($puesto->id, (int) Movimiento::where('persona_id', $ana->id)->value('puesto_id'));
+    }
+
+    #[Test]
+    public function quitar_el_puesto_deja_al_vehiculo_sin_plaza(): void
+    {
+        $puesto = Puesto::create(['codigo' => 'A-1', 'orden' => 1]);
+        $ana = $this->persona();
+        app(Marcaje::class)->registrar(persona: $ana, tipo: Movimiento::ENTRADA, vehiculo: $this->carro(), puestoId: $puesto->id);
+
+        app(Estacionamiento::class)->asignarPuesto($ana->id, null);
+
+        $this->assertNull(Movimiento::where('persona_id', $ana->id)->value('puesto_id'));
+        $this->assertSame(['A-1'], app(Estacionamiento::class)->puestosLibres()->pluck('codigo')->all());
+    }
+
+    #[Test]
     public function al_salir_el_puesto_queda_libre_otra_vez(): void
     {
         $puesto = Puesto::create(['codigo' => 'A-1', 'orden' => 1]);
