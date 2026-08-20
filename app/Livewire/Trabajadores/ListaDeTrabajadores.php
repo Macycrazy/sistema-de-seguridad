@@ -4,6 +4,7 @@ namespace App\Livewire\Trabajadores;
 
 use App\Exports\PlantillaTrabajadores;
 use App\Imports\TrabajadoresImport;
+use App\Models\Oficina;
 use App\Models\Persona;
 use App\Services\Auditoria\Auditoria;
 use App\Services\GestionDeInvitados;
@@ -186,6 +187,31 @@ class ListaDeTrabajadores extends Component
             ->distinct()
             ->orderBy('dependencia')
             ->pluck('dependencia')
+            ->all();
+    }
+
+    /**
+     * Los pisos asociados a la gerencia que hay ahora en el formulario, para ofrecerlos al asignar
+     * el piso de un trabajador. Salen del catálogo del edificio (cada oficina tiene su gerencia).
+     * Casa por el mismo texto en MAYÚSCULAS; si la gerencia no tiene pisos asociados, no sugiere
+     * nada y el piso se escribe a mano como siempre.
+     *
+     * @return array<int, array{codigo:string, nombre:?string}>
+     */
+    #[Computed]
+    public function pisosDeLaGerencia(): array
+    {
+        $gerencia = mb_strtoupper(trim($this->dependencia));
+
+        if ($gerencia === '') {
+            return [];
+        }
+
+        return Oficina::query()
+            ->where('gerencia', $gerencia)
+            ->orderBy('orden')->orderBy('codigo')
+            ->get(['codigo', 'nombre'])
+            ->map(fn (Oficina $o) => ['codigo' => $o->codigo, 'nombre' => $o->nombre])
             ->all();
     }
 

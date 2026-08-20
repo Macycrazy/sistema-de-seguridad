@@ -47,10 +47,11 @@ class CatalogoDelEdificio
      *
      * @throws ValidationException
      */
-    public function guardar(string $codigo, ?string $nombre = null, ?int $orden = null): Oficina
+    public function guardar(string $codigo, ?string $nombre = null, ?int $orden = null, ?string $gerencia = null): Oficina
     {
         $codigo = mb_strtoupper(trim($codigo));
         $nombre = trim((string) $nombre);
+        $gerencia = trim((string) $gerencia);
 
         if ($codigo === '') {
             throw ValidationException::withMessages([
@@ -62,6 +63,9 @@ class CatalogoDelEdificio
             ['codigo' => $codigo],
             [
                 'nombre' => $nombre === '' ? null : mb_substr($nombre, 0, 60),
+                // La gerencia se guarda en MAYÚSCULAS, igual que «dependencia» del trabajador, para
+                // que casen al ofrecer los pisos.
+                'gerencia' => $gerencia === '' ? null : mb_strtoupper(mb_substr($gerencia, 0, 120)),
                 // Al final de la lista si es nueva; el que se pase, si se indica.
                 'orden' => $orden ?? (Oficina::max('orden') + 1),
             ],

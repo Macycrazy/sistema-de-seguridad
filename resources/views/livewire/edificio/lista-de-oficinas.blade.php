@@ -20,6 +20,17 @@
                 <x-campo etiqueta="Nombre" nombre="nombre" maxlength="60"
                          ayuda="Opcional. Solo se usa si no labora nadie ahí."
                          wire:model="nombre" :error="$errors->first('nombre')" />
+
+                {{-- La gerencia que ocupa este piso: así al asignar el piso a un trabajador se
+                     ofrecen los de su gerencia. Con lista de las que ya existen, sin obligar. --}}
+                <x-campo etiqueta="Gerencia" nombre="gerencia" maxlength="120" list="gerencias-conocidas"
+                         ayuda="Opcional. La gerencia que labora en este piso."
+                         wire:model="gerencia" :error="$errors->first('gerencia')" />
+                <datalist id="gerencias-conocidas">
+                    @foreach ($this->gerencias as $g)
+                        <option value="{{ $g }}"></option>
+                    @endforeach
+                </datalist>
             </div>
 
             <div class="mt-5 flex items-center gap-3">
@@ -36,6 +47,7 @@
                 <tr class="border-b border-slate-200 text-left font-mono text-xs uppercase tracking-widest text-slate-500">
                     <th class="px-4 py-3 font-semibold">Código</th>
                     <th class="px-4 py-3 font-semibold">Nombre</th>
+                    <th class="px-4 py-3 font-semibold">Gerencia</th>
                     <th class="px-4 py-3 font-semibold text-right">Acción</th>
                 </tr>
             </thead>
@@ -44,6 +56,7 @@
                     <tr wire:key="of-{{ $oficina->id }}">
                         <td class="px-4 py-3 font-mono font-semibold text-slate-900">{{ $oficina->codigo }}</td>
                         <td class="px-4 py-3 text-slate-600">{{ $oficina->nombre ?: '—' }}</td>
+                        <td class="px-4 py-3 text-slate-600">{{ $oficina->gerencia ?: '—' }}</td>
                         <td class="px-4 py-3 text-right">
                             <button wire:click="editar({{ $oficina->id }})"
                                     class="text-sm font-semibold text-parte3 hover:underline">Editar</button>
@@ -52,7 +65,7 @@
                         </td>
                     </tr>
                 @empty
-                    <x-tabla-vacia :columnas="3">
+                    <x-tabla-vacia :columnas="4">
                         No hay oficinas en el catálogo.
                     </x-tabla-vacia>
                 @endforelse
