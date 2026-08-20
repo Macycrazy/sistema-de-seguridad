@@ -14,6 +14,7 @@
             ['ruta' => 'organigrama', 'permiso' => 'gestionar-personal', 'titulo' => 'Organigrama', 'texto' => 'La estructura de unidades del CIIP.'],
             ['ruta' => 'usuarios', 'permiso' => 'gestionar-usuarios', 'titulo' => 'Usuarios', 'texto' => 'Cuentas que entran al sistema, roles y claves.'],
             ['ruta' => 'edificio', 'permiso' => 'gestionar-edificio', 'titulo' => 'Edificio', 'texto' => 'Las oficinas que se ofrecen al marcar el piso.'],
+            ['ruta' => 'puestos', 'permiso' => 'gestionar-edificio', 'titulo' => 'Puestos', 'texto' => 'Las plazas numeradas del estacionamiento.'],
             ['ruta' => 'ajustes', 'permiso' => 'gestionar-ajustes', 'titulo' => 'Ajustes', 'texto' => 'Reglas de tiempo, umbrales de alerta y retención.'],
             ['ruta' => 'auditoria', 'permiso' => 'ver-auditoria', 'titulo' => 'Auditoría', 'texto' => 'Quién consultó, exportó o cambió qué.'],
             ['ruta' => 'roles', 'permiso' => 'gestionar-permisos', 'titulo' => 'Roles', 'texto' => 'Qué puede hacer cada rol.'],
