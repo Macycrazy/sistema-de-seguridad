@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Movimiento;
 use App\Models\Persona;
+use App\Models\Puesto;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -218,6 +219,7 @@ class Marcaje
         ?string $motivo = null,
         ?string $piso = null,
         ?DatosVehiculo $vehiculo = null,
+        ?int $puestoId = null,
     ): Movimiento {
         if (! in_array($tipo, [Movimiento::ENTRADA, Movimiento::SALIDA], true)) {
             throw ValidationException::withMessages([
@@ -241,11 +243,15 @@ class Marcaje
             $this->exigirQueSalgaEnLoQueEntro($persona, $vehiculo);
         }
 
+        // El puesto —opcional— solo se asigna al ENTRAR con vehículo: se valida aquí y viaja al
+        // asiento. En la salida o a pie, no hay plaza que asignar.
+        $puestoValidado = $this->puestoParaLaEntrada($puestoId, $tipo, $vehiculo);
+
         // La ficha y el asiento se guardan juntos o no se guarda ninguno: si falla la
         // actualización del invitado, no queremos un movimiento suelto apuntando a un dato viejo.
         $piso = Persona::normalizarPiso($piso);
 
-        return DB::transaction(function () use ($persona, $tipo, $usuarioId, $motivo, $piso, $vehiculo) {
+        return DB::transaction(function () use ($persona, $tipo, $usuarioId, $motivo, $piso, $vehiculo, $puestoValidado) {
             // Doble pulsación del botón, o el lector de carnets leyendo dos veces el mismo
             // carnet: se devuelve el asiento que ya existe en vez de crear otro igual.
             // Como los movimientos no se borran, un duplicado se quedaría en el histórico
@@ -285,12 +291,61 @@ class Marcaje
                 'motivo' => $persona->esInvitado() ? $persona->motivo : null,
                 // El piso sí lo llevan los dos: el suyo si labora aquí, aquel al que va si visita.
                 'piso' => $persona->piso,
+                // La plaza asignada al entrar (o nada). No es «congelada»: apunta al catálogo, y si
+                // el puesto se borra, la FK se anula sola.
+                'puesto_id' => $puestoValidado,
                 // Copia congelada de lo que trajo HOY, no un enlace a la tabla: el asiento tiene
                 // que seguir diciendo la verdad de ese día aunque el vehículo se corrija o se
                 // borre después.
                 ...$vehiculo->paraGuardar(),
             ]);
         });
+    }
+
+    /**
+     * Valida el puesto que se quiere asignar y devuelve su id, o null si no aplica.
+     *
+     * El puesto solo tiene sentido al ENTRAR con vehículo: en la salida o a pie no hay plaza. Y si
+     * se pone, tiene que existir, estar habilitado, admitir ese tipo de vehículo y estar libre.
+     *
+     * @throws ValidationException
+     */
+    protected function puestoParaLaEntrada(?int $puestoId, string $tipo, DatosVehiculo $vehiculo): ?int
+    {
+        if ($puestoId === null || $tipo !== Movimiento::ENTRADA || $vehiculo->vacio()) {
+            return null;
+        }
+
+        $puesto = Puesto::find($puestoId);
+
+        if (! $puesto || ! $puesto->activo) {
+            throw ValidationException::withMessages([
+                'puesto' => 'Ese puesto no existe o está deshabilitado.',
+            ]);
+        }
+
+        if (! $puesto->admite($vehiculo->tipo)) {
+            throw ValidationException::withMessages([
+                'puesto' => 'Ese puesto no admite este tipo de vehículo.',
+            ]);
+        }
+
+        if ($this->puestoOcupado($puestoId)) {
+            throw ValidationException::withMessages([
+                'puesto' => 'Ese puesto ya está ocupado por otro vehículo que está dentro.',
+            ]);
+        }
+
+        return $puestoId;
+    }
+
+    /** Si ese puesto está tomado ahora: es la plaza del último movimiento —una entrada— de alguien. */
+    protected function puestoOcupado(int $puestoId): bool
+    {
+        return Movimiento::ultimoDeCadaPersona()
+            ->where('movimientos.tipo', Movimiento::ENTRADA)
+            ->where('movimientos.puesto_id', $puestoId)
+            ->exists();
     }
 
     /**

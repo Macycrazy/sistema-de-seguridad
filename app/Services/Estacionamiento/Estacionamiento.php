@@ -3,6 +3,7 @@
 namespace App\Services\Estacionamiento;
 
 use App\Models\Movimiento;
+use App\Models\Puesto;
 use App\Services\Alertas\UmbralesDeAlerta;
 use App\Services\DatosVehiculo;
 use Carbon\CarbonImmutable;
@@ -34,13 +35,15 @@ final class Estacionamiento
         // aquí iba antes un «distinct on», que es solo de PostgreSQL.
         return Movimiento::ultimoDeCadaPersona()
             ->join('personas', 'personas.id', '=', 'movimientos.persona_id')
+            ->leftJoin('puestos', 'puestos.id', '=', 'movimientos.puesto_id')
             ->where('movimientos.tipo', Movimiento::ENTRADA)
             ->whereNotNull('movimientos.tipo_vehiculo')
             ->orderByDesc('movimientos.ocurrio_en')
             ->get([
                 'movimientos.persona_id', 'movimientos.tipo_vehiculo', 'movimientos.marca',
                 'movimientos.modelo', 'movimientos.color', 'movimientos.placa',
-                'movimientos.ocurrio_en', 'personas.nombre', 'personas.cedula',
+                'movimientos.ocurrio_en', 'movimientos.puesto_id', 'personas.nombre', 'personas.cedula',
+                'puestos.codigo as puesto',
             ])
             ->map(function ($fila) {
                 // El mismo objeto de datos que usa la puerta, para que la placa y la descripción se
@@ -70,6 +73,35 @@ final class Estacionamiento
             'carro' => $dentro->where('tipo_vehiculo', DatosVehiculo::CARRO)->count(),
             'moto' => $dentro->where('tipo_vehiculo', DatosVehiculo::MOTO)->count(),
         ];
+    }
+
+    /**
+     * Los ids de los puestos ocupados ahora mismo: los asignados a un vehículo que está dentro.
+     *
+     * @return Collection<int, int>
+     */
+    public function puestosOcupados(): Collection
+    {
+        return $this->vehiculosDentro()->pluck('puesto_id')->filter()->unique()->values();
+    }
+
+    /**
+     * Las plazas libres —habilitadas y sin ocupar— que admiten ese tipo de vehículo. Sin tipo, las
+     * que admiten cualquiera.
+     *
+     * @return Collection<int, Puesto>
+     */
+    public function puestosLibres(?string $tipo = null): Collection
+    {
+        $ocupados = $this->puestosOcupados()->all();
+
+        return Puesto::query()
+            ->where('activo', true)
+            ->when($ocupados !== [], fn ($q) => $q->whereNotIn('id', $ocupados))
+            ->orderBy('orden')->orderBy('codigo')
+            ->get()
+            ->filter(fn (Puesto $puesto) => $puesto->admite($tipo))
+            ->values();
     }
 
     /** El aforo total configurado (0 = sin tope). */
