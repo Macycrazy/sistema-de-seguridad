@@ -84,6 +84,9 @@ Route::middleware('auth')->group(function () {
     // El catálogo de oficinas del edificio, que la puerta ofrece al marcar el piso de un invitado.
     Route::view('/edificio', 'edificio')->middleware('can:gestionar-edificio')->name('edificio');
 
+    // El catálogo de puestos del estacionamiento: las plazas numeradas donde se para cada vehículo.
+    Route::view('/puestos', 'puestos')->middleware('can:gestionar-edificio')->name('puestos');
+
     // Las reglas de tiempo del marcaje, ajustables sin reprogramar.
     Route::view('/ajustes', 'ajustes')->middleware('can:gestionar-ajustes')->name('ajustes');
 
