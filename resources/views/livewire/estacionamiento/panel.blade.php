@@ -49,6 +49,42 @@
                  placeholder="Buscar por placa…" wire:model.live.debounce.300ms="busqueda" />
     </div>
 
+    {{-- Los que pernoctan: siguen dentro y entraron antes de hoy. Solo aparece si hay alguno. --}}
+    @if ($this->pernoctan->isNotEmpty())
+        <div class="mt-4 overflow-hidden rounded border-l-4 border-parte1 bg-parte1-suave/40">
+            <div class="flex items-baseline justify-between gap-3 px-4 py-3">
+                <p class="font-mono text-xs font-bold uppercase tracking-widest text-parte1">
+                    Pernoctan · {{ $this->pernoctan->count() }}
+                </p>
+                <p class="font-mono text-xs text-slate-500">se quedaron de noche</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[40rem] text-sm">
+                    <thead>
+                        <tr class="border-y border-parte1/20 text-left font-mono text-xs uppercase tracking-widest text-slate-500">
+                            <th class="px-4 py-2 font-semibold">Placa</th>
+                            <th class="px-4 py-2 font-semibold">Puesto</th>
+                            <th class="px-4 py-2 font-semibold">Vehículo</th>
+                            <th class="px-4 py-2 font-semibold">Dueño</th>
+                            <th class="px-4 py-2 font-semibold text-right">Desde</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-parte1/10">
+                        @foreach ($this->pernoctan as $p)
+                            <tr wire:key="pernocta-{{ $p->persona_id }}">
+                                <td class="px-4 py-2 font-mono text-base font-bold tracking-wider text-slate-900">{{ $p->placa ?: '—' }}</td>
+                                <td class="px-4 py-2 font-mono font-semibold text-slate-700">{{ $p->puesto ?: '—' }}</td>
+                                <td class="px-4 py-2 text-slate-600"><x-etiqueta :tipo="$p->tipo_vehiculo" tamano="chico" /> <span class="ml-1">{{ trim(($p->marca ?? '').' '.($p->modelo ?? '')) ?: '—' }}</span></td>
+                                <td class="px-4 py-2 text-slate-600">{{ $p->nombre }}</td>
+                                <td class="whitespace-nowrap px-4 py-2 text-right font-mono text-xs text-slate-500">{{ $est->desde($p->ocurrio_en)->translatedFormat('D j M · g:i a') }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+
     {{-- La lista de lo que hay dentro (o lo que coincide con la placa buscada). --}}
     <div class="mt-3 overflow-x-auto rounded border border-slate-200 bg-white shadow-sm">
         <table class="w-full min-w-[44rem] text-sm">
@@ -56,6 +92,7 @@
                 <tr class="border-b border-slate-200 text-left font-mono text-xs uppercase tracking-widest text-slate-500">
                     <th class="px-4 py-3 font-semibold">Placa</th>
                     <th class="px-4 py-3 font-semibold">Vehículo</th>
+                    <th class="px-4 py-3 font-semibold">Puesto</th>
                     <th class="px-4 py-3 font-semibold">Dueño</th>
                     <th class="px-4 py-3 font-semibold text-right">Lleva</th>
                     <th class="px-4 py-3 font-semibold text-right">Entró</th>
@@ -70,6 +107,7 @@
                             <span class="ml-1">{{ trim(($v->marca ?? '').' '.($v->modelo ?? '')) ?: '—' }}</span>
                             @if ($v->color)<span class="text-slate-400"> · {{ $v->color }}</span>@endif
                         </td>
+                        <td class="px-4 py-3 font-mono font-semibold text-slate-700">{{ $v->puesto ?: '—' }}</td>
                         <td class="px-4 py-3 text-slate-600">
                             {{ $v->nombre }}
                             @if ($v->cedula)<span class="ml-1 font-mono text-xs text-slate-400">{{ $v->cedula }}</span>@endif
@@ -82,7 +120,7 @@
                         </td>
                     </tr>
                 @empty
-                    <x-tabla-vacia :columnas="5">
+                    <x-tabla-vacia :columnas="6">
                         {{ trim($busqueda) === '' ? 'No hay vehículos dentro ahora mismo.' : 'Ninguna placa dentro coincide con «'.$busqueda.'».' }}
                     </x-tabla-vacia>
                 @endforelse
