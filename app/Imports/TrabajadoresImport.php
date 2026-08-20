@@ -32,7 +32,7 @@ class TrabajadoresImport implements ToCollection
 
     /** Encabezados que sabe reconocer, ya normalizados. */
     private const COLUMNAS = [
-        'cedula' => ['cedula', 'ci', 'ncedula', 'ndeci', 'documento', 'cedulaidentidad'],
+        'cedula' => ['cedula', 'ci', 'nci', 'ncedula', 'ndeci', 'documento', 'cedulaidentidad'],
         'nombre' => ['nombre', 'nombres'],
         'apellido' => ['apellido', 'apellidos'],
         'dependencia' => ['departamento', 'dependencia', 'gerencia', 'dependenciageneral', 'adscripcion'],
