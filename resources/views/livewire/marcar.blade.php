@@ -401,77 +401,6 @@
                 </div>
             @endif
 
-            {{-- El vehículo con el que llega, sea invitado o trabajador: el personal también
-                 estaciona aquí. Sale ya escrito el de la última vez, que casi siempre es el
-                 mismo; si hoy vino caminando, se vacían las casillas y el asiento de hoy queda
-                 sin vehículo sin tocar los de los días anteriores.
-
-                 Va fuera de la fila de la foto para que las casillas tengan el ancho entero de
-                 la tarjeta, igual que en el alta.
-
-                 CUANDO LO QUE TOCA ES LA SALIDA no se ofrece la lista entera: de la puerta no
-                 sale un vehículo que no entró por ella. Solo hay dos respuestas posibles —el
-                 vehículo con el que entró, o a pie porque lo deja estacionado— y son las dos que
-                 se enseñan. Quien entró a pie no tiene nada que escoger. --}}
-            <div class="mt-5">
-                @if ($this->sugerido === 'salida')
-                    @php $entrada = $persona->ultimaEntrada(); @endphp
-
-                    <div class="rounded border border-slate-200 p-4">
-                        <p class="font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
-                            Entró en
-                        </p>
-
-                        {{-- Aquí sí cabe todo: es un vehículo y no una lista, así que se enseña
-                             con la descripción entera del sistema —clase, marca, modelo, color y
-                             placa— y se reconoce sin tener que leer la placa. --}}
-                        <p class="mt-1 font-semibold text-slate-900">
-                            {{ $entrada?->tieneVehiculo() ? $entrada->vehiculo()->descripcion() : 'A pie' }}
-                        </p>
-
-                        @if ($entrada?->tieneVehiculo())
-                            {{-- Dejar el vehículo estacionado e irse caminando es una tarde
-                                 cualquiera: se va a almorzar y lo recoge después. --}}
-                            <p class="mt-3 font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
-                                ¿Cómo sale?
-                            </p>
-
-                            <div class="mt-1.5 flex flex-wrap gap-2">
-                                <button type="button"
-                                        wire:click="$set('saleAPie', false)"
-                                        aria-pressed="{{ $saleAPie ? 'false' : 'true' }}"
-                                        class="whitespace-nowrap rounded-full border px-4 py-2 text-sm transition
-                                               focus:outline-none focus-visible:ring-4 focus-visible:ring-parte1/25
-                                               {{ $saleAPie
-                                                    ? 'border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50'
-                                                    : 'border-parte1 bg-parte1-suave font-semibold text-parte1' }}">
-                                    En {{ mb_strtolower($entrada->vehiculo()->etiquetaTipo()) }}
-                                </button>
-
-                                <button type="button"
-                                        wire:click="$set('saleAPie', true)"
-                                        aria-pressed="{{ $saleAPie ? 'true' : 'false' }}"
-                                        class="whitespace-nowrap rounded-full border px-4 py-2 text-sm transition
-                                               focus:outline-none focus-visible:ring-4 focus-visible:ring-parte1/25
-                                               {{ $saleAPie
-                                                    ? 'border-parte1 bg-parte1-suave font-semibold text-parte1'
-                                                    : 'border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50' }}">
-                                    A pie, lo deja estacionado
-                                </button>
-                            </div>
-                        @endif
-                    </div>
-                @else
-                    <x-vehiculo
-                        :error="$errors->first('placa')"
-                        :error-tipo="$errors->first('tipoVehiculo')"
-                        :tipo-vehiculo="$tipoVehiculo"
-                        :vehiculos="$this->vehiculos"
-                        :trae-hoy="$traeHoy"
-                    />
-                @endif
-            </div>
-
             {{-- LOS DOS BOTONES --}}
             @if ($persona->activo)
                 @php
@@ -635,15 +564,6 @@
                         :error="$errors->first('piso')"
                     />
                 </div>
-
-                {{-- En el alta no hay nada anotado todavía, así que se escoge entre a pie, carro
-                     y moto, y solo si dice que trae algo salen las casillas de teclear. --}}
-                <x-vehiculo
-                    :error="$errors->first('placa')"
-                    :error-tipo="$errors->first('tipoVehiculo')"
-                    :tipo-vehiculo="$tipoVehiculo"
-                    :trae-hoy="$traeHoy"
-                />
 
                 {{-- En el teléfono, uno debajo del otro y a todo el ancho: en fila, «Guardar y
                      continuar» se parte en dos líneas. Se desplazan con el formulario, igual que

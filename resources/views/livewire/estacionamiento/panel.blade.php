@@ -69,17 +69,17 @@
                             <th class="px-4 py-2 font-semibold">Placa</th>
                             <th class="px-4 py-2 font-semibold">Puesto</th>
                             <th class="px-4 py-2 font-semibold">Vehículo</th>
-                            <th class="px-4 py-2 font-semibold">Dueño</th>
+                            <th class="px-4 py-2 font-semibold">Conductor</th>
                             <th class="px-4 py-2 font-semibold text-right">Desde</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-parte1/10">
                         @foreach ($this->pernoctan as $p)
-                            <tr wire:key="pernocta-{{ $p->persona_id }}">
+                            <tr wire:key="pernocta-{{ $p->id }}">
                                 <td class="px-4 py-2 font-mono text-base font-bold tracking-wider text-slate-900">{{ $p->placa ?: '—' }}</td>
                                 <td class="px-4 py-2 font-mono font-semibold text-slate-700">{{ $p->puesto ?: '—' }}</td>
-                                <td class="px-4 py-2 text-slate-600"><x-etiqueta :tipo="$p->tipo_vehiculo" tamano="chico" /> <span class="ml-1">{{ trim(($p->marca ?? '').' '.($p->modelo ?? '')) ?: '—' }}</span></td>
-                                <td class="px-4 py-2 text-slate-600">{{ $p->nombre }}</td>
+                                <td class="px-4 py-2 text-slate-600"><x-etiqueta :tipo="$p->tipo_vehiculo" tamano="chico" /> <span class="ml-1">{{ trim(($p->marca ?? '').' '.($p->color ?? '')) ?: '—' }}</span></td>
+                                <td class="px-4 py-2 text-slate-600">{{ $p->conductor ?: '—' }}</td>
                                 <td class="whitespace-nowrap px-4 py-2 text-right font-mono text-xs text-slate-500">{{ $est->desde($p->ocurrio_en)->translatedFormat('D j M · g:i a') }}</td>
                             </tr>
                         @endforeach
@@ -89,34 +89,42 @@
         </div>
     @endif
 
-    {{-- La lista de lo que hay dentro (o lo que coincide con la placa buscada). --}}
+    {{-- Lo que hay dentro (o lo que coincide con la placa buscada). Cada vehículo es una estadía:
+         se le asigna el puesto y se saca desde aquí, con su conductor. --}}
+    <div class="mt-3 flex flex-wrap items-center justify-end gap-2">
+        @unless ($gestionandoFlota)
+            <x-boton variante="secundario" wire:click="abrirFlota">Flota de la empresa</x-boton>
+        @endunless
+        @unless ($agregandoFijo)
+            <x-boton wire:click="abrirFijo">Anotar vehículo</x-boton>
+        @endunless
+    </div>
+
     <div class="mt-3 overflow-x-auto rounded border border-slate-200 bg-white shadow-sm">
-        <table class="w-full min-w-[44rem] text-sm">
+        <table class="w-full min-w-[48rem] text-sm">
             <thead>
                 <tr class="border-b border-slate-200 text-left font-mono text-xs uppercase tracking-widest text-slate-500">
                     <th class="px-4 py-3 font-semibold">Placa</th>
                     <th class="px-4 py-3 font-semibold">Vehículo</th>
                     <th class="px-4 py-3 font-semibold">Puesto</th>
-                    <th class="px-4 py-3 font-semibold">Dueño</th>
+                    <th class="px-4 py-3 font-semibold">Conductor</th>
                     <th class="px-4 py-3 font-semibold text-right">Lleva</th>
-                    <th class="px-4 py-3 font-semibold text-right">Entró</th>
+                    <th class="px-4 py-3 font-semibold text-right">Acción</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
                 @forelse ($vehiculos as $v)
-                    <tr wire:key="veh-{{ $v->persona_id }}">
+                    <tr wire:key="veh-{{ $v->id }}">
                         <td class="px-4 py-3 font-mono text-base font-bold tracking-wider text-slate-900">{{ $v->placa ?: '—' }}</td>
                         <td class="px-4 py-3 text-slate-600">
                             <x-etiqueta :tipo="$v->tipo_vehiculo" tamano="chico" />
-                            <span class="ml-1">{{ trim(($v->marca ?? '').' '.($v->modelo ?? '')) ?: '—' }}</span>
-                            @if ($v->color)<span class="text-slate-400"> · {{ $v->color }}</span>@endif
+                            <span class="ml-1">{{ trim(($v->marca ?? '').' '.($v->color ?? '')) ?: '—' }}</span>
                         </td>
                         <td class="px-4 py-3">
                             @if ($this->hayPuestos)
-                                {{-- Lo pone quien está en el estacionamiento, que ve dónde quedó. --}}
-                                <select wire:change="asignarPuesto({{ $v->persona_id }}, $event.target.value)"
+                                <select wire:change="asignarPuesto({{ $v->id }}, $event.target.value)"
                                         class="rounded border border-slate-300 bg-white px-2 py-1 font-mono text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-parte1/30">
-                                    @foreach (($this->opcionesPorVehiculo[$v->persona_id] ?? []) as $valor => $texto)
+                                    @foreach (($this->opcionesPorVehiculo[$v->id] ?? []) as $valor => $texto)
                                         <option value="{{ $valor }}" @selected((string) $valor === (string) $v->puesto_id)>{{ $texto }}</option>
                                     @endforeach
                                 </select>
@@ -124,17 +132,37 @@
                                 <span class="font-mono font-semibold text-slate-700">{{ $v->puesto ?: '—' }}</span>
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-slate-600">
-                            {{ $v->nombre }}
-                            @if ($v->cedula)<span class="ml-1 font-mono text-xs text-slate-400">{{ $v->cedula }}</span>@endif
-                        </td>
+                        <td class="px-4 py-3 text-slate-600">{{ $v->conductor ?: '—' }}</td>
                         <td class="whitespace-nowrap px-4 py-3 text-right font-mono text-xs font-semibold text-slate-700">
                             {{ $est->tiempoDentro($v->ocurrio_en) }}
                         </td>
-                        <td class="whitespace-nowrap px-4 py-3 text-right font-mono text-xs text-slate-500">
-                            {{ $est->desde($v->ocurrio_en)->translatedFormat('g:i a') }}
+                        <td class="px-4 py-3 text-right">
+                            <button wire:click="abrirSalida({{ $v->id }})"
+                                    class="text-sm font-semibold text-alto hover:underline">Sacar</button>
                         </td>
                     </tr>
+
+                    {{-- Al sacar: quién se lo lleva (puede ser otro). --}}
+                    @if ($sacandoFijo === $v->id)
+                        <tr wire:key="salida-{{ $v->id }}" class="bg-alto-suave/30">
+                            <td colspan="6" class="px-4 py-4">
+                                <form wire:submit="confirmarSalida" class="flex flex-wrap items-end gap-3">
+                                    <div class="w-40">
+                                        <x-campo etiqueta="Cédula de quien lo saca" nombre="conductorSalidaCedula" inputmode="numeric" maxlength="9"
+                                                 oninput="this.value = this.value.replace(/[^0-9]/g, '')" ayuda="Opcional."
+                                                 wire:model="conductorSalidaCedula" :error="$errors->first('conductorSalida')" />
+                                    </div>
+                                    <div class="w-56">
+                                        <x-campo etiqueta="…o nombre" nombre="conductorSalidaNombre" ayuda="Opcional." maxlength="120" wire:model="conductorSalidaNombre" />
+                                    </div>
+                                    <div class="flex items-center gap-2 pb-6">
+                                        <x-boton type="submit" variante="peligro" tamano="chico">Sacar</x-boton>
+                                        <x-boton type="button" variante="secundario" tamano="chico" wire:click="cancelarSalida">Cancelar</x-boton>
+                                    </div>
+                                </form>
+                            </td>
+                        </tr>
+                    @endif
                 @empty
                     <x-tabla-vacia :columnas="6">
                         {{ trim($busqueda) === '' ? 'No hay vehículos dentro ahora mismo.' : 'Ninguna placa dentro coincide con «'.$busqueda.'».' }}
@@ -144,148 +172,73 @@
         </table>
     </div>
 
-    {{-- Vehículos fijos: los de la empresa o los que ya estaban y se quedan. Ocupan un puesto sin
-         pasar por el marcaje de una persona. Solo si hay puestos en el catálogo. --}}
+    {{-- Anotar un vehículo (de la flota o a mano, con conductor y puesto) y gestionar la flota. --}}
     @if ($this->hayPuestos)
-        <div class="mt-6">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <p class="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">
-                    Vehículos en el estacionamiento @if ($this->fijos->isNotEmpty()) · {{ $this->fijos->count() }} @endif
-                </p>
-                <div class="flex items-center gap-2">
-                    @unless ($gestionandoFlota)
-                        <x-boton variante="secundario" wire:click="abrirFlota">Flota de la empresa</x-boton>
-                    @endunless
-                    @unless ($agregandoFijo)
-                        <x-boton variante="secundario" wire:click="abrirFijo">Anotar vehículo</x-boton>
-                    @endunless
+        @if ($gestionandoFlota)
+            <div class="mt-3 rounded border border-slate-200 bg-white p-4 shadow-sm">
+                <p class="mb-2 font-mono text-xs font-bold uppercase tracking-widest text-slate-500">Flota de la empresa</p>
+                <form wire:submit="guardarFlota" class="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                    <x-campo etiqueta="Placa" nombre="placaFlota" maxlength="15" wire:model="placaFlota" :error="$errors->first('placaFlota')" />
+                    <x-selector etiqueta="Tipo" nombre="tipoFlota" :opciones="['carro' => 'Carro', 'moto' => 'Moto']" wire:model="tipoFlota" />
+                    <x-campo etiqueta="Marca" nombre="marcaFlota" ayuda="Opcional." maxlength="40" wire:model="marcaFlota" />
+                    <x-campo etiqueta="Color" nombre="colorFlota" ayuda="Opcional." maxlength="30" wire:model="colorFlota" />
+                    <x-boton type="submit">Agregar a la flota</x-boton>
+                </form>
+
+                @if ($this->flota->isNotEmpty())
+                    <ul class="mt-3 divide-y divide-slate-100 text-sm">
+                        @foreach ($this->flota as $f)
+                            <li class="flex items-center justify-between py-2" wire:key="flota-{{ $f->id }}">
+                                <span class="font-mono font-semibold text-slate-800">{{ $f->placa }}
+                                    <span class="font-normal text-slate-400">· {{ $f->etiquetaTipo() }} {{ trim(($f->marca ?? '').' '.($f->color ?? '')) }}</span>
+                                </span>
+                                <button wire:click="eliminarFlota({{ $f->id }})" wire:confirm="¿Quitar {{ $f->placa }} de la flota?"
+                                        class="text-sm font-semibold text-alto hover:underline">Quitar</button>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+
+                <div class="mt-3">
+                    <x-boton type="button" variante="secundario" wire:click="cerrarFlota">Cerrar</x-boton>
                 </div>
             </div>
+        @endif
 
-            {{-- La flota: cargar los vehículos de la empresa una vez, para elegirlos sin teclear. --}}
-            @if ($gestionandoFlota)
-                <div class="mt-3 rounded border border-slate-200 bg-white p-4 shadow-sm">
-                    <form wire:submit="guardarFlota" class="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                        <x-campo etiqueta="Placa" nombre="placaFlota" maxlength="15" wire:model="placaFlota" :error="$errors->first('placaFlota')" />
-                        <x-selector etiqueta="Tipo" nombre="tipoFlota" :opciones="['carro' => 'Carro', 'moto' => 'Moto']" wire:model="tipoFlota" />
-                        <x-campo etiqueta="Marca" nombre="marcaFlota" ayuda="Opcional." maxlength="40" wire:model="marcaFlota" />
-                        <x-campo etiqueta="Color" nombre="colorFlota" ayuda="Opcional." maxlength="30" wire:model="colorFlota" />
-                        <x-boton type="submit">Agregar a la flota</x-boton>
-                    </form>
-
-                    @if ($this->flota->isNotEmpty())
-                        <ul class="mt-3 divide-y divide-slate-100 text-sm">
-                            @foreach ($this->flota as $v)
-                                <li class="flex items-center justify-between py-2" wire:key="flota-{{ $v->id }}">
-                                    <span class="font-mono font-semibold text-slate-800">{{ $v->placa }}
-                                        <span class="font-normal text-slate-400">· {{ $v->etiquetaTipo() }} {{ trim(($v->marca ?? '').' '.($v->color ?? '')) }}</span>
-                                    </span>
-                                    <button wire:click="eliminarFlota({{ $v->id }})" wire:confirm="¿Quitar {{ $v->placa }} de la flota?"
-                                            class="text-sm font-semibold text-alto hover:underline">Quitar</button>
-                                </li>
-                            @endforeach
-                        </ul>
+        @if ($agregandoFijo)
+            @php
+                $opFijo = ['' => 'Sin puesto todavía'];
+                foreach ($this->puestosLibresFijo as $p) {
+                    $opFijo[$p->id] = $p->codigo.($p->zona ? ' · '.$p->zona : '').' ('.$p->etiquetaTipo().')';
+                }
+                $opFlota = ['' => 'Teclear a mano…'];
+                foreach ($this->flotaDisponible as $f) {
+                    $opFlota[$f->id] = $f->descripcion();
+                }
+                $aMano = $flotaFija === '';
+            @endphp
+            <form wire:submit="agregarFijo" class="mt-3 rounded border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <x-selector etiqueta="De la flota" nombre="flotaFija" :opciones="$opFlota" wire:model.live="flotaFija" />
+                    @if ($aMano)
+                        <x-campo etiqueta="Placa" nombre="placaFija" maxlength="15" wire:model="placaFija" :error="$errors->first('placaFija')" />
+                        <x-selector etiqueta="Tipo" nombre="tipoFija" :opciones="['carro' => 'Carro', 'moto' => 'Moto']" wire:model.live="tipoFija" />
                     @endif
-
-                    <div class="mt-3">
-                        <x-boton type="button" variante="secundario" wire:click="cerrarFlota">Cerrar</x-boton>
-                    </div>
+                    <x-selector etiqueta="Puesto" nombre="puestoFijo" :opciones="$opFijo" wire:model="puestoFijo" :error="$errors->first('puestoFijo')" />
+                    <x-campo etiqueta="Cédula del conductor" nombre="conductorCedulaFija" inputmode="numeric" maxlength="9"
+                             oninput="this.value = this.value.replace(/[^0-9]/g, '')" ayuda="Opcional. Si está en el sistema."
+                             wire:model="conductorCedulaFija" :error="$errors->first('conductorFija')" />
+                    <x-campo etiqueta="…o nombre del conductor" nombre="conductorNombreFija" ayuda="Opcional." maxlength="120" wire:model="conductorNombreFija" />
+                    @if ($aMano)
+                        <x-campo etiqueta="Nota" nombre="notaFija" ayuda="Opcional." maxlength="120" wire:model="notaFija" />
+                    @endif
                 </div>
-            @endif
-
-            {{-- Anotar un vehículo: de la flota o a mano, con su conductor y su puesto. --}}
-            @if ($agregandoFijo)
-                @php
-                    $opFijo = ['' => 'Elegir puesto…'];
-                    foreach ($this->puestosLibresFijo as $p) {
-                        $opFijo[$p->id] = $p->codigo.($p->zona ? ' · '.$p->zona : '').' ('.$p->etiquetaTipo().')';
-                    }
-                    $opFlota = ['' => 'Teclear a mano…'];
-                    foreach ($this->flotaDisponible as $v) {
-                        $opFlota[$v->id] = $v->descripcion();
-                    }
-                    $aMano = $flotaFija === '';
-                @endphp
-                <form wire:submit="agregarFijo" class="mt-3 rounded border border-slate-200 bg-white p-4 shadow-sm">
-                    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        <x-selector etiqueta="De la flota" nombre="flotaFija" :opciones="$opFlota" wire:model.live="flotaFija" />
-                        @if ($aMano)
-                            <x-campo etiqueta="Placa" nombre="placaFija" maxlength="15" wire:model="placaFija" :error="$errors->first('placaFija')" />
-                            <x-selector etiqueta="Tipo" nombre="tipoFija" :opciones="['carro' => 'Carro', 'moto' => 'Moto']" wire:model.live="tipoFija" />
-                        @endif
-                        <x-selector etiqueta="Puesto" nombre="puestoFijo" :opciones="$opFijo" wire:model="puestoFijo" :error="$errors->first('puestoFijo')" />
-                        <x-campo etiqueta="Cédula del conductor" nombre="conductorCedulaFija" inputmode="numeric" maxlength="9"
-                                 oninput="this.value = this.value.replace(/[^0-9]/g, '')" ayuda="Opcional. Si está en el sistema."
-                                 wire:model="conductorCedulaFija" :error="$errors->first('conductorFija')" />
-                        <x-campo etiqueta="…o nombre del conductor" nombre="conductorNombreFija" ayuda="Opcional. Si no tiene cédula aquí." maxlength="120" wire:model="conductorNombreFija" />
-                        @if ($aMano)
-                            <x-campo etiqueta="Nota" nombre="notaFija" ayuda="Opcional." maxlength="120" wire:model="notaFija" />
-                        @endif
-                    </div>
-                    <div class="mt-4 flex items-center gap-3">
-                        <x-boton type="submit">Anotar</x-boton>
-                        <x-boton type="button" variante="secundario" wire:click="cancelarFijo">Cancelar</x-boton>
-                    </div>
-                </form>
-            @endif
-
-            @if ($this->fijos->isNotEmpty())
-                <div class="mt-3 overflow-x-auto rounded border border-slate-200 bg-white shadow-sm">
-                    <table class="w-full min-w-[44rem] text-sm">
-                        <thead>
-                            <tr class="border-b border-slate-200 text-left font-mono text-xs uppercase tracking-widest text-slate-500">
-                                <th class="px-4 py-3 font-semibold">Placa</th>
-                                <th class="px-4 py-3 font-semibold">Puesto</th>
-                                <th class="px-4 py-3 font-semibold">Vehículo</th>
-                                <th class="px-4 py-3 font-semibold">Conductor</th>
-                                <th class="px-4 py-3 font-semibold text-right">Desde</th>
-                                <th class="px-4 py-3 font-semibold text-right">Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            @foreach ($this->fijos as $f)
-                                <tr wire:key="fijo-{{ $f->id }}">
-                                    <td class="px-4 py-3 font-mono text-base font-bold tracking-wider text-slate-900">{{ $f->placa }}</td>
-                                    <td class="px-4 py-3 font-mono font-semibold text-slate-700">{{ $f->puesto?->codigo ?? '—' }}</td>
-                                    <td class="px-4 py-3 text-slate-600">
-                                        <x-etiqueta :tipo="$f->tipo_vehiculo" tamano="chico" />
-                                        <span class="ml-1">{{ trim(($f->marca ?? '').' '.($f->color ?? '')) ?: '—' }}</span>
-                                    </td>
-                                    <td class="px-4 py-3 text-slate-600">{{ $f->conductor_nombre ?: '—' }}</td>
-                                    <td class="whitespace-nowrap px-4 py-3 text-right font-mono text-xs text-slate-500">{{ $f->entro_en->translatedFormat('D j M · g:i a') }}</td>
-                                    <td class="px-4 py-3 text-right">
-                                        <button wire:click="abrirSalida({{ $f->id }})"
-                                                class="text-sm font-semibold text-alto hover:underline">Sacar</button>
-                                    </td>
-                                </tr>
-
-                                {{-- Al sacar: quién se lo lleva (puede ser otro). --}}
-                                @if ($sacandoFijo === $f->id)
-                                    <tr wire:key="salida-{{ $f->id }}" class="bg-alto-suave/30">
-                                        <td colspan="6" class="px-4 py-4">
-                                            <form wire:submit="confirmarSalida" class="flex flex-wrap items-end gap-3">
-                                                <div class="w-40">
-                                                    <x-campo etiqueta="Cédula de quien lo saca" nombre="conductorSalidaCedula" inputmode="numeric" maxlength="9"
-                                                             oninput="this.value = this.value.replace(/[^0-9]/g, '')" ayuda="Opcional."
-                                                             wire:model="conductorSalidaCedula" :error="$errors->first('conductorSalida')" />
-                                                </div>
-                                                <div class="w-56">
-                                                    <x-campo etiqueta="…o nombre" nombre="conductorSalidaNombre" ayuda="Opcional." maxlength="120" wire:model="conductorSalidaNombre" />
-                                                </div>
-                                                <div class="flex items-center gap-2 pb-6">
-                                                    <x-boton type="submit" variante="peligro" tamano="chico">Sacar</x-boton>
-                                                    <x-boton type="button" variante="secundario" tamano="chico" wire:click="cancelarSalida">Cancelar</x-boton>
-                                                </div>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                @endif
-                            @endforeach
-                        </tbody>
-                    </table>
+                <div class="mt-4 flex items-center gap-3">
+                    <x-boton type="submit">Anotar</x-boton>
+                    <x-boton type="button" variante="secundario" wire:click="cancelarFijo">Cancelar</x-boton>
                 </div>
-            @endif
-        </div>
+            </form>
+        @endif
     @endif
 
     {{-- El registro del día: entradas Y salidas de vehículos hoy. Plegado, para no cargarlo si no
@@ -307,17 +260,17 @@
                             <th class="px-4 py-3 font-semibold">Mov.</th>
                             <th class="px-4 py-3 font-semibold">Placa</th>
                             <th class="px-4 py-3 font-semibold">Vehículo</th>
-                            <th class="px-4 py-3 font-semibold">Dueño</th>
+                            <th class="px-4 py-3 font-semibold">Conductor</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @forelse ($this->historial as $m)
                             <tr wire:key="hist-{{ $loop->index }}">
-                                <td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-500">{{ $est->desde($m->ocurrio_en)->translatedFormat('g:i a') }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-500">{{ $m->ocurrio_en->translatedFormat('g:i a') }}</td>
                                 <td class="px-4 py-3"><x-etiqueta :tipo="$m->esEntrada ? 'entrada' : 'salida'" tamano="chico" /></td>
                                 <td class="px-4 py-3 font-mono font-bold tracking-wider text-slate-900">{{ $m->placa ?: '—' }}</td>
-                                <td class="px-4 py-3 text-slate-600">{{ $m->vehiculo->etiquetaTipo() }} {{ trim(($m->marca ?? '').' '.($m->modelo ?? '')) }}</td>
-                                <td class="px-4 py-3 text-slate-600">{{ $m->nombre }}</td>
+                                <td class="px-4 py-3 text-slate-600">{{ $m->vehiculo->etiquetaTipo() }} {{ trim(($m->marca ?? '').' '.($m->color ?? '')) }}</td>
+                                <td class="px-4 py-3 text-slate-600">{{ $m->conductor ?: '—' }}</td>
                             </tr>
                         @empty
                             <x-tabla-vacia :columnas="5">Hoy no ha entrado ni salido ningún vehículo.</x-tabla-vacia>

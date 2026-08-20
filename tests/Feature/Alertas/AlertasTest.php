@@ -4,6 +4,7 @@ namespace Tests\Feature\Alertas;
 
 use App\Models\Movimiento;
 use App\Models\Persona;
+use App\Models\VehiculoFijo;
 use App\Services\Alertas\Alerta;
 use App\Services\Alertas\Alertas;
 use App\Services\Alertas\UmbralesDeAlerta;
@@ -97,17 +98,20 @@ class AlertasTest extends TestCase
         $this->assertNull(app(Alertas::class)->activas()->firstWhere('tipo', Alerta::AFORO));
     }
 
+    private function estadia(string $placa, string $tipo): void
+    {
+        VehiculoFijo::create([
+            'placa' => $placa, 'tipo_vehiculo' => $tipo, 'entro_en' => CarbonImmutable::now()->subMinutes(20),
+        ]);
+    }
+
     #[Test]
     public function el_estacionamiento_avisa_cuando_se_pasa_del_aforo(): void
     {
         app(UmbralesDeAlerta::class)->guardar('alerta_aforo_estacionamiento', 1);
 
-        $ana = $this->persona('1');
-        $luis = $this->persona('2');
-        $this->marca($ana, Movimiento::ENTRADA, CarbonImmutable::now()->subMinutes(30));
-        $ana->movimientos()->latest('id')->first()->update(['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'AAA111']);
-        $this->marca($luis, Movimiento::ENTRADA, CarbonImmutable::now()->subMinutes(20));
-        $luis->movimientos()->latest('id')->first()->update(['tipo_vehiculo' => DatosVehiculo::MOTO, 'placa' => 'BBB222']);
+        $this->estadia('AAA111', DatosVehiculo::CARRO);
+        $this->estadia('BBB222', DatosVehiculo::MOTO);
 
         $alerta = app(Alertas::class)->activas()->firstWhere('tipo', Alerta::ESTACIONAMIENTO);
 
@@ -118,9 +122,7 @@ class AlertasTest extends TestCase
     #[Test]
     public function el_estacionamiento_en_cero_no_avisa(): void
     {
-        $ana = $this->persona('1');
-        $this->marca($ana, Movimiento::ENTRADA, CarbonImmutable::now()->subMinutes(30));
-        $ana->movimientos()->latest('id')->first()->update(['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'AAA111']);
+        $this->estadia('AAA111', DatosVehiculo::CARRO);
 
         $this->assertNull(app(Alertas::class)->activas()->firstWhere('tipo', Alerta::ESTACIONAMIENTO));
     }
@@ -130,11 +132,8 @@ class AlertasTest extends TestCase
     {
         app(UmbralesDeAlerta::class)->guardar('alerta_aforo_carro', 1);
 
-        foreach (['1', '2'] as $ci) {
-            $p = $this->persona($ci);
-            $this->marca($p, Movimiento::ENTRADA, CarbonImmutable::now()->subMinutes(20));
-            $p->movimientos()->latest('id')->first()->update(['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'P'.$ci]);
-        }
+        $this->estadia('P1', DatosVehiculo::CARRO);
+        $this->estadia('P2', DatosVehiculo::CARRO);
 
         $this->assertNotNull(app(Alertas::class)->activas()->firstWhere('titulo', 'Sin puestos de carros'));
     }
