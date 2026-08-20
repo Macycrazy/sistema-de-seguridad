@@ -4,11 +4,9 @@ namespace App\Livewire;
 
 use App\Models\Movimiento;
 use App\Models\Persona;
-use App\Models\Puesto;
 use App\Services\Auditoria\Auditoria;
 use App\Services\Carnets\Verificador;
 use App\Services\DatosVehiculo;
-use App\Services\Estacionamiento\Estacionamiento;
 use App\Services\Marcaje;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -122,9 +120,6 @@ class Marcar extends Component
     public string $color = '';
 
     public string $placa = '';
-
-    /** El puesto que se le asigna al vehículo al entrar. Opcional; vacío = sin asignar. */
-    public string $puestoId = '';
 
     /** Lo que se le dice al vigilante después de marcar. */
     public string $confirmacion = '';
@@ -417,37 +412,6 @@ class Marcar extends Component
     public function vehiculos(): Collection
     {
         return $this->persona()?->vehiculos ?? collect();
-    }
-
-    /**
-     * Los puestos libres para el vehículo elegido AHORA, si trae uno. La lista cambia con el tipo
-     * (un puesto de moto no sale para un carro). Vacía si viene a pie o si no hay plazas libres.
-     *
-     * @return Collection<int, Puesto>
-     */
-    #[Computed]
-    public function puestosLibres(): Collection
-    {
-        $vehiculo = $this->vehiculo();
-
-        if ($vehiculo->vacio()) {
-            return collect();
-        }
-
-        return app(Estacionamiento::class)->puestosLibres($vehiculo->tipo);
-    }
-
-    /** Al cambiar el vehículo o su tipo, el puesto elegido puede dejar de valer: se limpia. */
-    public function updatedTraeHoy(): void
-    {
-        $this->puestoId = '';
-        unset($this->puestosLibres);
-    }
-
-    public function updatedTipoVehiculo(): void
-    {
-        $this->puestoId = '';
-        unset($this->puestosLibres);
     }
 
     /**
@@ -763,8 +727,6 @@ class Marcar extends Component
                 // un vehículo borrado de la ficha entre la entrada y la salida haría que se
                 // enviara «a pie» y el marcaje fallaría sin que nadie entienda por qué.
                 vehiculo: $this->vehiculoParaEste($tipo, $persona),
-                // El puesto solo al ENTRAR: en la salida se libera la plaza, no se elige. Opcional.
-                puestoId: $tipo === Movimiento::ENTRADA && $this->puestoId !== '' ? (int) $this->puestoId : null,
             );
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
@@ -831,7 +793,7 @@ class Marcar extends Component
         $this->reset([
             'cedula', 'nacionalidad', 'personaId', 'invitadoNuevo', 'avisoInvitado', 'nombre',
             'motivo', 'piso', 'nivel', 'pisoAMano', 'confirmacion', 'traeHoy', 'saleAPie',
-            'tipoVehiculo', 'marca', 'modelo', 'color', 'placa', 'puestoId',
+            'tipoVehiculo', 'marca', 'modelo', 'color', 'placa',
         ]);
         $this->resetValidation();
 
@@ -840,7 +802,7 @@ class Marcar extends Component
         // pantalla, y el vigilante vería «41 y 6» debajo de un total que ya cambió.
         unset(
             $this->persona, $this->sugerido, $this->vehiculos, $this->esperaHasta,
-            $this->esperaSalidaHasta, $this->dentro, $this->dentroPorTipo, $this->puestosLibres,
+            $this->esperaSalidaHasta, $this->dentro, $this->dentroPorTipo,
         );
     }
 

@@ -5,6 +5,7 @@ namespace Tests\Feature\Estacionamiento;
 use App\Livewire\Estacionamiento\Panel;
 use App\Models\Movimiento;
 use App\Models\Persona;
+use App\Models\Puesto;
 use App\Models\User;
 use App\Services\DatosVehiculo;
 use App\Usuarios\Rol;
@@ -43,6 +44,24 @@ class PantallaEstacionamientoTest extends TestCase
             ->assertOk()
             ->assertSee('AB123CD')
             ->assertSee('ANA PÉREZ');
+    }
+
+    #[Test]
+    public function desde_el_panel_se_le_asigna_el_puesto_a_un_vehiculo_dentro(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::VIGILANTE]));
+        $ana = Persona::create(['cedula' => '12345678', 'tipo' => Persona::TRABAJADOR, 'nombre' => 'ANA', 'activo' => true]);
+        $puesto = Puesto::create(['codigo' => 'A-1', 'orden' => 1]);
+        Movimiento::create([
+            'persona_id' => $ana->id, 'tipo' => Movimiento::ENTRADA,
+            'ocurrio_en' => CarbonImmutable::now()->subHour(),
+            'tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'AB123CD',
+        ]);
+
+        Livewire::test(Panel::class)
+            ->call('asignarPuesto', $ana->id, (string) $puesto->id);
+
+        $this->assertSame($puesto->id, (int) Movimiento::where('persona_id', $ana->id)->value('puesto_id'));
     }
 
     #[Test]

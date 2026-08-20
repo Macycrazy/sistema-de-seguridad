@@ -8,6 +8,7 @@ use App\Services\Alertas\UmbralesDeAlerta;
 use App\Services\DatosVehiculo;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Qué hay en el estacionamiento ahora mismo, a partir de lo que el marcaje ya guarda.
@@ -117,6 +118,56 @@ final class Estacionamiento
         return $this->vehiculosDentro()
             ->filter(fn ($fila) => $this->desde($fila->ocurrio_en)->lt($inicioDeHoy))
             ->values();
+    }
+
+    /**
+     * Asigna, cambia o quita (puestoId nulo) el puesto de un vehículo que está dentro.
+     *
+     * Lo hace quien está EN el estacionamiento —que ve dónde quedó el vehículo—, no la puerta: en
+     * la puerta todavía no se sabe en qué plaza va a estacionar. Actualiza el asiento de entrada.
+     *
+     * @throws ValidationException
+     */
+    public function asignarPuesto(int $personaId, ?int $puestoId): void
+    {
+        $entrada = Movimiento::ultimoDeCadaPersona()
+            ->where('movimientos.persona_id', $personaId)
+            ->where('movimientos.tipo', Movimiento::ENTRADA)
+            ->whereNotNull('movimientos.tipo_vehiculo')
+            ->first(['movimientos.id', 'movimientos.tipo_vehiculo', 'movimientos.puesto_id']);
+
+        if (! $entrada) {
+            throw ValidationException::withMessages([
+                'puesto' => 'Ese vehículo ya no está dentro.',
+            ]);
+        }
+
+        if ($puestoId !== null) {
+            $puesto = Puesto::find($puestoId);
+
+            if (! $puesto || ! $puesto->activo) {
+                throw ValidationException::withMessages([
+                    'puesto' => 'Ese puesto no existe o está deshabilitado.',
+                ]);
+            }
+
+            if (! $puesto->admite($entrada->tipo_vehiculo)) {
+                throw ValidationException::withMessages([
+                    'puesto' => 'Ese puesto no admite este tipo de vehículo.',
+                ]);
+            }
+
+            // Ocupado por OTRO: si ya es de este mismo vehículo, reasignarlo al mismo no falla.
+            $esElMismo = (int) $entrada->puesto_id === $puestoId;
+
+            if (! $esElMismo && $this->puestosOcupados()->contains($puestoId)) {
+                throw ValidationException::withMessages([
+                    'puesto' => 'Ese puesto ya está ocupado por otro vehículo.',
+                ]);
+            }
+        }
+
+        Movimiento::whereKey($entrada->id)->update(['puesto_id' => $puestoId]);
     }
 
     /** El aforo total configurado (0 = sin tope). */
