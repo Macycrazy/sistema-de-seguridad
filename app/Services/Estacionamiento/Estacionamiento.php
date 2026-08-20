@@ -2,7 +2,6 @@
 
 namespace App\Services\Estacionamiento;
 
-use App\Models\Movimiento;
 use App\Models\Puesto;
 use App\Models\VehiculoFijo;
 use App\Services\Alertas\UmbralesDeAlerta;
@@ -12,14 +11,14 @@ use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Qué hay en el estacionamiento ahora mismo, a partir de lo que el marcaje ya guarda.
+ * Qué hay en el estacionamiento ahora mismo.
  *
- * No hace falta una tabla nueva ni tocar la puerta: cada asiento congela el vehículo con el que
- * se entró (tipo, marca, modelo, color, placa). Un vehículo está dentro si su dueño está dentro
- * —su último movimiento fue una entrada— y esa entrada traía vehículo. Cuando esa persona marca
- * la salida, su vehículo deja de contar.
+ * Los vehículos son ESTADÍAS (App\Models\VehiculoFijo): cada uno se anota y se saca en el propio
+ * estacionamiento, con su conductor y su puesto. La puerta ya no maneja vehículos —marca personas—;
+ * un carro puede entrar con uno y salir con otro conductor, o quedarse aunque su conductor se vaya.
+ * Un vehículo está dentro mientras su estadía siga abierta (sin salida).
  *
- * Es para el guardia del portón: ver cuántos vehículos hay, de qué tipo, y con qué placa.
+ * Es para el guardia del portón: ver cuántos vehículos hay, de qué tipo, con qué placa y en qué puesto.
  */
 final class Estacionamiento
 {
@@ -32,28 +31,25 @@ final class Estacionamiento
      */
     public function vehiculosDentro(): Collection
     {
-        // El último movimiento de cada persona, y de ahí solo los que están dentro (entrada) y
-        // traían vehículo. El «último de cada persona» vive en el modelo y vale en las dos bases;
-        // aquí iba antes un «distinct on», que es solo de PostgreSQL.
-        return Movimiento::ultimoDeCadaPersona()
-            ->join('personas', 'personas.id', '=', 'movimientos.persona_id')
-            ->leftJoin('puestos', 'puestos.id', '=', 'movimientos.puesto_id')
-            ->where('movimientos.tipo', Movimiento::ENTRADA)
-            ->whereNotNull('movimientos.tipo_vehiculo')
-            ->orderByDesc('movimientos.ocurrio_en')
-            ->get([
-                'movimientos.persona_id', 'movimientos.tipo_vehiculo', 'movimientos.marca',
-                'movimientos.modelo', 'movimientos.color', 'movimientos.placa',
-                'movimientos.ocurrio_en', 'movimientos.puesto_id', 'personas.nombre', 'personas.cedula',
-                'puestos.codigo as puesto',
-            ])
-            ->map(function ($fila) {
-                // El mismo objeto de datos que usa la puerta, para que la placa y la descripción se
-                // lean igual en las dos pantallas.
-                $fila->vehiculo = DatosVehiculo::desdeModelo($fila);
-
-                return $fila;
-            });
+        // Los vehículos son estadías: cada uno se anota y se saca EN el estacionamiento, con su
+        // conductor y su puesto (la puerta ya no maneja vehículos). Dentro = estadía abierta.
+        return VehiculoFijo::query()
+            ->abiertos()
+            ->with('puesto')
+            ->orderByDesc('entro_en')
+            ->get()
+            ->map(fn (VehiculoFijo $e) => (object) [
+                'id' => $e->id,
+                'placa' => $e->placa,
+                'tipo_vehiculo' => $e->tipo_vehiculo,
+                'marca' => $e->marca,
+                'color' => $e->color,
+                'puesto' => $e->puesto?->codigo,
+                'puesto_id' => $e->puesto_id,
+                'conductor' => $e->conductor_nombre,
+                'ocurrio_en' => (string) $e->entro_en,
+                'vehiculo' => DatosVehiculo::desde($e->tipo_vehiculo, $e->marca, null, $e->color, $e->placa),
+            ]);
     }
 
     /** Cuántos vehículos hay dentro ahora. */
@@ -84,12 +80,8 @@ final class Estacionamiento
      */
     public function puestosOcupados(): Collection
     {
-        // Ocupan puesto tanto los vehículos de personas que están dentro como los fijos (empresa o
-        // los que ya estaban) que siguen anotados en la bitácora.
-        $porPersonas = $this->vehiculosDentro()->pluck('puesto_id')->filter();
-        $porFijos = app(VehiculosFijos::class)->puestosOcupados();
-
-        return $porPersonas->merge($porFijos)->unique()->values();
+        // Ocupan puesto las estadías abiertas (todo vehículo dentro es una estadía).
+        return VehiculoFijo::query()->abiertos()->whereNotNull('puesto_id')->pluck('puesto_id')->unique()->values();
     }
 
     /**
@@ -134,15 +126,11 @@ final class Estacionamiento
      *
      * @throws ValidationException
      */
-    public function asignarPuesto(int $personaId, ?int $puestoId): void
+    public function asignarPuesto(int $estadiaId, ?int $puestoId): void
     {
-        $entrada = Movimiento::ultimoDeCadaPersona()
-            ->where('movimientos.persona_id', $personaId)
-            ->where('movimientos.tipo', Movimiento::ENTRADA)
-            ->whereNotNull('movimientos.tipo_vehiculo')
-            ->first(['movimientos.id', 'movimientos.tipo_vehiculo', 'movimientos.puesto_id']);
+        $estadia = VehiculoFijo::query()->abiertos()->find($estadiaId);
 
-        if (! $entrada) {
+        if (! $estadia) {
             throw ValidationException::withMessages([
                 'puesto' => 'Ese vehículo ya no está dentro.',
             ]);
@@ -157,14 +145,14 @@ final class Estacionamiento
                 ]);
             }
 
-            if (! $puesto->admite($entrada->tipo_vehiculo)) {
+            if (! $puesto->admite($estadia->tipo_vehiculo)) {
                 throw ValidationException::withMessages([
                     'puesto' => 'Ese puesto no admite este tipo de vehículo.',
                 ]);
             }
 
             // Ocupado por OTRO: si ya es de este mismo vehículo, reasignarlo al mismo no falla.
-            $esElMismo = (int) $entrada->puesto_id === $puestoId;
+            $esElMismo = (int) $estadia->puesto_id === $puestoId;
 
             if (! $esElMismo && $this->puestosOcupados()->contains($puestoId)) {
                 throw ValidationException::withMessages([
@@ -173,7 +161,7 @@ final class Estacionamiento
             }
         }
 
-        Movimiento::whereKey($entrada->id)->update(['puesto_id' => $puestoId]);
+        $estadia->update(['puesto_id' => $puestoId]);
     }
 
     /**
@@ -187,47 +175,23 @@ final class Estacionamiento
     {
         $corte = $fecha->startOfDay()->addDay();   // 00:00 del día siguiente = cierre de esa noche
 
-        $personas = Movimiento::ultimoDeCadaPersonaHasta($corte)
-            ->join('personas', 'personas.id', '=', 'movimientos.persona_id')
-            ->leftJoin('puestos', 'puestos.id', '=', 'movimientos.puesto_id')
-            ->where('movimientos.tipo', Movimiento::ENTRADA)
-            ->whereNotNull('movimientos.tipo_vehiculo')
-            ->orderByDesc('movimientos.ocurrio_en')
-            ->get([
-                'movimientos.tipo_vehiculo', 'movimientos.marca', 'movimientos.color',
-                'movimientos.placa', 'movimientos.ocurrio_en', 'personas.nombre',
-                'puestos.codigo as puesto',
-            ])
-            ->map(fn ($fila) => (object) [
-                'origen' => 'persona',
-                'placa' => $fila->placa,
-                'tipo_vehiculo' => $fila->tipo_vehiculo,
-                'marca' => $fila->marca,
-                'color' => $fila->color,
-                'puesto' => $fila->puesto,
-                'quien' => $fila->nombre,
-                'entro_en' => CarbonImmutable::parse($fila->ocurrio_en),
-            ]);
-
-        // Los fijos abiertos a través de esa noche: entraron antes del cierre y no habían salido.
-        $fijos = VehiculoFijo::query()
+        // Las estadías abiertas a través de esa noche: entraron antes del cierre y no habían salido.
+        return VehiculoFijo::query()
             ->with('puesto')
             ->where('entro_en', '<=', $corte)
             ->where(fn ($q) => $q->whereNull('salio_en')->orWhere('salio_en', '>', $corte))
             ->orderByDesc('entro_en')
             ->get()
-            ->map(fn ($fijo) => (object) [
-                'origen' => 'fijo',
-                'placa' => $fijo->placa,
-                'tipo_vehiculo' => $fijo->tipo_vehiculo,
-                'marca' => $fijo->marca,
-                'color' => $fijo->color,
-                'puesto' => $fijo->puesto?->codigo,
-                'quien' => $fijo->nota ?: 'Vehículo fijo',
-                'entro_en' => CarbonImmutable::parse($fijo->entro_en),
-            ]);
-
-        return $personas->concat($fijos)->values();
+            ->map(fn (VehiculoFijo $e) => (object) [
+                'placa' => $e->placa,
+                'tipo_vehiculo' => $e->tipo_vehiculo,
+                'marca' => $e->marca,
+                'color' => $e->color,
+                'puesto' => $e->puesto?->codigo,
+                'quien' => $e->conductor_nombre ?: ($e->nota ?: '—'),
+                'entro_en' => CarbonImmutable::parse($e->entro_en),
+            ])
+            ->values();
     }
 
     /** El aforo total configurado (0 = sin tope). */
@@ -260,23 +224,40 @@ final class Estacionamiento
      */
     public function delDia(CarbonImmutable $fecha): Collection
     {
-        return Movimiento::query()
-            ->join('personas', 'personas.id', '=', 'movimientos.persona_id')
-            ->whereNotNull('movimientos.tipo_vehiculo')
-            ->whereBetween('movimientos.ocurrio_en', [$fecha->startOfDay(), $fecha->endOfDay()])
-            ->orderByDesc('movimientos.ocurrio_en')
-            ->orderByDesc('movimientos.id')
-            ->get([
-                'movimientos.tipo as sentido', 'movimientos.tipo_vehiculo', 'movimientos.marca',
-                'movimientos.modelo', 'movimientos.color', 'movimientos.placa',
-                'movimientos.ocurrio_en', 'personas.nombre',
-            ])
-            ->map(function ($fila) {
-                $fila->vehiculo = DatosVehiculo::desdeModelo($fila);
-                $fila->esEntrada = $fila->sentido === Movimiento::ENTRADA;
+        $desde = $fecha->startOfDay();
+        $hasta = $fecha->endOfDay();
 
-                return $fila;
-            });
+        $estadias = VehiculoFijo::query()
+            ->with('puesto')
+            ->where(fn ($q) => $q->whereBetween('entro_en', [$desde, $hasta])->orWhereBetween('salio_en', [$desde, $hasta]))
+            ->get();
+
+        // Cada estadía puede aportar una entrada (si entró hoy) y una salida (si salió hoy).
+        $filas = collect();
+
+        foreach ($estadias as $e) {
+            $base = fn (bool $esEntrada, $cuando, ?string $conductor) => (object) [
+                'esEntrada' => $esEntrada,
+                'placa' => $e->placa,
+                'tipo_vehiculo' => $e->tipo_vehiculo,
+                'marca' => $e->marca,
+                'color' => $e->color,
+                'puesto' => $e->puesto?->codigo,
+                'conductor' => $conductor,
+                'ocurrio_en' => CarbonImmutable::parse($cuando),
+                'vehiculo' => DatosVehiculo::desde($e->tipo_vehiculo, $e->marca, null, $e->color, $e->placa),
+            ];
+
+            if ($e->entro_en >= $desde && $e->entro_en <= $hasta) {
+                $filas->push($base(true, $e->entro_en, $e->conductor_nombre));
+            }
+
+            if ($e->salio_en !== null && $e->salio_en >= $desde && $e->salio_en <= $hasta) {
+                $filas->push($base(false, $e->salio_en, $e->salida_conductor_nombre));
+            }
+        }
+
+        return $filas->sortByDesc('ocurrio_en')->values();
     }
 
     /** «Desde cuándo» está un vehículo, para la lista. */
