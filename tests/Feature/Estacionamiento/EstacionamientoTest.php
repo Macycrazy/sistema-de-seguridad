@@ -2,8 +2,6 @@
 
 namespace Tests\Feature\Estacionamiento;
 
-use App\Models\Movimiento;
-use App\Models\Persona;
 use App\Models\Puesto;
 use App\Models\VehiculoFijo;
 use App\Services\Alertas\UmbralesDeAlerta;
@@ -14,32 +12,28 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
+/**
+ * El estacionamiento tras el rediseño: los vehículos son ESTADÍAS (VehiculoFijo). Cada uno se anota
+ * y se saca en el propio estacionamiento; la puerta ya no maneja vehículos.
+ */
 class EstacionamientoTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function persona(string $cedula): Persona
+    private function estadia(string $placa, string $tipo, CarbonImmutable $entro, array $extra = []): VehiculoFijo
     {
-        return Persona::create(['cedula' => $cedula, 'tipo' => Persona::TRABAJADOR, 'nombre' => 'PERSONA '.$cedula, 'activo' => true]);
-    }
-
-    private function marca(Persona $p, string $tipo, CarbonImmutable $cuando, array $vehiculo = []): void
-    {
-        Movimiento::create(array_merge([
-            'persona_id' => $p->id,
-            'tipo' => $tipo,
-            'ocurrio_en' => $cuando,
-        ], $vehiculo));
+        return VehiculoFijo::create(array_merge([
+            'placa' => $placa,
+            'tipo_vehiculo' => $tipo,
+            'entro_en' => $entro,
+        ], $extra));
     }
 
     #[Test]
-    public function cuenta_los_vehiculos_de_quienes_estan_dentro(): void
+    public function cuenta_los_vehiculos_dentro_por_tipo(): void
     {
-        $carro = $this->persona('1');
-        $this->marca($carro, Movimiento::ENTRADA, CarbonImmutable::now()->subHour(), ['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'AB123CD']);
-
-        $moto = $this->persona('2');
-        $this->marca($moto, Movimiento::ENTRADA, CarbonImmutable::now()->subHour(), ['tipo_vehiculo' => DatosVehiculo::MOTO, 'placa' => 'XY9']);
+        $this->estadia('AB123CD', DatosVehiculo::CARRO, CarbonImmutable::now()->subHour());
+        $this->estadia('XY9', DatosVehiculo::MOTO, CarbonImmutable::now()->subHour());
 
         $servicio = app(Estacionamiento::class);
 
@@ -49,45 +43,29 @@ class EstacionamientoTest extends TestCase
     }
 
     #[Test]
-    public function quien_entro_a_pie_no_cuenta(): void
+    public function quien_ya_salio_no_cuenta(): void
     {
-        $aPie = $this->persona('1');
-        $this->marca($aPie, Movimiento::ENTRADA, CarbonImmutable::now()->subHour());   // sin vehículo
+        $this->estadia('AB123CD', DatosVehiculo::CARRO, CarbonImmutable::now()->subHours(3), ['salio_en' => CarbonImmutable::now()->subHour()]);
 
         $this->assertSame(0, app(Estacionamiento::class)->cuantosDentro());
     }
 
     #[Test]
-    public function quien_ya_salio_saca_su_vehiculo(): void
+    public function la_lista_trae_la_placa_y_el_conductor(): void
     {
-        $ana = $this->persona('1');
-        $this->marca($ana, Movimiento::ENTRADA, CarbonImmutable::now()->subHours(3), ['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'AB123CD']);
-        $this->marca($ana, Movimiento::SALIDA, CarbonImmutable::now()->subHour());   // su último movimiento es salida
-
-        $this->assertSame(0, app(Estacionamiento::class)->cuantosDentro());
-    }
-
-    #[Test]
-    public function la_lista_trae_la_placa_y_el_dueno(): void
-    {
-        $ana = $this->persona('12345678');
-        $this->marca($ana, Movimiento::ENTRADA, CarbonImmutable::now()->subHour(), ['tipo_vehiculo' => DatosVehiculo::CARRO, 'marca' => 'Toyota', 'placa' => 'AB123CD']);
+        $this->estadia('AB123CD', DatosVehiculo::CARRO, CarbonImmutable::now()->subHour(), ['marca' => 'Toyota', 'conductor_nombre' => 'ANA PÉREZ']);
 
         $fila = app(Estacionamiento::class)->vehiculosDentro()->first();
 
         $this->assertSame('AB123CD', $fila->placa);
-        $this->assertSame('PERSONA 12345678', $fila->nombre);
+        $this->assertSame('ANA PÉREZ', $fila->conductor);
         $this->assertSame('Carro', $fila->vehiculo->etiquetaTipo());
     }
 
     #[Test]
-    public function el_historial_del_dia_trae_entradas_y_salidas_de_vehiculos(): void
+    public function el_historial_del_dia_trae_entradas_y_salidas(): void
     {
-        $ana = $this->persona('1');
-        $this->marca($ana, Movimiento::ENTRADA, CarbonImmutable::now()->subHours(2), ['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'AB123CD']);
-        $this->marca($ana, Movimiento::SALIDA, CarbonImmutable::now()->subMinutes(10), ['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'AB123CD']);
-        // Quien entró a pie no aparece en el estacionamiento.
-        $this->marca($this->persona('2'), Movimiento::ENTRADA, CarbonImmutable::now()->subHour());
+        $this->estadia('AB123CD', DatosVehiculo::CARRO, CarbonImmutable::now()->subHours(2), ['salio_en' => CarbonImmutable::now()->subMinutes(10)]);
 
         $historial = app(Estacionamiento::class)->delDia(CarbonImmutable::today());
 
@@ -98,10 +76,8 @@ class EstacionamientoTest extends TestCase
     #[Test]
     public function pernoctan_los_que_entraron_antes_de_hoy_y_siguen_dentro(): void
     {
-        $ana = $this->persona('1');
-        $this->marca($ana, Movimiento::ENTRADA, CarbonImmutable::yesterday()->setTime(20, 0), ['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'AB123CD']);
-        // Otro que entró hoy: ese no pernocta.
-        $this->marca($this->persona('2'), Movimiento::ENTRADA, CarbonImmutable::now(), ['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'XY9']);
+        $this->estadia('AB123CD', DatosVehiculo::CARRO, CarbonImmutable::yesterday()->setTime(20, 0));
+        $this->estadia('XY9', DatosVehiculo::CARRO, CarbonImmutable::now());   // entró hoy, no pernocta
 
         $pernoctan = app(Estacionamiento::class)->pernoctan();
 
@@ -112,9 +88,7 @@ class EstacionamientoTest extends TestCase
     #[Test]
     public function quien_pernocto_pero_ya_salio_no_cuenta(): void
     {
-        $ana = $this->persona('1');
-        $this->marca($ana, Movimiento::ENTRADA, CarbonImmutable::yesterday()->setTime(20, 0), ['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'AB123CD']);
-        $this->marca($ana, Movimiento::SALIDA, CarbonImmutable::now());   // ya se fue
+        $this->estadia('AB123CD', DatosVehiculo::CARRO, CarbonImmutable::yesterday()->setTime(20, 0), ['salio_en' => CarbonImmutable::now()]);
 
         $this->assertTrue(app(Estacionamiento::class)->pernoctan()->isEmpty());
     }
@@ -122,40 +96,15 @@ class EstacionamientoTest extends TestCase
     #[Test]
     public function el_reporte_por_noche_trae_a_quien_estaba_esa_medianoche(): void
     {
-        $laNoche = CarbonImmutable::yesterday()->subDay();   // anteayer
+        $laNoche = CarbonImmutable::yesterday()->subDay();
 
-        $ana = $this->persona('1');
-        // Entró esa noche y no salió: estaba en la medianoche.
-        $this->marca($ana, Movimiento::ENTRADA, $laNoche->setTime(20, 0), ['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'AB123CD']);
-
-        $luis = $this->persona('2');
-        // Entró y salió antes de la medianoche: esa noche no estaba.
-        $this->marca($luis, Movimiento::ENTRADA, $laNoche->setTime(9, 0), ['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'XY9']);
-        $this->marca($luis, Movimiento::SALIDA, $laNoche->setTime(17, 0));
+        $this->estadia('AB123CD', DatosVehiculo::CARRO, $laNoche->setTime(20, 0));
+        $this->estadia('XY9', DatosVehiculo::CARRO, $laNoche->setTime(9, 0), ['salio_en' => $laNoche->setTime(17, 0)]);
 
         $reporte = app(Estacionamiento::class)->pernoctaronLaNoche($laNoche);
 
         $this->assertCount(1, $reporte);
         $this->assertSame('AB123CD', $reporte->first()->placa);
-    }
-
-    #[Test]
-    public function el_reporte_por_noche_incluye_los_fijos_abiertos_esa_noche(): void
-    {
-        $laNoche = CarbonImmutable::yesterday()->subDay();
-        $puesto = Puesto::create(['codigo' => 'A-1', 'orden' => 1]);
-
-        // Un fijo que entró antes y seguía dentro esa noche.
-        VehiculoFijo::create([
-            'puesto_id' => $puesto->id, 'placa' => 'FIJ001', 'tipo_vehiculo' => DatosVehiculo::CARRO,
-            'entro_en' => $laNoche->subDays(2), 'salio_en' => null,
-        ]);
-
-        $reporte = app(Estacionamiento::class)->pernoctaronLaNoche($laNoche);
-
-        $this->assertCount(1, $reporte);
-        $this->assertSame('FIJ001', $reporte->first()->placa);
-        $this->assertSame('fijo', $reporte->first()->origen);
     }
 
     #[Test]
@@ -177,5 +126,15 @@ class EstacionamientoTest extends TestCase
 
         $this->assertSame(40, $aforos['carro']);
         $this->assertSame(10, $aforos['moto']);
+    }
+
+    #[Test]
+    public function un_puesto_ocupado_por_una_estadia_no_sale_como_libre(): void
+    {
+        $a1 = Puesto::create(['codigo' => 'A-1', 'orden' => 1]);
+        Puesto::create(['codigo' => 'A-2', 'orden' => 2]);
+        $this->estadia('AB123CD', DatosVehiculo::CARRO, CarbonImmutable::now()->subHour(), ['puesto_id' => $a1->id]);
+
+        $this->assertSame(['A-2'], app(Estacionamiento::class)->puestosLibres()->pluck('codigo')->all());
     }
 }

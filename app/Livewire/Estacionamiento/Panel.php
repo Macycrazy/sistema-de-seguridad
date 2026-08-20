@@ -180,7 +180,7 @@ class Panel extends Component
                 }
             }
 
-            $mapa[$vehiculo->persona_id] = $opciones;
+            $mapa[$vehiculo->id] = $opciones;
         }
 
         return $mapa;
@@ -194,10 +194,10 @@ class Panel extends Component
     }
 
     /** Asigna, cambia o quita el puesto de un vehículo que está dentro. */
-    public function asignarPuesto(int $personaId, string $puestoId): void
+    public function asignarPuesto(int $estadiaId, string $puestoId): void
     {
         try {
-            app(Estacionamiento::class)->asignarPuesto($personaId, $puestoId === '' ? null : (int) $puestoId);
+            app(Estacionamiento::class)->asignarPuesto($estadiaId, $puestoId === '' ? null : (int) $puestoId);
         } catch (ValidationException $e) {
             $this->aviso = $e->validator->errors()->first();
 
