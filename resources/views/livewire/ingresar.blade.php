@@ -48,6 +48,7 @@
                 etiqueta="Clave"
                 nombre="clave"
                 type="password"
+                revelable
                 autocomplete="current-password"
                 wire:model="clave"
                 :error="$errors->first('clave')"

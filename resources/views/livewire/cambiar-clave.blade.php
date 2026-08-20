@@ -23,6 +23,7 @@
                 etiqueta="Clave actual"
                 nombre="actual"
                 type="password"
+                revelable
                 autofocus
                 autocomplete="current-password"
                 wire:model="actual"
@@ -33,6 +34,7 @@
                 etiqueta="Clave nueva"
                 nombre="nueva"
                 type="password"
+                revelable
                 autocomplete="new-password"
                 ayuda="Al menos {{ \App\Services\GestionDeUsuarios::MINIMO_DE_LA_CLAVE }} caracteres."
                 wire:model="nueva"
@@ -43,6 +45,7 @@
                 etiqueta="Repite la clave nueva"
                 nombre="repetida"
                 type="password"
+                revelable
                 autocomplete="new-password"
                 wire:model="repetida"
                 :error="$errors->first('repetida')"
