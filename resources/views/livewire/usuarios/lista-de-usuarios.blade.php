@@ -87,6 +87,7 @@
                             etiqueta="Clave"
                             nombre="clave"
                             type="password"
+                            revelable
                             autocomplete="new-password"
                             ayuda="Mínimo {{ \App\Services\GestionDeUsuarios::MINIMO_DE_LA_CLAVE }} caracteres."
                             wire:model="clave"
@@ -221,6 +222,7 @@
                                                 etiqueta="Clave nueva para {{ $fila->nombre }}"
                                                 nombre="clave-nueva-{{ $fila->id }}"
                                                 type="password"
+                                                revelable
                                                 autofocus
                                                 autocomplete="new-password"
                                                 ayuda="Mínimo {{ \App\Services\GestionDeUsuarios::MINIMO_DE_LA_CLAVE }} caracteres."
