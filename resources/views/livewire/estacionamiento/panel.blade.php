@@ -257,4 +257,61 @@
             </div>
         @endif
     </div>
+
+    {{-- Reporte de pernoctas por noche: se elige una fecha y sale quién se quedó esa noche
+         (personas y fijos). Plegado, para no consultarlo si no se pide. --}}
+    <div class="mt-6">
+        <button type="button" wire:click="$toggle('verReporte')"
+                class="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-slate-800">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 class="h-4 w-4 transition-transform {{ $verReporte ? 'rotate-90' : '' }}"><path d="m9 6 6 6-6 6"/></svg>
+            Pernoctas por noche
+        </button>
+
+        @if ($verReporte)
+            <div class="mt-3">
+                <div class="flex flex-wrap items-end gap-3">
+                    <div class="w-48">
+                        <x-campo etiqueta="Noche del" nombre="fechaReporte" type="date" wire:model.live="fechaReporte" />
+                    </div>
+                    <p class="pb-2.5 text-sm text-slate-500">
+                        Quién estaba dentro en la medianoche que cierra ese día.
+                    </p>
+                </div>
+
+                <div class="mt-3 overflow-x-auto rounded border border-slate-200 bg-white shadow-sm">
+                    <table class="w-full min-w-[40rem] text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-left font-mono text-xs uppercase tracking-widest text-slate-500">
+                                <th class="px-4 py-3 font-semibold">Placa</th>
+                                <th class="px-4 py-3 font-semibold">Puesto</th>
+                                <th class="px-4 py-3 font-semibold">Vehículo</th>
+                                <th class="px-4 py-3 font-semibold">Quién</th>
+                                <th class="px-4 py-3 font-semibold text-right">Entró</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @forelse ($this->reporteNoche as $r)
+                                <tr wire:key="rep-{{ $loop->index }}">
+                                    <td class="px-4 py-3 font-mono text-base font-bold tracking-wider text-slate-900">{{ $r->placa ?: '—' }}</td>
+                                    <td class="px-4 py-3 font-mono font-semibold text-slate-700">{{ $r->puesto ?: '—' }}</td>
+                                    <td class="px-4 py-3 text-slate-600">
+                                        <x-etiqueta :tipo="$r->tipo_vehiculo" tamano="chico" />
+                                        <span class="ml-1">{{ trim(($r->marca ?? '').' '.($r->color ?? '')) ?: '—' }}</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-slate-600">
+                                        {{ $r->quien }}
+                                        @if ($r->origen === 'fijo')<span class="ml-1 font-mono text-xs text-slate-400">fijo</span>@endif
+                                    </td>
+                                    <td class="whitespace-nowrap px-4 py-3 text-right font-mono text-xs text-slate-500">{{ $r->entro_en->translatedFormat('D j M · g:i a') }}</td>
+                                </tr>
+                            @empty
+                                <x-tabla-vacia :columnas="5">Esa noche no pernoctó ningún vehículo.</x-tabla-vacia>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
+    </div>
 </div>

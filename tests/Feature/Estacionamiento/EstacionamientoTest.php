@@ -4,6 +4,8 @@ namespace Tests\Feature\Estacionamiento;
 
 use App\Models\Movimiento;
 use App\Models\Persona;
+use App\Models\Puesto;
+use App\Models\VehiculoFijo;
 use App\Services\Alertas\UmbralesDeAlerta;
 use App\Services\DatosVehiculo;
 use App\Services\Estacionamiento\Estacionamiento;
@@ -115,6 +117,45 @@ class EstacionamientoTest extends TestCase
         $this->marca($ana, Movimiento::SALIDA, CarbonImmutable::now());   // ya se fue
 
         $this->assertTrue(app(Estacionamiento::class)->pernoctan()->isEmpty());
+    }
+
+    #[Test]
+    public function el_reporte_por_noche_trae_a_quien_estaba_esa_medianoche(): void
+    {
+        $laNoche = CarbonImmutable::yesterday()->subDay();   // anteayer
+
+        $ana = $this->persona('1');
+        // Entró esa noche y no salió: estaba en la medianoche.
+        $this->marca($ana, Movimiento::ENTRADA, $laNoche->setTime(20, 0), ['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'AB123CD']);
+
+        $luis = $this->persona('2');
+        // Entró y salió antes de la medianoche: esa noche no estaba.
+        $this->marca($luis, Movimiento::ENTRADA, $laNoche->setTime(9, 0), ['tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'XY9']);
+        $this->marca($luis, Movimiento::SALIDA, $laNoche->setTime(17, 0));
+
+        $reporte = app(Estacionamiento::class)->pernoctaronLaNoche($laNoche);
+
+        $this->assertCount(1, $reporte);
+        $this->assertSame('AB123CD', $reporte->first()->placa);
+    }
+
+    #[Test]
+    public function el_reporte_por_noche_incluye_los_fijos_abiertos_esa_noche(): void
+    {
+        $laNoche = CarbonImmutable::yesterday()->subDay();
+        $puesto = Puesto::create(['codigo' => 'A-1', 'orden' => 1]);
+
+        // Un fijo que entró antes y seguía dentro esa noche.
+        VehiculoFijo::create([
+            'puesto_id' => $puesto->id, 'placa' => 'FIJ001', 'tipo_vehiculo' => DatosVehiculo::CARRO,
+            'entro_en' => $laNoche->subDays(2), 'salio_en' => null,
+        ]);
+
+        $reporte = app(Estacionamiento::class)->pernoctaronLaNoche($laNoche);
+
+        $this->assertCount(1, $reporte);
+        $this->assertSame('FIJ001', $reporte->first()->placa);
+        $this->assertSame('fijo', $reporte->first()->origen);
     }
 
     #[Test]

@@ -4,6 +4,7 @@ namespace App\Services\Estacionamiento;
 
 use App\Models\Movimiento;
 use App\Models\Puesto;
+use App\Models\VehiculoFijo;
 use App\Services\Alertas\UmbralesDeAlerta;
 use App\Services\DatosVehiculo;
 use Carbon\CarbonImmutable;
@@ -173,6 +174,60 @@ final class Estacionamiento
         }
 
         Movimiento::whereKey($entrada->id)->update(['puesto_id' => $puestoId]);
+    }
+
+    /**
+     * Qué vehículos pernoctaron la NOCHE de una fecha pasada (histórico): los que estaban dentro en
+     * la medianoche que cierra ese día. Incluye los de personas y los fijos. Cada uno con placa,
+     * puesto, tipo, quién (dueño, o la nota del fijo) y desde cuándo.
+     *
+     * @return Collection<int, object>
+     */
+    public function pernoctaronLaNoche(CarbonImmutable $fecha): Collection
+    {
+        $corte = $fecha->startOfDay()->addDay();   // 00:00 del día siguiente = cierre de esa noche
+
+        $personas = Movimiento::ultimoDeCadaPersonaHasta($corte)
+            ->join('personas', 'personas.id', '=', 'movimientos.persona_id')
+            ->leftJoin('puestos', 'puestos.id', '=', 'movimientos.puesto_id')
+            ->where('movimientos.tipo', Movimiento::ENTRADA)
+            ->whereNotNull('movimientos.tipo_vehiculo')
+            ->orderByDesc('movimientos.ocurrio_en')
+            ->get([
+                'movimientos.tipo_vehiculo', 'movimientos.marca', 'movimientos.color',
+                'movimientos.placa', 'movimientos.ocurrio_en', 'personas.nombre',
+                'puestos.codigo as puesto',
+            ])
+            ->map(fn ($fila) => (object) [
+                'origen' => 'persona',
+                'placa' => $fila->placa,
+                'tipo_vehiculo' => $fila->tipo_vehiculo,
+                'marca' => $fila->marca,
+                'color' => $fila->color,
+                'puesto' => $fila->puesto,
+                'quien' => $fila->nombre,
+                'entro_en' => CarbonImmutable::parse($fila->ocurrio_en),
+            ]);
+
+        // Los fijos abiertos a través de esa noche: entraron antes del cierre y no habían salido.
+        $fijos = VehiculoFijo::query()
+            ->with('puesto')
+            ->where('entro_en', '<=', $corte)
+            ->where(fn ($q) => $q->whereNull('salio_en')->orWhere('salio_en', '>', $corte))
+            ->orderByDesc('entro_en')
+            ->get()
+            ->map(fn ($fijo) => (object) [
+                'origen' => 'fijo',
+                'placa' => $fijo->placa,
+                'tipo_vehiculo' => $fijo->tipo_vehiculo,
+                'marca' => $fijo->marca,
+                'color' => $fijo->color,
+                'puesto' => $fijo->puesto?->codigo,
+                'quien' => $fijo->nota ?: 'Vehículo fijo',
+                'entro_en' => CarbonImmutable::parse($fijo->entro_en),
+            ]);
+
+        return $personas->concat($fijos)->values();
     }
 
     /** El aforo total configurado (0 = sin tope). */
