@@ -37,6 +37,10 @@ class Auditoria
 
     public const REACTIVO_USUARIO = 'reactivo-usuario';
 
+    public const EDITO_USUARIO = 'edito-usuario';
+
+    public const BORRO_USUARIO = 'borro-usuario';
+
     public const CAMBIO_ROL = 'cambio-rol';
 
     public const CAMBIO_CLAVE = 'cambio-clave';
@@ -67,6 +71,8 @@ class Auditoria
         self::CREO_USUARIO => 'Creó un usuario',
         self::DESACTIVO_USUARIO => 'Desactivó un usuario',
         self::REACTIVO_USUARIO => 'Reactivó un usuario',
+        self::EDITO_USUARIO => 'Editó un usuario',
+        self::BORRO_USUARIO => 'Borró un usuario',
         self::CAMBIO_ROL => 'Cambió un rol',
         self::CAMBIO_CLAVE => 'Cambió una clave',
         self::CAMBIO_PERMISOS => 'Cambió permisos',
@@ -176,6 +182,16 @@ class Auditoria
     public function reactivoUsuario(User $usuario): void
     {
         $this->anota(self::REACTIVO_USUARIO, $usuario->usuario);
+    }
+
+    public function editoUsuario(User $usuario): void
+    {
+        $this->anota(self::EDITO_USUARIO, $usuario->usuario);
+    }
+
+    public function borroUsuario(string $usuario): void
+    {
+        $this->anota(self::BORRO_USUARIO, $usuario);
     }
 
     public function cambioRol(User $usuario, string $antes, string $ahora): void

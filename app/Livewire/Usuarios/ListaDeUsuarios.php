@@ -21,13 +21,17 @@ use Livewire\Component;
  * habría que enseñarla en pantalla para poder dictarla, y una clave escrita en la pantalla de un
  * puesto de vigilancia la lee cualquiera que pase por detrás.
  *
- * Aquí no se borra a nadie. Un usuario que se va se desactiva, para que el rastro que dejó siga
- * apuntando a alguien.
+ * La vía preferida para quitar a alguien es desactivarlo, para que el rastro que dejó siga
+ * apuntando a él. Borrar existe —para las cuentas creadas por error— pero anula ese rastro, así
+ * que va aparte y con confirmación.
  */
 class ListaDeUsuarios extends Component
 {
     /** El formulario de alta empieza cerrado: la pantalla se abre para mirar, no para crear. */
     public bool $creando = false;
+
+    /** A quién se está editando; null cuando el formulario es un alta nueva. */
+    public ?int $editandoId = null;
 
     public string $usuario = '';
 
@@ -126,6 +130,72 @@ class ListaDeUsuarios extends Component
     {
         $this->limpiarFormulario();
         $this->creando = false;
+    }
+
+    /** Carga a un usuario en el formulario para corregir sus datos (nombre, usuario, cédula). */
+    public function editar(int $id): void
+    {
+        $this->olvidarLoAnterior();
+
+        $usuario = $this->encontrar($id);
+        $this->editandoId = $usuario->id;
+        $this->usuario = $usuario->usuario;
+        $this->nombre = $usuario->nombre;
+        $this->cedula = (string) $usuario->cedula;
+        $this->creando = true;
+    }
+
+    /** El botón del formulario: crea si es nuevo, o guarda la corrección si se está editando. */
+    public function guardar(): void
+    {
+        if ($this->editandoId !== null) {
+            $this->guardarEdicion();
+
+            return;
+        }
+
+        $this->crear();
+    }
+
+    private function guardarEdicion(): void
+    {
+        $this->aviso = '';
+        $this->resetErrorBag();
+
+        try {
+            $usuario = $this->gestion->editar(
+                usuario: $this->encontrar($this->editandoId),
+                nombre: $this->nombre,
+                nombreDeUsuario: $this->usuario,
+                cedula: $this->cedula,
+                quienLoHace: auth()->user(),
+            );
+        } catch (ValidationException $e) {
+            $this->setErrorBag($e->validator->errors());
+
+            return;
+        }
+
+        $this->aviso = "Datos de «{$usuario->usuario}» actualizados.";
+        $this->limpiarFormulario();
+        $this->creando = false;
+        unset($this->usuarios);
+    }
+
+    public function eliminar(int $id): void
+    {
+        $this->olvidarLoAnterior();
+
+        try {
+            $this->gestion->eliminar($this->encontrar($id), auth()->user());
+        } catch (ValidationException $e) {
+            $this->setErrorBag($e->validator->errors());
+
+            return;
+        }
+
+        $this->aviso = 'Usuario borrado.';
+        unset($this->usuarios);
     }
 
     public function crear(): void
@@ -294,6 +364,7 @@ class ListaDeUsuarios extends Component
         $this->claveNueva = '';
         $this->cambiandoRolA = null;
         $this->rolNuevo = '';
+        $this->editandoId = null;
         $this->resetErrorBag();
     }
 
@@ -304,6 +375,7 @@ class ListaDeUsuarios extends Component
         $this->cedula = '';
         $this->clave = '';
         $this->rol = Rol::VIGILANTE->value;
+        $this->editandoId = null;
         $this->resetErrorBag();
     }
 }
