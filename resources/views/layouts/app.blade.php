@@ -199,7 +199,10 @@
         @endphp
 
         @if ($tabs->count() >= 2)
-            <nav class="sticky bottom-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur lg:hidden"
+            {{-- Anclado al fondo de la pantalla —«fixed», no «sticky»—: en páginas cortas «sticky»
+                 se quedaba a media pantalla, donde terminaba el contenido. El «pb-28» de <main>
+                 reserva su sitio para que no tape la última fila. --}}
+            <nav class="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur lg:hidden"
                  style="padding-bottom: env(safe-area-inset-bottom)"
                  aria-label="Módulos">
                 <div class="mx-auto flex max-w-lg items-stretch justify-around">
