@@ -79,6 +79,8 @@ class Movimiento extends Model
         'modelo',
         'color',
         'placa',
+        // La plaza a la que se asignó el vehículo al entrar, si se asignó. Opcional.
+        'puesto_id',
     ];
 
     protected function casts(): array
@@ -97,6 +99,12 @@ class Movimiento extends Model
     public function usuario(): BelongsTo
     {
         return $this->belongsTo(User::class, 'usuario_id');
+    }
+
+    /** La plaza asignada al entrar, si se asignó. */
+    public function puesto(): BelongsTo
+    {
+        return $this->belongsTo(Puesto::class);
     }
 
     public function esEntrada(): bool
