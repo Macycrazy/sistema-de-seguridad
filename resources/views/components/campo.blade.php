@@ -4,6 +4,9 @@
     'tamano' => 'normal',
     'error' => null,
     'ayuda' => null,
+    // Un ojito para ver la clave mientras se teclea: útil en el teléfono, donde un punto o una
+    // mayúscula mal puesta no se ven bajo los asteriscos. Empieza oculta.
+    'revelable' => false,
 ])
 
 @php
@@ -37,12 +40,40 @@
         </label>
     @endif
 
-    <input {{ $attributes->merge([
-        'id' => $nombre,
-        'name' => $nombre,
-        'class' => "block w-full rounded border bg-white text-slate-900 placeholder-slate-400
-                    focus:outline-none focus:ring-4 $medidas $borde",
-    ]) }}>
+    @if ($revelable)
+        {{-- El ojito: empieza en «password» (oculta) y solo se muestra si se toca. --}}
+        <div class="relative" x-data="{ ver: false }">
+            <input {{ $attributes->merge([
+                'id' => $nombre,
+                'name' => $nombre,
+                'class' => "block w-full rounded border bg-white text-slate-900 placeholder-slate-400
+                            focus:outline-none focus:ring-4 pr-11! $medidas $borde",
+            ]) }} x-bind:type="ver ? 'text' : 'password'">
+
+            <button type="button" tabindex="-1" @click="ver = !ver"
+                    x-bind:aria-label="ver ? 'Ocultar la clave' : 'Ver la clave'"
+                    class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-700">
+                {{-- Ojo (clave oculta) --}}
+                <svg x-show="!ver" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                     stroke="currentColor" stroke-width="2" class="h-5 w-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12s3.75-7.5 9.75-7.5 9.75 7.5 9.75 7.5-3.75 7.5-9.75 7.5S2.25 12 2.25 12z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+                {{-- Ojo tachado (clave visible). Oculto de entrada, para que no parpadee antes de Alpine. --}}
+                <svg x-show="ver" style="display:none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                     stroke="currentColor" stroke-width="2" class="h-5 w-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.5 10.5 0 002.25 12s3.75 7.5 9.75 7.5c1.77 0 3.37-.5 4.77-1.27M6.53 6.53A10.4 10.4 0 0112 4.5c6 0 9.75 7.5 9.75 7.5a12.9 12.9 0 01-2.17 3.03M3 3l18 18"/>
+                </svg>
+            </button>
+        </div>
+    @else
+        <input {{ $attributes->merge([
+            'id' => $nombre,
+            'name' => $nombre,
+            'class' => "block w-full rounded border bg-white text-slate-900 placeholder-slate-400
+                        focus:outline-none focus:ring-4 $medidas $borde",
+        ]) }}>
+    @endif
 
     @if ($error)
         <p class="mt-1.5 text-sm text-alto">{{ $error }}</p>
