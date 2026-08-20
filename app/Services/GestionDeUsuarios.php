@@ -23,8 +23,10 @@ use Illuminate\Validation\ValidationException;
  * al supervisor, sin esa regla el sistema se regalaría solo: bastaría con crearse un administrador
  * —o ponerle otra clave a uno que ya exista— para tenerlo todo.
  *
- * Un usuario NO se borra nunca. Se desactiva. Si se borrara, el rastro de la auditoría quedaría
- * apuntando al vacío y dejaría de probar quién hizo qué, que es para lo que existe.
+ * La vía preferida para quitar a un usuario es DESACTIVARLO: así el rastro de la auditoría sigue
+ * probando quién hizo qué. Borrar (eliminar) existe para las cuentas creadas por error; anula ese
+ * rastro (las FKs de movimientos y bitácora son «nullOnDelete»), por eso lleva las mismas
+ * salvaguardas que desactivar.
  */
 class GestionDeUsuarios
 {
@@ -67,11 +69,8 @@ class GestionDeUsuarios
             ]);
         }
 
-        if ($cedula !== null && User::where('cedula', $cedula)->exists()) {
-            throw ValidationException::withMessages([
-                'cedula' => 'Ya hay un usuario con esa cédula.',
-            ]);
-        }
+        // La cédula puede repetirse entre usuarios: aquí es un dato de contacto, no la identidad
+        // (esa es «usuario», que sí es único). No se comprueba ni se bloquea por repetida.
 
         $creado = User::create([
             'usuario' => $usuario,
@@ -85,6 +84,84 @@ class GestionDeUsuarios
         app(Auditoria::class)->creoUsuario($creado);
 
         return $creado;
+    }
+
+    /**
+     * Corrige los datos de un usuario: su nombre, su nombre de usuario y su cédula. No toca la
+     * clave ni el rol —esos tienen su propia vía—. El «usuario» sigue siendo único; la cédula no.
+     *
+     * @throws ValidationException
+     */
+    public function editar(
+        User $usuario,
+        string $nombre,
+        string $nombreDeUsuario,
+        ?string $cedula,
+        User $quienLoHace,
+    ): User {
+        $this->exigirAlcance($usuario, $quienLoHace);
+
+        $nombre = trim($nombre);
+        $nombreDeUsuario = mb_strtolower(trim($nombreDeUsuario));
+        $cedula = $this->cedulaValida($cedula);
+
+        $this->exigirUsuarioValido($nombreDeUsuario);
+
+        if ($nombre === '') {
+            throw ValidationException::withMessages([
+                'nombre' => 'Hace falta el nombre de la persona.',
+            ]);
+        }
+
+        // El «usuario» es único: no puede pisar el de otro (el suyo propio sí se conserva).
+        if (User::where('usuario', $nombreDeUsuario)->whereKeyNot($usuario->getKey())->exists()) {
+            throw ValidationException::withMessages([
+                'usuario' => 'Ese nombre de usuario ya está tomado.',
+            ]);
+        }
+
+        $usuario->update([
+            'nombre' => $nombre,
+            'usuario' => $nombreDeUsuario,
+            'cedula' => $cedula,
+        ]);
+
+        app(Auditoria::class)->editoUsuario($usuario);
+
+        return $usuario;
+    }
+
+    /**
+     * Borra un usuario de verdad.
+     *
+     * El sistema prefiere DESACTIVAR —así el rastro sigue diciendo quién hizo qué—, y esa sigue
+     * siendo la vía normal. Pero el administrador puede querer quitar una cuenta creada por error.
+     * Las FKs de «movimientos» y «bitácora» son «nullOnDelete»: el histórico no se cae, pero ese
+     * usuario deja de aparecer como autor de lo que hizo. Por eso, con las mismas salvaguardas que
+     * desactivar: no borrarse a uno mismo, ni al último administrador activo, ni a quien está por
+     * encima del propio rol.
+     *
+     * @throws ValidationException
+     */
+    public function eliminar(User $usuario, User $quienLoHace): void
+    {
+        $this->exigirAlcance($usuario, $quienLoHace);
+
+        if ($usuario->is($quienLoHace)) {
+            throw ValidationException::withMessages([
+                'usuario' => 'No puedes borrarte a ti mismo.',
+            ]);
+        }
+
+        if ($usuario->esAdministrador() && $usuario->activo && $this->administradoresActivos() <= 1) {
+            throw ValidationException::withMessages([
+                'usuario' => 'Es el único administrador activo: el sistema se quedaría sin quien lo administre.',
+            ]);
+        }
+
+        $nombreDeUsuario = $usuario->usuario;
+        $usuario->delete();
+        app(Auditoria::class)->borroUsuario($nombreDeUsuario);
     }
 
     /**

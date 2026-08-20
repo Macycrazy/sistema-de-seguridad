@@ -5,8 +5,9 @@
     dictar una clave generada habría que escribirla en la pantalla, y una clave escrita en la
     pantalla de un puesto de vigilancia la lee cualquiera que pase por detrás.
 
-    Aquí tampoco hay botón de borrar, y no es un olvido: un usuario borrado dejaría el rastro de la
-    auditoría apuntando al vacío. Se desactiva, y se puede volver a activar.
+    La vía preferida para quitar a alguien es DESACTIVAR: se le corta el acceso y su rastro sigue
+    apuntando a él. Borrar existe para las cuentas creadas por error; anula ese rastro (las FKs son
+    «nullOnDelete»), por eso pide confirmación y no es lo primero que se ofrece.
 --}}
 <div>
 
@@ -30,10 +31,11 @@
         <x-error class="mb-5">{{ $errors->first('usuario') }}</x-error>
     @endif
 
-    {{-- EL ALTA --}}
+    {{-- EL ALTA / LA EDICIÓN --}}
     @if ($creando)
-        <x-tarjeta parte="3" titulo="Nuevo usuario" class="mb-6">
-            <form wire:submit="crear" class="space-y-4">
+        @php $editando = $editandoId !== null; @endphp
+        <x-tarjeta parte="3" :titulo="$editando ? 'Editar usuario' : 'Nuevo usuario'" class="mb-6">
+            <form wire:submit="guardar" class="space-y-4">
                 <div class="grid gap-4 sm:grid-cols-2">
                     <x-campo
                         etiqueta="Usuario"
@@ -66,33 +68,39 @@
                         :error="$errors->first('cedula')"
                     />
 
-                    <x-selector
-                        etiqueta="Rol"
-                        nombre="rol"
-                        :opciones="$this->roles"
-                        wire:model="rol"
-                        :error="$errors->first('rol')"
-                    />
+                    {{-- Rol y clave solo al crear: al editar, cada uno tiene su propio botón en la
+                         fila (Cambiar rol / Cambio de clave). --}}
+                    @unless ($editando)
+                        <x-selector
+                            etiqueta="Rol"
+                            nombre="rol"
+                            :opciones="$this->roles"
+                            wire:model="rol"
+                            :error="$errors->first('rol')"
+                        />
 
-                    <x-campo
-                        etiqueta="Clave"
-                        nombre="clave"
-                        type="password"
-                        autocomplete="new-password"
-                        ayuda="Mínimo {{ \App\Services\GestionDeUsuarios::MINIMO_DE_LA_CLAVE }} caracteres."
-                        wire:model="clave"
-                        :error="$errors->first('clave')"
-                    />
+                        <x-campo
+                            etiqueta="Clave"
+                            nombre="clave"
+                            type="password"
+                            autocomplete="new-password"
+                            ayuda="Mínimo {{ \App\Services\GestionDeUsuarios::MINIMO_DE_LA_CLAVE }} caracteres."
+                            wire:model="clave"
+                            :error="$errors->first('clave')"
+                        />
+                    @endunless
                 </div>
 
                 <div class="flex items-center gap-3">
-                    <x-boton type="submit">Crear</x-boton>
+                    <x-boton type="submit">{{ $editando ? 'Guardar' : 'Crear' }}</x-boton>
                     <x-boton type="button" variante="secundario" wire:click="cerrarFormulario">
                         Cancelar
                     </x-boton>
-                    <p class="text-sm text-slate-500">
-                        Con esa clave entra. Si quiere una suya, la cambia él desde su nombre.
-                    </p>
+                    @unless ($editando)
+                        <p class="text-sm text-slate-500">
+                            Con esa clave entra. Si quiere una suya, la cambia él desde su nombre.
+                        </p>
+                    @endunless
                 </div>
             </form>
         </x-tarjeta>
@@ -140,6 +148,14 @@
                                         <x-boton
                                             variante="secundario"
                                             tamano="chico"
+                                            wire:click="editar({{ $fila->id }})"
+                                        >
+                                            Editar
+                                        </x-boton>
+
+                                        <x-boton
+                                            variante="secundario"
+                                            tamano="chico"
                                             wire:click="abrirCambioDeClave({{ $fila->id }})"
                                         >
                                             Cambio de clave
@@ -155,7 +171,7 @@
 
                                         @if ($fila->activo)
                                             <x-boton
-                                                variante="peligro"
+                                                variante="secundario"
                                                 tamano="chico"
                                                 wire:click="desactivar({{ $fila->id }})"
                                             >
@@ -170,6 +186,18 @@
                                                 Reactivar
                                             </x-boton>
                                         @endif
+
+                                        {{-- Borrar de verdad: el histórico no se cae (las FKs se
+                                             anulan), pero se pierde el «quién» de lo que hizo. Por
+                                             eso pide confirmación y va aparte. --}}
+                                        <x-boton
+                                            variante="peligro"
+                                            tamano="chico"
+                                            wire:click="eliminar({{ $fila->id }})"
+                                            wire:confirm="¿Borrar a {{ $fila->nombre }}? Se pierde su rastro en la auditoría. Si solo quieres quitarle el acceso, usa Desactivar."
+                                        >
+                                            Borrar
+                                        </x-boton>
                                     @else
                                         <span class="font-mono text-xs uppercase tracking-widest text-slate-400">
                                             Fuera de tu alcance

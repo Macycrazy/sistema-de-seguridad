@@ -284,4 +284,75 @@ class GestionDeUsuariosTest extends TestCase
 
         $this->assertTrue($vigilante->fresh()->activo);
     }
+
+    #[Test]
+    public function dos_usuarios_pueden_compartir_cedula(): void
+    {
+        $admin = $this->administrador();
+        $gestion = app(GestionDeUsuarios::class);
+
+        $gestion->crear('uno', 'Uno', '12345678', Rol::VIGILANTE, self::CLAVE, $admin);
+        $dos = $gestion->crear('dos', 'Dos', '12345678', Rol::VIGILANTE, self::CLAVE, $admin);
+
+        $this->assertSame('12345678', $dos->cedula);
+        $this->assertSame(2, User::where('cedula', '12345678')->count());
+    }
+
+    #[Test]
+    public function el_administrador_edita_los_datos_de_un_usuario(): void
+    {
+        $this->administrador();
+        $usuario = User::factory()->create(['usuario' => 'viejo', 'nombre' => 'Nombre Viejo', 'rol' => Rol::VIGILANTE]);
+
+        Livewire::test(ListaDeUsuarios::class)
+            ->call('editar', $usuario->id)
+            ->assertSet('editandoId', $usuario->id)
+            ->set('nombre', 'Nombre Nuevo')
+            ->set('usuario', 'nuevo')
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $usuario->refresh();
+        $this->assertSame('Nombre Nuevo', $usuario->nombre);
+        $this->assertSame('nuevo', $usuario->usuario);
+    }
+
+    #[Test]
+    public function al_editar_no_puede_tomar_el_usuario_de_otro(): void
+    {
+        $this->administrador();
+        User::factory()->create(['usuario' => 'ocupado', 'rol' => Rol::VIGILANTE]);
+        $usuario = User::factory()->create(['usuario' => 'libre', 'rol' => Rol::VIGILANTE]);
+
+        Livewire::test(ListaDeUsuarios::class)
+            ->call('editar', $usuario->id)
+            ->set('usuario', 'ocupado')
+            ->call('guardar')
+            ->assertHasErrors('usuario');
+
+        $this->assertSame('libre', $usuario->fresh()->usuario);
+    }
+
+    #[Test]
+    public function el_administrador_borra_a_un_usuario(): void
+    {
+        $this->administrador();
+        $usuario = User::factory()->create(['rol' => Rol::VIGILANTE]);
+
+        Livewire::test(ListaDeUsuarios::class)
+            ->call('eliminar', $usuario->id)
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseMissing('users', ['id' => $usuario->id]);
+    }
+
+    #[Test]
+    public function no_puede_borrarse_a_si_mismo(): void
+    {
+        $admin = $this->administrador();
+
+        $this->expectException(ValidationException::class);
+
+        app(GestionDeUsuarios::class)->eliminar($admin, $admin);
+    }
 }
