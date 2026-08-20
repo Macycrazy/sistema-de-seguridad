@@ -62,6 +62,14 @@ class ListaDeTrabajadores extends Component
 
     public string $busqueda = '';
 
+    /** Filtros de la lista. Vacío = sin filtrar por ese criterio. */
+    public string $filtroEnte = '';
+
+    public string $filtroGerencia = '';
+
+    /** Estado: '', 'activo' o 'inactivo'. */
+    public string $filtroEstado = '';
+
     /** Lo que se dice después de guardar o importar. */
     public string $aviso = '';
 
@@ -87,10 +95,34 @@ class ListaDeTrabajadores extends Component
         $this->resetPage();
     }
 
-    /** Al cambiar entre personal y visitas: se cierra cualquier formulario abierto y se vuelve al inicio. */
+    public function updatedFiltroEnte(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFiltroGerencia(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFiltroEstado(): void
+    {
+        $this->resetPage();
+    }
+
+    /** Al cambiar entre personal y visitas: se cierra el formulario, se limpian filtros y se vuelve al inicio. */
     public function updatedFiltro(): void
     {
         $this->cancelarAlta();
+        // Ente y gerencia son de nómina: no tienen sentido sobre las visitas.
+        $this->reset('filtroEnte', 'filtroGerencia', 'filtroEstado');
+        $this->resetPage();
+    }
+
+    /** Deja los filtros en blanco sin cambiar de pestaña. */
+    public function limpiarFiltros(): void
+    {
+        $this->reset('busqueda', 'filtroEnte', 'filtroGerencia', 'filtroEstado');
         $this->resetPage();
     }
 
@@ -122,6 +154,11 @@ class ListaDeTrabajadores extends Component
                     }
                 });
             })
+            // Ente y gerencia solo aplican a la nómina; sobre las visitas se ignoran.
+            ->when(! $this->verInvitados() && $this->filtroEnte !== '', fn ($q) => $q->where('ente', $this->filtroEnte))
+            ->when(! $this->verInvitados() && $this->filtroGerencia !== '', fn ($q) => $q->where('dependencia', $this->filtroGerencia))
+            ->when($this->filtroEstado === 'activo', fn ($q) => $q->where('activo', true))
+            ->when($this->filtroEstado === 'inactivo', fn ($q) => $q->where('activo', false))
             ->orderByDesc('activo')
             ->orderBy('nombre')
             ->paginate(12);
@@ -131,6 +168,25 @@ class ListaDeTrabajadores extends Component
     public function entes(): array
     {
         return GestionDeTrabajadores::ENTES;
+    }
+
+    /**
+     * Las gerencias que de verdad hay entre los trabajadores, para llenar el desplegable. Se sacan
+     * de los datos —no de un catálogo fijo— así solo se ofrece lo que existe.
+     *
+     * @return array<int, string>
+     */
+    #[Computed]
+    public function gerencias(): array
+    {
+        return Persona::query()
+            ->where('tipo', Persona::TRABAJADOR)
+            ->whereNotNull('dependencia')
+            ->where('dependencia', '!=', '')
+            ->distinct()
+            ->orderBy('dependencia')
+            ->pluck('dependencia')
+            ->all();
     }
 
     public function abrirAlta(): void

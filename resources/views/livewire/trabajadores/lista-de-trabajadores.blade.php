@@ -54,6 +54,33 @@
     </div>
     @error('archivo') <p class="mt-2 text-sm text-alto">{{ $message }}</p> @enderror
 
+    {{-- Filtros: gerencia y ente (solo nómina) y estado. Se afinan en vivo. --}}
+    <div class="mt-4 flex flex-wrap items-end gap-3">
+        @unless ($this->verInvitados())
+            <div class="w-56">
+                <x-selector etiqueta="Gerencia" nombre="filtroGerencia"
+                            :opciones="array_merge(['' => 'Todas'], array_combine($this->gerencias, $this->gerencias))"
+                            wire:model.live="filtroGerencia" />
+            </div>
+            <div class="w-44">
+                <x-selector etiqueta="Ente" nombre="filtroEnte"
+                            :opciones="array_merge(['' => 'Todos'], $this->entes)"
+                            wire:model.live="filtroEnte" />
+            </div>
+        @endunless
+        <div class="w-40">
+            <x-selector etiqueta="Estado" nombre="filtroEstado"
+                        :opciones="['' => 'Todos', 'activo' => 'Activos', 'inactivo' => 'Inactivos']"
+                        wire:model.live="filtroEstado" />
+        </div>
+        @if ($busqueda !== '' || $filtroEnte !== '' || $filtroGerencia !== '' || $filtroEstado !== '')
+            <button type="button" wire:click="limpiarFiltros"
+                    class="pb-2.5 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:underline">
+                Limpiar filtros
+            </button>
+        @endif
+    </div>
+
     {{-- Errores de la última importación, fila por fila. --}}
     @if ($erroresDeImportacion)
         <div class="mt-4 rounded border border-alto/30 bg-alto-suave px-4 py-3">

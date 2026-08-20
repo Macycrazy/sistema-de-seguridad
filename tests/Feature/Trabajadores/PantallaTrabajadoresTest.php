@@ -123,6 +123,32 @@ class PantallaTrabajadoresTest extends TestCase
     }
 
     #[Test]
+    public function filtra_por_gerencia_ente_y_estado(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        Persona::create(['cedula' => '11111111', 'tipo' => Persona::TRABAJADOR, 'nombre' => 'ANA TECNO', 'dependencia' => 'TECNOLOGÍA', 'ente' => Persona::ENTE_CIIP, 'activo' => true]);
+        Persona::create(['cedula' => '22222222', 'tipo' => Persona::TRABAJADOR, 'nombre' => 'LUIS HUMANO', 'dependencia' => 'GESTIÓN HUMANA', 'ente' => Persona::ENTE_CIIP, 'activo' => true]);
+        Persona::create(['cedula' => '33333333', 'tipo' => Persona::TRABAJADOR, 'nombre' => 'ROSA MARCA', 'dependencia' => 'TECNOLOGÍA', 'ente' => Persona::ENTE_MARCA_PAIS, 'activo' => false]);
+
+        // Por gerencia: solo Tecnología (Ana y Rosa), no la de Gestión Humana.
+        Livewire::test(ListaDeTrabajadores::class)
+            ->set('filtroGerencia', 'TECNOLOGÍA')
+            ->assertSee('ANA TECNO')
+            ->assertSee('ROSA MARCA')
+            ->assertDontSee('LUIS HUMANO')
+            // Sumando ente CIIP: se cae Rosa (Marca País).
+            ->set('filtroEnte', Persona::ENTE_CIIP)
+            ->assertSee('ANA TECNO')
+            ->assertDontSee('ROSA MARCA');
+
+        // Por estado inactivo: solo Rosa.
+        Livewire::test(ListaDeTrabajadores::class)
+            ->set('filtroEstado', 'inactivo')
+            ->assertSee('ROSA MARCA')
+            ->assertDontSee('ANA TECNO');
+    }
+
+    #[Test]
     public function el_filtro_de_invitados_muestra_solo_las_visitas(): void
     {
         $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
