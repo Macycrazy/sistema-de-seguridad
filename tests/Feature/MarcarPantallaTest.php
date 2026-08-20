@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\Marcar;
 use App\Models\Movimiento;
 use App\Models\Persona;
+use App\Models\Puesto;
 use App\Services\Marcaje;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -167,6 +168,28 @@ class MarcarPantallaTest extends TestCase
 
         // Y la próxima vez ya sale en su lista.
         $this->assertSame('AC456DF', $persona->fresh()->vehiculos()->sole()->placa);
+    }
+
+    public function test_al_entrar_con_vehiculo_se_le_asigna_el_puesto_elegido(): void
+    {
+        $this->trabajador();
+        $puesto = Puesto::create(['codigo' => 'M-1', 'tipo' => 'moto', 'orden' => 1]);
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->set('traeHoy', Marcar::OTRO)
+            ->set('tipoVehiculo', 'moto')
+            ->set('placa', 'AC456DF')
+            ->set('puestoId', (string) $puesto->id)   // se pone DESPUÉS del tipo: cambiar el tipo lo limpia
+            ->call('marcarEntrada')
+            ->assertHasNoErrors()
+            ->assertSee('Entrada registrada');
+
+        $this->assertDatabaseHas('movimientos', [
+            'placa' => 'AC456DF',
+            'puesto_id' => $puesto->id,
+        ]);
     }
 
     public function test_quien_tiene_dos_vehiculos_puede_marcar_cual_trae_hoy(): void

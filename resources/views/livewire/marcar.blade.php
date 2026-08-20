@@ -472,6 +472,27 @@
                 @endif
             </div>
 
+            {{-- DÓNDE QUEDA ESTACIONADO: el puesto. Solo al ENTRAR con vehículo y si hay plazas
+                 libres. Es opcional —«Sin asignar»— para no frenar la puerta. La lista cambia con
+                 el tipo: para un carro no salen los puestos de moto. --}}
+            @if ($this->sugerido !== 'salida' && $this->puestosLibres->isNotEmpty())
+                @php
+                    $opcionesPuesto = ['' => 'Sin asignar'];
+                    foreach ($this->puestosLibres as $p) {
+                        $opcionesPuesto[$p->id] = $p->codigo.($p->zona ? ' · '.$p->zona : '').' ('.$p->etiquetaTipo().')';
+                    }
+                @endphp
+                <div class="mt-4">
+                    <x-selector
+                        etiqueta="Puesto donde queda"
+                        nombre="puestoId"
+                        :opciones="$opcionesPuesto"
+                        ayuda="Opcional. La plaza que ocupa este vehículo."
+                        wire:model="puestoId"
+                    />
+                </div>
+            @endif
+
             {{-- LOS DOS BOTONES --}}
             @if ($persona->activo)
                 @php
