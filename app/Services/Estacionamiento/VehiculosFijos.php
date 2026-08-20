@@ -2,6 +2,7 @@
 
 namespace App\Services\Estacionamiento;
 
+use App\Models\Persona;
 use App\Models\VehiculoFijo;
 use App\Services\DatosVehiculo;
 use Illuminate\Support\Collection;
@@ -31,7 +32,10 @@ class VehiculosFijos
     }
 
     /**
-     * Anota un vehículo fijo en un puesto libre.
+     * Anota un vehículo en un puesto libre, con quién lo conduce al entrar.
+     *
+     * El conductor es opcional y puede ser una persona del sistema (por cédula) o un nombre suelto.
+     * El «flotaId» enlaza al vehículo de la empresa del catálogo, si viene de ahí.
      *
      * @throws ValidationException
      */
@@ -43,6 +47,9 @@ class VehiculosFijos
         ?string $color = null,
         ?string $nota = null,
         ?int $usuarioId = null,
+        ?string $conductorCedula = null,
+        ?string $conductorNombre = null,
+        ?int $flotaId = null,
     ): VehiculoFijo {
         $placa = DatosVehiculo::normalizarPlaca($placa);
         $tipo = DatosVehiculo::normalizarTipo($tipoVehiculo);
@@ -69,24 +76,70 @@ class VehiculosFijos
             ]);
         }
 
+        [$conductorId, $conductorNombreFinal] = $this->conductor($conductorCedula, $conductorNombre, 'conductorFija');
+
         return VehiculoFijo::create([
+            'flota_id' => $flotaId,
             'puesto_id' => $puestoId,
             'placa' => $placa,
             'tipo_vehiculo' => $tipo,
             'marca' => ($marca = trim((string) $marca)) === '' ? null : mb_substr($marca, 0, 40),
             'color' => ($color = trim((string) $color)) === '' ? null : mb_substr($color, 0, 30),
             'nota' => ($nota = trim((string) $nota)) === '' ? null : mb_substr($nota, 0, 120),
+            'conductor_id' => $conductorId,
+            'conductor_nombre' => $conductorNombreFinal,
             'entro_en' => now(),
             'usuario_id' => $usuarioId,
         ]);
     }
 
-    /** Le marca la salida: libera el puesto. No se borra, queda en la bitácora. */
-    public function sacar(VehiculoFijo $fijo): void
+    /**
+     * Le marca la salida y anota quién se lo lleva —que puede ser otro—. Libera el puesto. No se
+     * borra: queda en la bitácora.
+     *
+     * @throws ValidationException
+     */
+    public function sacar(VehiculoFijo $fijo, ?string $conductorCedula = null, ?string $conductorNombre = null): void
     {
-        if ($fijo->salio_en === null) {
-            $fijo->update(['salio_en' => now()]);
+        if ($fijo->salio_en !== null) {
+            return;
         }
+
+        [$conductorId, $conductorNombreFinal] = $this->conductor($conductorCedula, $conductorNombre, 'conductorSalida');
+
+        $fijo->update([
+            'salio_en' => now(),
+            'salida_conductor_id' => $conductorId,
+            'salida_conductor_nombre' => $conductorNombreFinal,
+        ]);
+    }
+
+    /**
+     * Resuelve un conductor: una persona del sistema (por cédula) o un nombre suelto. Devuelve
+     * [id, nombre]. Si se da una cédula que no existe, lo dice en vez de tragárselo.
+     *
+     * @return array{0: ?int, 1: ?string}
+     *
+     * @throws ValidationException
+     */
+    private function conductor(?string $cedula, ?string $nombre, string $campo): array
+    {
+        $cedula = Persona::normalizarCedula($cedula);
+        $nombre = trim((string) $nombre);
+
+        if ($cedula !== '') {
+            $persona = Persona::where('cedula', $cedula)->first();
+
+            if (! $persona) {
+                throw ValidationException::withMessages([
+                    $campo => 'No hay nadie con esa cédula. Deja la cédula vacía y escribe el nombre.',
+                ]);
+            }
+
+            return [$persona->id, $persona->nombre];
+        }
+
+        return [null, $nombre === '' ? null : mb_substr($nombre, 0, 120)];
     }
 
     /**

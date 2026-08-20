@@ -3,11 +3,14 @@
 namespace Tests\Feature\Estacionamiento;
 
 use App\Livewire\Estacionamiento\Panel;
+use App\Models\Persona;
 use App\Models\Puesto;
 use App\Models\User;
+use App\Models\VehiculoDeFlota;
 use App\Models\VehiculoFijo;
 use App\Services\DatosVehiculo;
 use App\Services\Estacionamiento\Estacionamiento;
+use App\Services\Estacionamiento\Flota;
 use App\Services\Estacionamiento\VehiculosFijos;
 use App\Usuarios\Rol;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -98,7 +101,49 @@ class VehiculosFijosTest extends TestCase
         $fijo = VehiculoFijo::firstOrFail();
         $this->assertSame('AB123CD', $fijo->placa);
 
-        Livewire::test(Panel::class)->call('sacarFijo', $fijo->id);
+        Livewire::test(Panel::class)
+            ->call('abrirSalida', $fijo->id)
+            ->set('conductorSalidaNombre', 'Otro Conductor')
+            ->call('confirmarSalida')
+            ->assertHasNoErrors();
+
         $this->assertNotNull($fijo->fresh()->salio_en);
+        $this->assertSame('Otro Conductor', $fijo->fresh()->salida_conductor_nombre);
+    }
+
+    #[Test]
+    public function el_conductor_por_cedula_se_liga_a_la_persona(): void
+    {
+        $puesto = Puesto::create(['codigo' => 'A-1', 'orden' => 1]);
+        $ana = Persona::create(['cedula' => '12345678', 'tipo' => Persona::TRABAJADOR, 'nombre' => 'ANA PÉREZ', 'activo' => true]);
+
+        $fijo = app(VehiculosFijos::class)->registrar(
+            'AB123CD', DatosVehiculo::CARRO, $puesto->id, conductorCedula: '12.345.678',
+        );
+
+        $this->assertSame($ana->id, $fijo->conductor_id);
+        $this->assertSame('ANA PÉREZ', $fijo->conductor_nombre);
+    }
+
+    #[Test]
+    public function una_cedula_de_conductor_que_no_existe_avisa(): void
+    {
+        $puesto = Puesto::create(['codigo' => 'A-1', 'orden' => 1]);
+
+        $this->expectException(ValidationException::class);
+        app(VehiculosFijos::class)->registrar('AB123CD', DatosVehiculo::CARRO, $puesto->id, conductorCedula: '99999999');
+    }
+
+    #[Test]
+    public function un_vehiculo_de_la_flota_no_se_puede_anotar_dos_veces(): void
+    {
+        $puestoA = Puesto::create(['codigo' => 'A-1', 'orden' => 1]);
+        Puesto::create(['codigo' => 'A-2', 'orden' => 2]);
+        $flota = VehiculoDeFlota::create(['placa' => 'EMP001', 'tipo_vehiculo' => 'carro']);
+
+        app(VehiculosFijos::class)->registrar('EMP001', DatosVehiculo::CARRO, $puestoA->id, flotaId: $flota->id);
+
+        // Ya está dentro: no aparece entre los disponibles de la flota.
+        $this->assertTrue(app(Flota::class)->disponibles()->isEmpty());
     }
 }
