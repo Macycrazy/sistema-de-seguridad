@@ -43,6 +43,28 @@ class TrabajadoresImportTest extends TestCase
     }
 
     #[Test]
+    public function reconoce_el_reporte_oficial_de_ciip_con_encabezado_n_ci(): void
+    {
+        // El formato del reporte «CONTROL DE ACCESO»: dos filas de título encima, y la cédula
+        // rotulada «N° C.I.». Sin apellido/nacionalidad aparte, con «Dependencia General».
+        $import = $this->importar([
+            ['LISTADO DE PERSONAL CON CORTE 27/07/2026', '', '', '', '', '', '', ''],
+            ['CONTROL DE ACCESO TOTAL', '', '', '', '', '', '', ''],
+            ['Nº', 'N° C.I.', 'APELLIDOS', 'NOMBRES', 'DEPENDENCIA GENERAL', 'PISO', 'CARGO', 'ENTE'],
+            ['1', '3723971', 'OVIEDO URRUTIA', 'CARMEN', 'GESTIÓN HUMANA', '4-1', 'BACHILLER', 'CIIP'],
+            ['2', '5115265', 'ARRAIZ DE CONDE', 'ANA MARIA', 'AUDITORÍA INTERNA', '2-5', 'BACHILLER', 'MARCA PAÍS'],
+        ]);
+
+        $this->assertSame(2, $import->guardados);
+        $this->assertSame(0, $import->omitidos);
+        $this->assertDatabaseHas('personas', [
+            'cedula' => '3723971', 'nombre' => 'CARMEN OVIEDO URRUTIA',
+            'dependencia' => 'GESTIÓN HUMANA', 'piso' => '4-1', 'ente' => Persona::ENTE_CIIP,
+        ]);
+        $this->assertDatabaseHas('personas', ['cedula' => '5115265', 'ente' => Persona::ENTE_MARCA_PAIS]);
+    }
+
+    #[Test]
     public function toma_la_nacionalidad_de_la_columna_del_carnets(): void
     {
         // El export de carnets trae «Nacionalidad» (V/E). En la puerta la búsqueda es por
