@@ -16,14 +16,19 @@ class VehiculoFijo extends Model
     protected $table = 'vehiculos_fijos';
 
     protected $fillable = [
+        'flota_id',
         'puesto_id',
         'placa',
         'tipo_vehiculo',
         'marca',
         'color',
         'nota',
+        'conductor_id',
+        'conductor_nombre',
         'entro_en',
         'salio_en',
+        'salida_conductor_id',
+        'salida_conductor_nombre',
         'usuario_id',
     ];
 
@@ -44,6 +49,21 @@ class VehiculoFijo extends Model
     public function puesto(): BelongsTo
     {
         return $this->belongsTo(Puesto::class);
+    }
+
+    public function flota(): BelongsTo
+    {
+        return $this->belongsTo(VehiculoDeFlota::class, 'flota_id');
+    }
+
+    public function conductor(): BelongsTo
+    {
+        return $this->belongsTo(Persona::class, 'conductor_id');
+    }
+
+    public function salidaConductor(): BelongsTo
+    {
+        return $this->belongsTo(Persona::class, 'salida_conductor_id');
     }
 
     /** «Carro» o «Moto», para la pantalla. */

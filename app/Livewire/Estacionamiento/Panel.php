@@ -3,9 +3,11 @@
 namespace App\Livewire\Estacionamiento;
 
 use App\Models\Puesto;
+use App\Models\VehiculoDeFlota;
 use App\Models\VehiculoFijo;
 use App\Services\DatosVehiculo;
 use App\Services\Estacionamiento\Estacionamiento;
+use App\Services\Estacionamiento\Flota;
 use App\Services\Estacionamiento\VehiculosFijos;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -51,6 +53,34 @@ class Panel extends Component
     public string $notaFija = '';
 
     public string $puestoFijo = '';
+
+    /** Vehículo de la flota elegido para anotar (su id), o vacío para teclear a mano. */
+    public string $flotaFija = '';
+
+    /** Conductor de entrada: una persona del sistema (cédula) o un nombre suelto. Opcional. */
+    public string $conductorCedulaFija = '';
+
+    public string $conductorNombreFija = '';
+
+    /** La salida de un fijo: a quién se le está marcando y quién se lo lleva. */
+    public ?int $sacandoFijo = null;
+
+    public string $conductorSalidaCedula = '';
+
+    public string $conductorSalidaNombre = '';
+
+    /** El catálogo de la flota: si se está gestionando y los campos del alta. */
+    public bool $gestionandoFlota = false;
+
+    public string $placaFlota = '';
+
+    public string $tipoFlota = DatosVehiculo::CARRO;
+
+    public string $marcaFlota = '';
+
+    public string $colorFlota = '';
+
+    public string $notaFlota = '';
 
     public function mount(): void
     {
@@ -208,18 +238,51 @@ class Panel extends Component
         return app(Estacionamiento::class)->puestosLibres($this->tipoFija);
     }
 
+    /** La flota de la empresa que se puede anotar ahora (activa y no está ya dentro). */
+    #[Computed]
+    public function flotaDisponible(): Collection
+    {
+        return app(Flota::class)->disponibles();
+    }
+
+    /** Todo el catálogo de la flota, para gestionarla. */
+    #[Computed]
+    public function flota(): Collection
+    {
+        return app(Flota::class)->todos();
+    }
+
     public function abrirFijo(): void
     {
-        $this->reset('placaFija', 'tipoFija', 'marcaFija', 'colorFija', 'notaFija', 'puestoFijo', 'aviso');
+        $this->reset(
+            'placaFija', 'tipoFija', 'marcaFija', 'colorFija', 'notaFija', 'puestoFijo',
+            'flotaFija', 'conductorCedulaFija', 'conductorNombreFija', 'aviso',
+        );
         $this->resetValidation();
         $this->agregandoFijo = true;
     }
 
     public function cancelarFijo(): void
     {
-        $this->reset('placaFija', 'tipoFija', 'marcaFija', 'colorFija', 'notaFija', 'puestoFijo');
+        $this->reset(
+            'placaFija', 'tipoFija', 'marcaFija', 'colorFija', 'notaFija', 'puestoFijo',
+            'flotaFija', 'conductorCedulaFija', 'conductorNombreFija',
+        );
         $this->resetValidation();
         $this->agregandoFijo = false;
+    }
+
+    /** Al elegir un vehículo de la flota, se toma su tipo (y se limpia el puesto, que depende del tipo). */
+    public function updatedFlotaFija(): void
+    {
+        $vehiculo = $this->flotaFija !== '' ? VehiculoDeFlota::find($this->flotaFija) : null;
+
+        if ($vehiculo) {
+            $this->tipoFija = $vehiculo->tipo_vehiculo;
+        }
+
+        $this->puestoFijo = '';
+        unset($this->puestosLibresFijo);
     }
 
     /** Al cambiar el tipo, el puesto elegido puede dejar de valer: se limpia y se recalculan libres. */
@@ -233,15 +296,21 @@ class Panel extends Component
     {
         $this->resetValidation();
 
+        // De la flota (si se eligió) salen placa y tipo; si no, se teclean.
+        $deFlota = $this->flotaFija !== '' ? VehiculoDeFlota::find($this->flotaFija) : null;
+
         try {
             app(VehiculosFijos::class)->registrar(
-                placa: $this->placaFija,
-                tipoVehiculo: $this->tipoFija,
+                placa: $deFlota?->placa ?? $this->placaFija,
+                tipoVehiculo: $deFlota?->tipo_vehiculo ?? $this->tipoFija,
                 puestoId: $this->puestoFijo === '' ? null : (int) $this->puestoFijo,
-                marca: $this->marcaFija,
-                color: $this->colorFija,
-                nota: $this->notaFija,
+                marca: $deFlota?->marca ?? $this->marcaFija,
+                color: $deFlota?->color ?? $this->colorFija,
+                nota: $this->notaFija ?: $deFlota?->nota,
                 usuarioId: auth()->id(),
+                conductorCedula: $this->conductorCedulaFija,
+                conductorNombre: $this->conductorNombreFija,
+                flotaId: $deFlota?->id,
             );
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
@@ -249,17 +318,86 @@ class Panel extends Component
             return;
         }
 
-        $this->agregandoFijo = false;
-        $this->reset('placaFija', 'tipoFija', 'marcaFija', 'colorFija', 'notaFija', 'puestoFijo');
-        $this->aviso = 'Vehículo fijo anotado.';
+        $this->cancelarFijo();
+        $this->aviso = 'Vehículo anotado en su puesto.';
         $this->actualizar();
     }
 
-    public function sacarFijo(int $id): void
+    /** Abre la salida de un fijo: pide quién se lo lleva. */
+    public function abrirSalida(int $id): void
     {
-        app(VehiculosFijos::class)->sacar(VehiculoFijo::findOrFail($id));
-        $this->aviso = 'Vehículo fijo retirado: su puesto queda libre.';
+        $this->reset('conductorSalidaCedula', 'conductorSalidaNombre', 'aviso');
+        $this->resetValidation();
+        $this->sacandoFijo = $id;
+    }
+
+    public function cancelarSalida(): void
+    {
+        $this->reset('sacandoFijo', 'conductorSalidaCedula', 'conductorSalidaNombre');
+        $this->resetValidation();
+    }
+
+    public function confirmarSalida(): void
+    {
+        if ($this->sacandoFijo === null) {
+            return;
+        }
+
+        try {
+            app(VehiculosFijos::class)->sacar(
+                VehiculoFijo::findOrFail($this->sacandoFijo),
+                conductorCedula: $this->conductorSalidaCedula,
+                conductorNombre: $this->conductorSalidaNombre,
+            );
+        } catch (ValidationException $e) {
+            $this->setErrorBag($e->validator->errors());
+
+            return;
+        }
+
+        $this->cancelarSalida();
+        $this->aviso = 'Vehículo retirado: su puesto queda libre.';
         $this->actualizar();
+    }
+
+    // --- La flota de la empresa (catálogo) ---
+
+    public function abrirFlota(): void
+    {
+        $this->reset('placaFlota', 'tipoFlota', 'marcaFlota', 'colorFlota', 'notaFlota', 'aviso');
+        $this->resetValidation();
+        $this->gestionandoFlota = true;
+    }
+
+    public function cerrarFlota(): void
+    {
+        $this->reset('placaFlota', 'tipoFlota', 'marcaFlota', 'colorFlota', 'notaFlota');
+        $this->resetValidation();
+        $this->gestionandoFlota = false;
+    }
+
+    public function guardarFlota(): void
+    {
+        $this->resetValidation();
+
+        try {
+            app(Flota::class)->guardar($this->placaFlota, $this->tipoFlota, $this->marcaFlota, $this->colorFlota, $this->notaFlota);
+        } catch (ValidationException $e) {
+            $this->setErrorBag($e->validator->errors());
+
+            return;
+        }
+
+        $this->reset('placaFlota', 'tipoFlota', 'marcaFlota', 'colorFlota', 'notaFlota');
+        $this->aviso = 'Vehículo de la flota guardado.';
+        unset($this->flota, $this->flotaDisponible);
+    }
+
+    public function eliminarFlota(int $id): void
+    {
+        app(Flota::class)->eliminar(VehiculoDeFlota::findOrFail($id));
+        $this->aviso = 'Vehículo quitado de la flota.';
+        unset($this->flota, $this->flotaDisponible);
     }
 
     public function actualizar(): void
@@ -267,6 +405,7 @@ class Panel extends Component
         unset(
             $this->dentro, $this->vehiculos, $this->resumen, $this->historial, $this->pernoctan,
             $this->opcionesPorVehiculo, $this->fijos, $this->puestosLibresFijo,
+            $this->flota, $this->flotaDisponible,
         );
     }
 
