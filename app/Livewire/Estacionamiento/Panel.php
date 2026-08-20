@@ -73,9 +73,16 @@ class Panel extends Component
         return app(Estacionamiento::class)->delDia(CarbonImmutable::today());
     }
 
+    /** Los que pernoctan: siguen dentro y entraron antes de hoy. */
+    #[Computed]
+    public function pernoctan(): Collection
+    {
+        return app(Estacionamiento::class)->pernoctan();
+    }
+
     public function actualizar(): void
     {
-        unset($this->dentro, $this->vehiculos, $this->resumen, $this->historial);
+        unset($this->dentro, $this->vehiculos, $this->resumen, $this->historial, $this->pernoctan);
     }
 
     public function render()

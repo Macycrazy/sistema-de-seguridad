@@ -46,6 +46,23 @@ class PantallaEstacionamientoTest extends TestCase
     }
 
     #[Test]
+    public function el_panel_avisa_de_los_que_pernoctan(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::VIGILANTE]));
+        $ana = Persona::create(['cedula' => '12345678', 'tipo' => Persona::TRABAJADOR, 'nombre' => 'ANA PÉREZ', 'activo' => true]);
+        Movimiento::create([
+            'persona_id' => $ana->id, 'tipo' => Movimiento::ENTRADA,
+            'ocurrio_en' => CarbonImmutable::yesterday()->setTime(21, 0),
+            'tipo_vehiculo' => DatosVehiculo::CARRO, 'placa' => 'AB123CD',
+        ]);
+
+        Livewire::test(Panel::class)
+            ->assertOk()
+            ->assertSee('Pernoctan')
+            ->assertSee('AB123CD');
+    }
+
+    #[Test]
     public function buscar_por_placa_deja_solo_la_que_coincide(): void
     {
         $this->actingAs(User::factory()->create(['rol' => Rol::VIGILANTE]));

@@ -104,6 +104,21 @@ final class Estacionamiento
             ->values();
     }
 
+    /**
+     * Los que pernoctan: vehículos que siguen dentro ahora y cuya entrada fue antes de hoy —se
+     * quedaron de noche—. Cada uno con su placa, dueño, tipo, desde cuándo y el puesto que ocupa.
+     *
+     * @return Collection<int, object>
+     */
+    public function pernoctan(): Collection
+    {
+        $inicioDeHoy = CarbonImmutable::today();
+
+        return $this->vehiculosDentro()
+            ->filter(fn ($fila) => $this->desde($fila->ocurrio_en)->lt($inicioDeHoy))
+            ->values();
+    }
+
     /** El aforo total configurado (0 = sin tope). */
     public function aforo(): int
     {
