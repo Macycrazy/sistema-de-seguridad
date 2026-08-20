@@ -75,6 +75,20 @@ class PantallaTrabajadoresTest extends TestCase
     }
 
     #[Test]
+    public function la_lista_muestra_la_gerencia_y_el_piso_del_trabajador(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        Persona::create([
+            'cedula' => '12345678', 'tipo' => Persona::TRABAJADOR, 'nombre' => 'ANA PÉREZ',
+            'dependencia' => 'TECNOLOGÍA', 'piso' => '2-1', 'activo' => true,
+        ]);
+
+        Livewire::test(ListaDeTrabajadores::class)
+            ->assertSee('TECNOLOGÍA')
+            ->assertSee('2-1');
+    }
+
+    #[Test]
     public function editar_un_trabajador_actualiza_sus_datos_y_deja_la_cedula_fija(): void
     {
         $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));

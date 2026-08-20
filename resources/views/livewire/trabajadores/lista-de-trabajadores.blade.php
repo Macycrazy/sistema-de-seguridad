@@ -171,7 +171,8 @@
                         <th class="px-4 py-3 font-semibold">Piso</th>
                     @else
                         <th class="px-4 py-3 font-semibold">Ente</th>
-                        <th class="px-4 py-3 font-semibold">Dependencia</th>
+                        <th class="px-4 py-3 font-semibold">Gerencia</th>
+                        <th class="px-4 py-3 font-semibold">Piso</th>
                     @endif
                     <th class="px-4 py-3 font-semibold">Estado</th>
                     <th class="px-4 py-3 font-semibold text-right">Acción</th>
@@ -188,6 +189,7 @@
                         @else
                             <td class="px-4 py-3 text-slate-500">{{ \App\Services\GestionDeTrabajadores::ENTES[$p->ente] ?? '—' }}</td>
                             <td class="px-4 py-3 text-slate-500">{{ $p->dependencia ?: '—' }}</td>
+                            <td class="px-4 py-3 font-mono text-slate-500">{{ $p->piso ?: '—' }}</td>
                         @endif
                         <td class="px-4 py-3">
                             @if ($p->activo)
@@ -211,7 +213,7 @@
                         </td>
                     </tr>
                 @empty
-                    <x-tabla-vacia :columnas="6">
+                    <x-tabla-vacia :columnas="$this->verInvitados() ? 6 : 7">
                         @if (trim($busqueda) !== '')
                             Nadie coincide con «{{ $busqueda }}».
                         @elseif ($this->verInvitados())
