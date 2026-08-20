@@ -41,7 +41,11 @@ class Ingresar extends Component
 
         $this->exigirNoHaberInsistido();
 
-        $usuario = User::where('usuario', $this->usuario)->first();
+        // El usuario se guarda en minúsculas al crearlo, así que se busca igual: sin distinguir
+        // mayúsculas ni espacios de sobra. Es lo que salva al teclado del teléfono, que pone la
+        // primera letra en mayúscula solo —«J.perez» en vez de «j.perez»— y dejaba fuera a su dueño.
+        $nombreDeUsuario = mb_strtolower(trim($this->usuario));
+        $usuario = User::where('usuario', $nombreDeUsuario)->first();
 
         // El mismo mensaje tanto si el usuario no existe como si la clave está mal. Decir
         // «ese usuario no existe» le regalaría media respuesta a quien esté probando nombres.
