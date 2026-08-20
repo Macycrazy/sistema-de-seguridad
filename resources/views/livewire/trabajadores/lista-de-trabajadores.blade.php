@@ -4,7 +4,18 @@
         <x-aviso class="mb-5" wire:key="aviso">{{ $aviso }}</x-aviso>
     @endif
 
-    {{-- Barra: buscar · importar · nuevo --}}
+    {{-- Personal de nómina o visitas: una sola pantalla, dos vistas. --}}
+    <div class="mb-5 inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+        @foreach ([\App\Models\Persona::TRABAJADOR => 'Trabajadores', \App\Models\Persona::INVITADO => 'Invitados'] as $valor => $rotulo)
+            <button type="button" wire:click="$set('filtro', '{{ $valor }}')"
+                    class="rounded-md px-4 py-1.5 text-sm font-semibold transition
+                           {{ $filtro === $valor ? 'bg-white text-parte3 shadow-sm' : 'text-slate-500 hover:text-slate-700' }}">
+                {{ $rotulo }}
+            </button>
+        @endforeach
+    </div>
+
+    {{-- Barra: buscar · (solo trabajadores) importar · nuevo --}}
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div class="w-full max-w-xs">
             <x-campo
@@ -16,27 +27,30 @@
             />
         </div>
 
-        <div class="flex flex-wrap items-center gap-3">
-            {{-- La plantilla en blanco, para que la carga masiva salga normalizada. --}}
-            <button type="button" wire:click="descargarPlantilla"
-                    class="text-sm font-semibold text-parte3 hover:underline">
-                Descargar plantilla
-            </button>
+        {{-- Cargar en bloque y dar de alta son cosas de nómina: los invitados nacen en la puerta. --}}
+        @unless ($this->verInvitados())
+            <div class="flex flex-wrap items-center gap-3">
+                {{-- La plantilla en blanco, para que la carga masiva salga normalizada. --}}
+                <button type="button" wire:click="descargarPlantilla"
+                        class="text-sm font-semibold text-parte3 hover:underline">
+                    Descargar plantilla
+                </button>
 
-            {{-- Importar: subir el Excel y cargar en bloque. --}}
-            <form wire:submit="importar" class="flex items-center gap-2">
-                <label class="cursor-pointer rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                    <span>{{ $archivo ? $archivo->getClientOriginalName() : 'Elegir Excel…' }}</span>
-                    <input type="file" wire:model="archivo" class="sr-only" accept=".xlsx,.xls,.csv">
-                </label>
-                <x-boton type="submit" variante="secundario" wire:loading.attr="disabled" wire:target="archivo,importar">
-                    <span wire:loading.remove wire:target="archivo,importar">Importar</span>
-                    <span wire:loading wire:target="archivo,importar">Cargando…</span>
-                </x-boton>
-            </form>
+                {{-- Importar: subir el Excel y cargar en bloque. --}}
+                <form wire:submit="importar" class="flex items-center gap-2">
+                    <label class="cursor-pointer rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                        <span>{{ $archivo ? $archivo->getClientOriginalName() : 'Elegir Excel…' }}</span>
+                        <input type="file" wire:model="archivo" class="sr-only" accept=".xlsx,.xls,.csv">
+                    </label>
+                    <x-boton type="submit" variante="secundario" wire:loading.attr="disabled" wire:target="archivo,importar">
+                        <span wire:loading.remove wire:target="archivo,importar">Importar</span>
+                        <span wire:loading wire:target="archivo,importar">Cargando…</span>
+                    </x-boton>
+                </form>
 
-            <x-boton wire:click="abrirAlta">Nuevo trabajador</x-boton>
-        </div>
+                <x-boton wire:click="abrirAlta">Nuevo trabajador</x-boton>
+            </div>
+        @endunless
     </div>
     @error('archivo') <p class="mt-2 text-sm text-alto">{{ $message }}</p> @enderror
 
@@ -52,28 +66,48 @@
         </div>
     @endif
 
-    {{-- Alta manual --}}
+    {{-- Formulario: alta de trabajador, o corrección de trabajador/invitado. --}}
     @if ($creando)
+        @php $editando = $editandoId !== null; @endphp
         <form wire:submit="guardar" class="mt-6 rounded border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-lg font-semibold">Nuevo trabajador</h2>
+            <h2 class="text-lg font-semibold">
+                @if ($this->verInvitados()) Editar invitado
+                @elseif ($editando) Editar trabajador
+                @else Nuevo trabajador @endif
+            </h2>
 
             <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                {{-- La cédula es la identidad: al editar se muestra pero no se cambia. --}}
                 <x-campo etiqueta="Cédula" nombre="cedula" inputmode="numeric" maxlength="9"
                          oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                         :readonly="$editando"
+                         :ayuda="$editando ? 'No se puede cambiar.' : null"
                          wire:model="cedula" :error="$errors->first('cedula')" />
 
                 <x-campo etiqueta="Nombre y apellido" nombre="nombre" maxlength="120"
                          wire:model="nombre" :error="$errors->first('nombre')" />
 
-                <x-selector etiqueta="Ente" nombre="ente"
-                            :opciones="array_merge(['' => 'Sin asignar'], $this->entes)"
-                            wire:model="ente" :error="$errors->first('ente')" />
+                <x-selector etiqueta="Nacionalidad" nombre="nacionalidad"
+                            :opciones="\App\Models\Persona::NACIONALIDADES"
+                            wire:model="nacionalidad" :error="$errors->first('nacionalidad')" />
 
-                <x-campo etiqueta="Dependencia" nombre="dependencia" ayuda="Opcional." maxlength="120"
-                         wire:model="dependencia" :error="$errors->first('dependencia')" />
+                @if ($this->verInvitados())
+                    <x-campo etiqueta="Motivo de la visita" nombre="motivo" maxlength="255"
+                             wire:model="motivo" :error="$errors->first('motivo')" />
 
-                <x-campo etiqueta="Piso" nombre="piso" ayuda="Opcional." maxlength="10"
-                         wire:model="piso" :error="$errors->first('piso')" />
+                    <x-campo etiqueta="Piso al que va" nombre="piso" ayuda="Opcional." maxlength="10"
+                             wire:model="piso" :error="$errors->first('piso')" />
+                @else
+                    <x-selector etiqueta="Ente" nombre="ente"
+                                :opciones="array_merge(['' => 'Sin asignar'], $this->entes)"
+                                wire:model="ente" :error="$errors->first('ente')" />
+
+                    <x-campo etiqueta="Dependencia" nombre="dependencia" ayuda="Opcional." maxlength="120"
+                             wire:model="dependencia" :error="$errors->first('dependencia')" />
+
+                    <x-campo etiqueta="Piso" nombre="piso" ayuda="Opcional." maxlength="10"
+                             wire:model="piso" :error="$errors->first('piso')" />
+                @endif
             </div>
 
             <div class="mt-5 flex items-center gap-3">
@@ -90,39 +124,59 @@
                 <tr class="border-b border-slate-200 text-left font-mono text-xs uppercase tracking-widest text-slate-500">
                     <th class="px-4 py-3 font-semibold">Cédula</th>
                     <th class="px-4 py-3 font-semibold">Nombre</th>
-                    <th class="px-4 py-3 font-semibold">Ente</th>
-                    <th class="px-4 py-3 font-semibold">Dependencia</th>
+                    @if ($this->verInvitados())
+                        <th class="px-4 py-3 font-semibold">Motivo</th>
+                        <th class="px-4 py-3 font-semibold">Piso</th>
+                    @else
+                        <th class="px-4 py-3 font-semibold">Ente</th>
+                        <th class="px-4 py-3 font-semibold">Dependencia</th>
+                    @endif
                     <th class="px-4 py-3 font-semibold">Estado</th>
                     <th class="px-4 py-3 font-semibold text-right">Acción</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-                @forelse ($this->trabajadores as $t)
-                    <tr wire:key="t-{{ $t->id }}" class="{{ $t->activo ? '' : 'opacity-60' }}">
-                        <td class="px-4 py-3 font-mono tabular-nums text-slate-500">{{ $t->cedulaConPuntos() }}</td>
-                        <td class="px-4 py-3 font-medium">{{ $t->nombre }}</td>
-                        <td class="px-4 py-3 text-slate-500">{{ \App\Services\GestionDeTrabajadores::ENTES[$t->ente] ?? '—' }}</td>
-                        <td class="px-4 py-3 text-slate-500">{{ $t->dependencia ?: '—' }}</td>
+                @forelse ($this->personas as $p)
+                    <tr wire:key="p-{{ $p->id }}" class="{{ $p->activo ? '' : 'opacity-60' }}">
+                        <td class="px-4 py-3 font-mono tabular-nums text-slate-500">{{ $p->cedulaConPuntos() }}</td>
+                        <td class="px-4 py-3 font-medium">{{ $p->nombre }}</td>
+                        @if ($this->verInvitados())
+                            <td class="px-4 py-3 text-slate-500">{{ $p->motivo ?: '—' }}</td>
+                            <td class="px-4 py-3 text-slate-500">{{ $p->piso ?: '—' }}</td>
+                        @else
+                            <td class="px-4 py-3 text-slate-500">{{ \App\Services\GestionDeTrabajadores::ENTES[$p->ente] ?? '—' }}</td>
+                            <td class="px-4 py-3 text-slate-500">{{ $p->dependencia ?: '—' }}</td>
+                        @endif
                         <td class="px-4 py-3">
-                            @if ($t->activo)
+                            @if ($p->activo)
                                 <x-etiqueta tipo="trabajador">Activo</x-etiqueta>
                             @else
                                 <x-etiqueta tipo="inactivo">Inactivo</x-etiqueta>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-right">
-                            @if ($t->activo)
-                                <button wire:click="desactivar({{ $t->id }})"
-                                        class="text-sm font-semibold text-alto hover:underline">Desactivar</button>
-                            @else
-                                <button wire:click="reactivar({{ $t->id }})"
-                                        class="text-sm font-semibold text-parte3 hover:underline">Reactivar</button>
-                            @endif
+                            <div class="flex items-center justify-end gap-3">
+                                <button wire:click="editar({{ $p->id }})"
+                                        class="text-sm font-semibold text-parte3 hover:underline">Editar</button>
+                                @if ($p->activo)
+                                    <button wire:click="desactivar({{ $p->id }})"
+                                            class="text-sm font-semibold text-alto hover:underline">Desactivar</button>
+                                @else
+                                    <button wire:click="reactivar({{ $p->id }})"
+                                            class="text-sm font-semibold text-parte3 hover:underline">Reactivar</button>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                 @empty
                     <x-tabla-vacia :columnas="6">
-                        {{ trim($busqueda) === '' ? 'Todavía no hay trabajadores cargados.' : 'Nadie coincide con «'.$busqueda.'».' }}
+                        @if (trim($busqueda) !== '')
+                            Nadie coincide con «{{ $busqueda }}».
+                        @elseif ($this->verInvitados())
+                            Todavía no hay invitados registrados.
+                        @else
+                            Todavía no hay trabajadores cargados.
+                        @endif
                     </x-tabla-vacia>
                 @endforelse
             </tbody>
@@ -130,6 +184,6 @@
     </div>
 
     <div class="mt-4">
-        {{ $this->trabajadores->links() }}
+        {{ $this->personas->links() }}
     </div>
 </div>

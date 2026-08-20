@@ -72,4 +72,66 @@ class PantallaTrabajadoresTest extends TestCase
             ->set('busqueda', 'pedro')
             ->assertDontSee('PEDRO VISITA');
     }
+
+    #[Test]
+    public function editar_un_trabajador_actualiza_sus_datos_y_deja_la_cedula_fija(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $t = Persona::create([
+            'cedula' => '12345678', 'tipo' => Persona::TRABAJADOR,
+            'nombre' => 'ANA', 'dependencia' => 'VIEJA', 'activo' => true,
+        ]);
+
+        Livewire::test(ListaDeTrabajadores::class)
+            ->call('editar', $t->id)
+            ->assertSet('creando', true)
+            ->assertSet('editandoId', $t->id)
+            ->assertSet('cedula', '12345678')
+            ->set('nombre', 'Ana María')
+            ->set('dependencia', 'Tecnología')
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('personas', [
+            'id' => $t->id, 'cedula' => '12345678',
+            'nombre' => 'ANA MARÍA', 'dependencia' => 'TECNOLOGÍA', 'tipo' => 'trabajador',
+        ]);
+    }
+
+    #[Test]
+    public function editar_un_invitado_corrige_sus_datos_y_sigue_siendo_invitado(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $inv = Persona::create([
+            'cedula' => '99887766', 'tipo' => Persona::INVITADO,
+            'nombre' => 'PEDRO', 'motivo' => 'reunion', 'activo' => true,
+        ]);
+
+        Livewire::test(ListaDeTrabajadores::class)
+            ->set('filtro', Persona::INVITADO)
+            ->call('editar', $inv->id)
+            ->assertSet('motivo', 'reunion')
+            ->set('nombre', 'Pedro Pérez')
+            ->set('motivo', 'entrega de equipos')
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('personas', [
+            'id' => $inv->id, 'tipo' => 'invitado',
+            'nombre' => 'PEDRO PÉREZ', 'motivo' => 'entrega de equipos',
+        ]);
+    }
+
+    #[Test]
+    public function el_filtro_de_invitados_muestra_solo_las_visitas(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        Persona::create(['cedula' => '12345678', 'tipo' => Persona::TRABAJADOR, 'nombre' => 'ANA TRABAJA', 'activo' => true]);
+        Persona::create(['cedula' => '99887766', 'tipo' => Persona::INVITADO, 'nombre' => 'PEDRO VISITA', 'activo' => true]);
+
+        Livewire::test(ListaDeTrabajadores::class)
+            ->set('filtro', Persona::INVITADO)
+            ->assertSee('PEDRO VISITA')
+            ->assertDontSee('ANA TRABAJA');
+    }
 }

@@ -6,6 +6,7 @@ use App\Exports\PlantillaTrabajadores;
 use App\Imports\TrabajadoresImport;
 use App\Models\Persona;
 use App\Services\Auditoria\Auditoria;
+use App\Services\GestionDeInvitados;
 use App\Services\GestionDeTrabajadores;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
@@ -28,18 +29,33 @@ class ListaDeTrabajadores extends Component
     use WithFileUploads;
     use WithPagination;
 
-    /** El formulario de alta empieza cerrado: la pantalla se abre para mirar, no para crear. */
+    /**
+     * Qué se está mirando: el personal de nómina o las visitas. La pantalla es una sola; el filtro
+     * cambia la lista, las columnas y el formulario. Los invitados no se crean aquí (nacen en la
+     * puerta), solo se corrigen.
+     */
+    public string $filtro = Persona::TRABAJADOR;
+
+    /** El formulario empieza cerrado: la pantalla se abre para mirar, no para crear ni editar. */
     public bool $creando = false;
+
+    /** A quién se está editando; null cuando el formulario es un alta nueva. */
+    public ?int $editandoId = null;
 
     public string $cedula = '';
 
     public string $nombre = '';
+
+    public string $nacionalidad = Persona::VENEZOLANO;
 
     public string $ente = '';
 
     public string $dependencia = '';
 
     public string $piso = '';
+
+    /** Solo para invitados: el motivo de la visita. */
+    public string $motivo = '';
 
     /** El Excel a importar. */
     public $archivo = null;
@@ -54,6 +70,8 @@ class ListaDeTrabajadores extends Component
 
     protected GestionDeTrabajadores $gestion;
 
+    protected GestionDeInvitados $invitadosGestion;
+
     public function boot(): void
     {
         // El permiso en «boot» y no en «mount»: las acciones rehidratan sin volver a montar, así
@@ -61,6 +79,7 @@ class ListaDeTrabajadores extends Component
         Gate::authorize('gestionar-personal');
 
         $this->gestion = app(GestionDeTrabajadores::class);
+        $this->invitadosGestion = app(GestionDeInvitados::class);
     }
 
     public function updatedBusqueda(): void
@@ -68,13 +87,27 @@ class ListaDeTrabajadores extends Component
         $this->resetPage();
     }
 
+    /** Al cambiar entre personal y visitas: se cierra cualquier formulario abierto y se vuelve al inicio. */
+    public function updatedFiltro(): void
+    {
+        $this->cancelarAlta();
+        $this->resetPage();
+    }
+
+    /** Si el filtro mira a las visitas. */
+    public function verInvitados(): bool
+    {
+        return $this->filtro === Persona::INVITADO;
+    }
+
     #[Computed]
-    public function trabajadores(): LengthAwarePaginator
+    public function personas(): LengthAwarePaginator
     {
         $aguja = trim($this->busqueda);
+        $tipo = $this->verInvitados() ? Persona::INVITADO : Persona::TRABAJADOR;
 
         return Persona::query()
-            ->where('tipo', Persona::TRABAJADOR)
+            ->where('tipo', $tipo)
             ->when($aguja !== '', function ($q) use ($aguja) {
                 $soloDigitos = preg_replace('/\D/', '', $aguja);
 
@@ -102,37 +135,91 @@ class ListaDeTrabajadores extends Component
 
     public function abrirAlta(): void
     {
-        $this->reset('cedula', 'nombre', 'ente', 'dependencia', 'piso', 'aviso');
-        $this->resetValidation();
+        // Alta manual: solo de trabajadores. Los invitados nacen en la puerta, no aquí.
+        $this->filtro = Persona::TRABAJADOR;
+        $this->limpiarFormulario();
+        $this->reset('aviso');
+        $this->creando = true;
+    }
+
+    /** Carga a una persona en el formulario para corregir sus datos. La cédula queda fija. */
+    public function editar(int $id): void
+    {
+        $persona = Persona::findOrFail($id);
+
+        $this->limpiarFormulario();
+        $this->editandoId = $persona->id;
+        $this->filtro = $persona->tipo;
+        $this->cedula = $persona->cedula;
+        $this->nombre = $persona->nombre;
+        $this->nacionalidad = $persona->nacionalidad ?: Persona::VENEZOLANO;
+        $this->ente = (string) $persona->ente;
+        $this->dependencia = (string) $persona->dependencia;
+        $this->piso = (string) $persona->piso;
+        $this->motivo = (string) $persona->motivo;
         $this->creando = true;
     }
 
     public function cancelarAlta(): void
     {
         $this->creando = false;
-        $this->reset('cedula', 'nombre', 'ente', 'dependencia', 'piso');
-        $this->resetValidation();
+        $this->limpiarFormulario();
     }
 
     public function guardar(): void
     {
         // Si la validación del servicio falla, la ValidationException sube y Livewire la pinta
         // junto a cada campo. No hace falta atraparla.
+        if ($this->verInvitados()) {
+            $this->guardarInvitado();
+
+            return;
+        }
+
         $trabajador = $this->gestion->guardar(
             cedula: $this->cedula,
             nombre: $this->nombre,
             ente: $this->ente,
             dependencia: $this->dependencia,
             piso: $this->piso,
+            nacionalidad: $this->nacionalidad,
+        );
+
+        $editaba = $this->editandoId !== null;
+        $this->creando = false;
+        $this->limpiarFormulario();
+        $this->erroresDeImportacion = [];
+        app(Auditoria::class)->cargoPersonal(($editaba ? 'edición · ' : 'alta manual · ').$trabajador->cedula);
+        $this->aviso = $trabajador->wasRecentlyCreated
+            ? 'Trabajador dado de alta.'
+            : 'Datos del trabajador actualizados.';
+    }
+
+    /** El guardado de la corrección de un invitado: siempre es una edición, nunca un alta. */
+    private function guardarInvitado(): void
+    {
+        $invitado = Persona::where('tipo', Persona::INVITADO)->findOrFail($this->editandoId);
+
+        $this->invitadosGestion->editar(
+            invitado: $invitado,
+            nombre: $this->nombre,
+            nacionalidad: $this->nacionalidad,
+            motivo: $this->motivo,
+            piso: $this->piso,
         );
 
         $this->creando = false;
-        $this->reset('cedula', 'nombre', 'ente', 'dependencia', 'piso');
-        $this->erroresDeImportacion = [];
-        app(Auditoria::class)->cargoPersonal('alta manual · '.$trabajador->cedula);
-        $this->aviso = $trabajador->wasRecentlyCreated
-            ? 'Trabajador dado de alta.'
-            : 'Ese trabajador ya existía; se actualizaron sus datos.';
+        $this->limpiarFormulario();
+        app(Auditoria::class)->cargoPersonal('edición de invitado · '.$invitado->cedula);
+        $this->aviso = 'Datos del invitado actualizados.';
+    }
+
+    /** Deja el formulario en blanco y fuera del modo edición. */
+    private function limpiarFormulario(): void
+    {
+        $this->reset('cedula', 'nombre', 'ente', 'dependencia', 'piso', 'motivo', 'editandoId');
+        $this->nacionalidad = Persona::VENEZOLANO;
+        $this->resetValidation();
     }
 
     /** La plantilla en blanco con las columnas exactas y el ente en desplegable. */
@@ -160,14 +247,16 @@ class ListaDeTrabajadores extends Component
 
     public function desactivar(int $id): void
     {
-        $this->gestion->desactivar(Persona::where('tipo', Persona::TRABAJADOR)->findOrFail($id));
-        $this->aviso = 'Trabajador desactivado: ya no se le puede marcar.';
+        $persona = Persona::findOrFail($id);
+        $this->gestion->desactivar($persona);
+        $this->aviso = ($persona->esInvitado() ? 'Invitado' : 'Trabajador').' desactivado: ya no se le puede marcar.';
     }
 
     public function reactivar(int $id): void
     {
-        $this->gestion->reactivar(Persona::where('tipo', Persona::TRABAJADOR)->findOrFail($id));
-        $this->aviso = 'Trabajador reactivado.';
+        $persona = Persona::findOrFail($id);
+        $this->gestion->reactivar($persona);
+        $this->aviso = ($persona->esInvitado() ? 'Invitado' : 'Trabajador').' reactivado.';
     }
 
     public function render()
