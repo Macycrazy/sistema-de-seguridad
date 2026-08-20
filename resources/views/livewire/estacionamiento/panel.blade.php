@@ -7,6 +7,10 @@
 @endphp
 
 <div wire:loading.class="opacity-60" class="transition-opacity">
+    @if ($aviso !== '')
+        <x-aviso class="mb-4" wire:key="aviso">{{ $aviso }}</x-aviso>
+    @endif
+
     {{-- El contador que gobierna la pantalla: el total dentro, contra el aforo si está puesto. --}}
     <div class="flex flex-wrap items-center justify-between gap-4 rounded border-2 bg-white px-5 py-4
                 {{ $total['lleno'] ? 'border-alto' : 'border-parte1' }}">
@@ -107,7 +111,19 @@
                             <span class="ml-1">{{ trim(($v->marca ?? '').' '.($v->modelo ?? '')) ?: '—' }}</span>
                             @if ($v->color)<span class="text-slate-400"> · {{ $v->color }}</span>@endif
                         </td>
-                        <td class="px-4 py-3 font-mono font-semibold text-slate-700">{{ $v->puesto ?: '—' }}</td>
+                        <td class="px-4 py-3">
+                            @if ($this->hayPuestos)
+                                {{-- Lo pone quien está en el estacionamiento, que ve dónde quedó. --}}
+                                <select wire:change="asignarPuesto({{ $v->persona_id }}, $event.target.value)"
+                                        class="rounded border border-slate-300 bg-white px-2 py-1 font-mono text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-parte1/30">
+                                    @foreach (($this->opcionesPorVehiculo[$v->persona_id] ?? []) as $valor => $texto)
+                                        <option value="{{ $valor }}" @selected((string) $valor === (string) $v->puesto_id)>{{ $texto }}</option>
+                                    @endforeach
+                                </select>
+                            @else
+                                <span class="font-mono font-semibold text-slate-700">{{ $v->puesto ?: '—' }}</span>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-slate-600">
                             {{ $v->nombre }}
                             @if ($v->cedula)<span class="ml-1 font-mono text-xs text-slate-400">{{ $v->cedula }}</span>@endif
