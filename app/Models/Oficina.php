@@ -17,6 +17,9 @@ class Oficina extends Model
     protected $fillable = [
         'codigo',
         'nombre',
+        // La gerencia que ocupa este piso/oficina. Texto, igual que «dependencia» del trabajador:
+        // así al asignar el piso se ofrecen los de la gerencia. Ver la migración.
+        'gerencia',
         'orden',
     ];
 }

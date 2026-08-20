@@ -129,11 +129,26 @@
                                 :opciones="array_merge(['' => 'Sin asignar'], $this->entes)"
                                 wire:model="ente" :error="$errors->first('ente')" />
 
-                    <x-campo etiqueta="Dependencia" nombre="dependencia" ayuda="Opcional." maxlength="120"
-                             wire:model="dependencia" :error="$errors->first('dependencia')" />
+                    {{-- En vivo: al cambiar la gerencia se refrescan los pisos que se ofrecen abajo. --}}
+                    <x-campo etiqueta="Gerencia" nombre="dependencia" ayuda="Opcional." maxlength="120"
+                             list="gerencias-conocidas"
+                             wire:model.live.debounce.400ms="dependencia" :error="$errors->first('dependencia')" />
+                    <datalist id="gerencias-conocidas">
+                        @foreach ($this->gerencias as $g)
+                            <option value="{{ $g }}"></option>
+                        @endforeach
+                    </datalist>
 
-                    <x-campo etiqueta="Piso" nombre="piso" ayuda="Opcional." maxlength="10"
+                    {{-- El piso ofrece los de la gerencia elegida (del catálogo del edificio), pero
+                         se puede escribir otro: es una sugerencia, no una jaula. --}}
+                    <x-campo etiqueta="Piso" nombre="piso" maxlength="10" list="pisos-de-gerencia"
+                             :ayuda="$this->pisosDeLaGerencia ? 'Pisos de esa gerencia; puedes escribir otro.' : 'Opcional.'"
                              wire:model="piso" :error="$errors->first('piso')" />
+                    <datalist id="pisos-de-gerencia">
+                        @foreach ($this->pisosDeLaGerencia as $p)
+                            <option value="{{ $p['codigo'] }}">{{ $p['nombre'] ? $p['codigo'].' · '.$p['nombre'] : $p['codigo'] }}</option>
+                        @endforeach
+                    </datalist>
                 @endif
             </div>
 
