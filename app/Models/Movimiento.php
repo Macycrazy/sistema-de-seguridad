@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\DatosVehiculo;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -58,6 +59,22 @@ class Movimiento extends Model
     public static function ultimoDeCadaPersona(): ConsultaCruda
     {
         $ultimos = DB::table('movimientos')
+            ->selectRaw('persona_id, max(id) as ultimo_id')
+            ->groupBy('persona_id');
+
+        return DB::table('movimientos')
+            ->joinSub($ultimos, 'u', fn ($union) => $union->on('movimientos.id', '=', 'u.ultimo_id'));
+    }
+
+    /**
+     * El último movimiento de cada persona HASTA un instante dado: sirve para reconstruir quién
+     * estaba dentro en ese momento (por ejemplo, en la medianoche de una noche pasada). Mismo «max(id)»
+     * portable, pero mirando solo lo ocurrido hasta esa hora.
+     */
+    public static function ultimoDeCadaPersonaHasta(CarbonInterface $momento): ConsultaCruda
+    {
+        $ultimos = DB::table('movimientos')
+            ->where('ocurrio_en', '<=', $momento)
             ->selectRaw('persona_id, max(id) as ultimo_id')
             ->groupBy('persona_id');
 

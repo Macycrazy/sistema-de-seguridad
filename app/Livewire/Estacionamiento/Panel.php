@@ -28,6 +28,12 @@ class Panel extends Component
     /** Si se muestra el registro del día (entradas y salidas), aparte de lo que hay dentro. */
     public bool $verHistorial = false;
 
+    /** Si se muestra el reporte de pernoctas por noche (histórico). Plegado. */
+    public bool $verReporte = false;
+
+    /** La noche que se consulta en el reporte (Y-m-d). Empieza en anoche. */
+    public string $fechaReporte = '';
+
     /** Lo que se dice tras asignar un puesto a un vehículo. */
     public string $aviso = '';
 
@@ -45,6 +51,12 @@ class Panel extends Component
     public string $notaFija = '';
 
     public string $puestoFijo = '';
+
+    public function mount(): void
+    {
+        // Por omisión, el reporte mira la noche de anoche: la que casi siempre se quiere revisar.
+        $this->fechaReporte = CarbonImmutable::yesterday()->format('Y-m-d');
+    }
 
     /** Todo lo que hay dentro ahora. Se calcula una vez por render y de aquí sale lo demás. */
     #[Computed]
@@ -171,6 +183,22 @@ class Panel extends Component
     public function fijos(): Collection
     {
         return app(VehiculosFijos::class)->abiertos();
+    }
+
+    /** El reporte de la noche elegida: quién pernoctó esa noche (histórico). */
+    #[Computed]
+    public function reporteNoche(): Collection
+    {
+        $fecha = $this->fechaReporte !== ''
+            ? CarbonImmutable::parse($this->fechaReporte)
+            : CarbonImmutable::yesterday();
+
+        return app(Estacionamiento::class)->pernoctaronLaNoche($fecha);
+    }
+
+    public function updatedFechaReporte(): void
+    {
+        unset($this->reporteNoche);
     }
 
     /** Los puestos libres que admiten el tipo elegido en el formulario de fijo. */
