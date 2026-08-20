@@ -3,8 +3,10 @@
 namespace App\Livewire\Estacionamiento;
 
 use App\Models\Puesto;
+use App\Models\VehiculoFijo;
 use App\Services\DatosVehiculo;
 use App\Services\Estacionamiento\Estacionamiento;
+use App\Services\Estacionamiento\VehiculosFijos;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -28,6 +30,21 @@ class Panel extends Component
 
     /** Lo que se dice tras asignar un puesto a un vehículo. */
     public string $aviso = '';
+
+    /** El formulario para anotar un vehículo fijo (empresa / que ya estaba). Empieza cerrado. */
+    public bool $agregandoFijo = false;
+
+    public string $placaFija = '';
+
+    public string $tipoFija = DatosVehiculo::CARRO;
+
+    public string $marcaFija = '';
+
+    public string $colorFija = '';
+
+    public string $notaFija = '';
+
+    public string $puestoFijo = '';
 
     /** Todo lo que hay dentro ahora. Se calcula una vez por render y de aquí sale lo demás. */
     #[Computed]
@@ -149,9 +166,80 @@ class Panel extends Component
         $this->actualizar();
     }
 
+    /** Los vehículos fijos anotados que siguen dentro. */
+    #[Computed]
+    public function fijos(): Collection
+    {
+        return app(VehiculosFijos::class)->abiertos();
+    }
+
+    /** Los puestos libres que admiten el tipo elegido en el formulario de fijo. */
+    #[Computed]
+    public function puestosLibresFijo(): Collection
+    {
+        return app(Estacionamiento::class)->puestosLibres($this->tipoFija);
+    }
+
+    public function abrirFijo(): void
+    {
+        $this->reset('placaFija', 'tipoFija', 'marcaFija', 'colorFija', 'notaFija', 'puestoFijo', 'aviso');
+        $this->resetValidation();
+        $this->agregandoFijo = true;
+    }
+
+    public function cancelarFijo(): void
+    {
+        $this->reset('placaFija', 'tipoFija', 'marcaFija', 'colorFija', 'notaFija', 'puestoFijo');
+        $this->resetValidation();
+        $this->agregandoFijo = false;
+    }
+
+    /** Al cambiar el tipo, el puesto elegido puede dejar de valer: se limpia y se recalculan libres. */
+    public function updatedTipoFija(): void
+    {
+        $this->puestoFijo = '';
+        unset($this->puestosLibresFijo);
+    }
+
+    public function agregarFijo(): void
+    {
+        $this->resetValidation();
+
+        try {
+            app(VehiculosFijos::class)->registrar(
+                placa: $this->placaFija,
+                tipoVehiculo: $this->tipoFija,
+                puestoId: $this->puestoFijo === '' ? null : (int) $this->puestoFijo,
+                marca: $this->marcaFija,
+                color: $this->colorFija,
+                nota: $this->notaFija,
+                usuarioId: auth()->id(),
+            );
+        } catch (ValidationException $e) {
+            $this->setErrorBag($e->validator->errors());
+
+            return;
+        }
+
+        $this->agregandoFijo = false;
+        $this->reset('placaFija', 'tipoFija', 'marcaFija', 'colorFija', 'notaFija', 'puestoFijo');
+        $this->aviso = 'Vehículo fijo anotado.';
+        $this->actualizar();
+    }
+
+    public function sacarFijo(int $id): void
+    {
+        app(VehiculosFijos::class)->sacar(VehiculoFijo::findOrFail($id));
+        $this->aviso = 'Vehículo fijo retirado: su puesto queda libre.';
+        $this->actualizar();
+    }
+
     public function actualizar(): void
     {
-        unset($this->dentro, $this->vehiculos, $this->resumen, $this->historial, $this->pernoctan, $this->opcionesPorVehiculo);
+        unset(
+            $this->dentro, $this->vehiculos, $this->resumen, $this->historial, $this->pernoctan,
+            $this->opcionesPorVehiculo, $this->fijos, $this->puestosLibresFijo,
+        );
     }
 
     public function render()

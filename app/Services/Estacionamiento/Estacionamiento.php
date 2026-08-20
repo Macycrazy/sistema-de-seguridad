@@ -83,7 +83,12 @@ final class Estacionamiento
      */
     public function puestosOcupados(): Collection
     {
-        return $this->vehiculosDentro()->pluck('puesto_id')->filter()->unique()->values();
+        // Ocupan puesto tanto los vehículos de personas que están dentro como los fijos (empresa o
+        // los que ya estaban) que siguen anotados en la bitácora.
+        $porPersonas = $this->vehiculosDentro()->pluck('puesto_id')->filter();
+        $porFijos = app(VehiculosFijos::class)->puestosOcupados();
+
+        return $porPersonas->merge($porFijos)->unique()->values();
     }
 
     /**
