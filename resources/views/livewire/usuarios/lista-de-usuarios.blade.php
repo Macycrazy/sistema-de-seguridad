@@ -37,11 +37,15 @@
         <x-tarjeta parte="3" :titulo="$editando ? 'Editar usuario' : 'Nuevo usuario'" class="mb-6">
             <form wire:submit="guardar" class="space-y-4">
                 <div class="grid gap-4 sm:grid-cols-2">
+                    {{-- Sin autocapitalizar ni autocorregir: el usuario va en minúsculas y tal cual. --}}
                     <x-campo
                         etiqueta="Usuario"
                         nombre="usuario"
                         autofocus
                         autocomplete="off"
+                        autocapitalize="none"
+                        autocorrect="off"
+                        spellcheck="false"
                         maxlength="40"
                         wire:model="usuario"
                         :error="$errors->first('usuario')"

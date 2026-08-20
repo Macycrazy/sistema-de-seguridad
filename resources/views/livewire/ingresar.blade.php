@@ -25,11 +25,16 @@
                 El error del ingreso se cuelga del campo «usuario» porque es el primero, pero
                 habla de los dos: nunca dice cuál de los dos falló.
             --}}
+            {{-- En el teléfono el teclado capitaliza y autocorrige: aquí no, que el usuario se
+                 teclea tal cual y en minúsculas. --}}
             <x-campo
                 etiqueta="Usuario"
                 nombre="usuario"
                 autofocus
                 autocomplete="username"
+                autocapitalize="none"
+                autocorrect="off"
+                spellcheck="false"
                 maxlength="40"
                 wire:model="usuario"
                 :error="$errors->first('usuario')"

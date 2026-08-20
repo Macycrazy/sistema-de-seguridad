@@ -70,6 +70,22 @@ class IngresarTest extends TestCase
     }
 
     #[Test]
+    public function se_entra_aunque_el_telefono_ponga_mayusculas_o_espacios(): void
+    {
+        // El usuario se guarda en minúsculas; el teclado del teléfono capitaliza la primera letra
+        // y a veces deja un espacio. Aun así se entra: el login normaliza lo tecleado.
+        $usuario = $this->usuario(['usuario' => 'j.perez', 'rol' => Rol::VIGILANTE]);
+
+        Livewire::test(Ingresar::class)
+            ->set('usuario', '  J.Perez ')
+            ->set('clave', UserFactory::CLAVE)
+            ->call('entrar')
+            ->assertHasNoErrors();
+
+        $this->assertAuthenticatedAs($usuario);
+    }
+
+    #[Test]
     public function el_vigilante_cae_en_la_pantalla_que_va_a_usar_todo_el_turno(): void
     {
         $this->usuario(['usuario' => 'vigilante', 'rol' => Rol::VIGILANTE]);
