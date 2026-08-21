@@ -4,7 +4,7 @@
     $recalcula = 'fecha,tipo,ente,verHoy,previousPage,nextPage,gotoPage';
 @endphp
 
-<div>
+<div class="min-w-0">
     {{-- Rojo solo para esto: un dato que no se entiende.
          role=alert porque aparece a mitad de sesión, al cambiar la fecha. --}}
     @if ($this->fechaIlegible)
@@ -93,9 +93,9 @@
         </div>
     </div>
 
-    <div class="mt-6 grid gap-6 @if ($this->personaDelPanel) lg:grid-cols-[2fr_1fr] @endif">
+    <div class="mt-6 grid min-w-0 gap-6 @if ($this->personaDelPanel) lg:grid-cols-[2fr_1fr] @endif">
         {{-- LISTA DEL DÍA --}}
-        <section>
+        <section class="min-w-0">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
                     <h2 class="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">
