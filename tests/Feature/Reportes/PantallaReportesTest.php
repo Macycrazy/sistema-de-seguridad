@@ -22,17 +22,17 @@ class PantallaReportesTest extends TestCase
     public function sin_ver_registro_no_se_entra(): void
     {
         // El vigilante no tiene «ver-registro».
-        $this->actingAs(User::factory()->create(['rol' => Rol::VIGILANTE]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
         $this->get(route('reportes'))->assertForbidden();
 
-        $this->actingAs(User::factory()->create(['rol' => Rol::SUPERVISOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::supervisor()]));
         $this->get(route('reportes'))->assertOk();
     }
 
     #[Test]
     public function el_panel_muestra_las_entradas_del_tramo(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::SUPERVISOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::supervisor()]));
         $ana = Persona::create(['cedula' => '1', 'tipo' => Persona::TRABAJADOR, 'nombre' => 'ANA PÉREZ', 'activo' => true]);
         Movimiento::create(['persona_id' => $ana->id, 'tipo' => Movimiento::ENTRADA, 'ocurrio_en' => CarbonImmutable::today()->setTime(8, 0)]);
 
@@ -45,7 +45,7 @@ class PantallaReportesTest extends TestCase
     #[Test]
     public function el_tramo_se_recorta_al_maximo_de_dias(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::SUPERVISOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::supervisor()]));
 
         // Un «desde» absurdamente lejano se recorta a MAXIMO_DIAS contados desde el «hasta».
         $componente = Livewire::test(Panel::class)
@@ -60,7 +60,7 @@ class PantallaReportesTest extends TestCase
     #[Test]
     public function las_fechas_al_reves_se_enderezan(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::SUPERVISOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::supervisor()]));
 
         $componente = Livewire::test(Panel::class)
             ->set('desde', '2026-08-31')

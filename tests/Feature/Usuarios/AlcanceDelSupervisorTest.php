@@ -63,7 +63,7 @@ class AlcanceDelSupervisorTest extends TestCase
         Livewire::test(ListaDeUsuarios::class)
             ->set('usuario', 'colado')
             ->set('nombre', 'El Colado')
-            ->set('rol', Rol::ADMINISTRADOR->value)
+            ->set('rol', Rol::administrador()->value)
             ->set('clave', self::CLAVE)
             ->call('crear')
             ->assertHasErrors('rol');
@@ -108,11 +108,11 @@ class AlcanceDelSupervisorTest extends TestCase
 
         Livewire::test(ListaDeUsuarios::class)
             ->call('abrirCambioDeRol', $vigilante->id)
-            ->set('rolNuevo', Rol::ADMINISTRADOR->value)
+            ->set('rolNuevo', Rol::administrador()->value)
             ->call('guardarCambioDeRol')
             ->assertHasErrors('rol');
 
-        $this->assertSame(Rol::VIGILANTE, $vigilante->fresh()->rol);
+        $this->assertSame(Rol::vigilante(), $vigilante->fresh()->rol);
     }
 
     #[Test]
@@ -159,11 +159,11 @@ class AlcanceDelSupervisorTest extends TestCase
 
         Livewire::test(ListaDeUsuarios::class)
             ->call('abrirCambioDeRol', $supervisor->id)
-            ->set('rolNuevo', Rol::VIGILANTE->value)
+            ->set('rolNuevo', Rol::vigilante()->value)
             ->call('guardarCambioDeRol')
             ->assertHasErrors('rol');
 
-        $this->assertSame(Rol::SUPERVISOR, $supervisor->fresh()->rol);
+        $this->assertSame(Rol::supervisor(), $supervisor->fresh()->rol);
     }
 
     #[Test]
@@ -175,10 +175,10 @@ class AlcanceDelSupervisorTest extends TestCase
         // Con dos administradores activos, bajar a uno pasa.
         Livewire::test(ListaDeUsuarios::class)
             ->call('abrirCambioDeRol', $solitaria->id)
-            ->set('rolNuevo', Rol::SUPERVISOR->value)
+            ->set('rolNuevo', Rol::supervisor()->value)
             ->call('guardarCambioDeRol')
             ->assertHasNoErrors();
 
-        $this->assertSame(Rol::SUPERVISOR, $solitaria->fresh()->rol);
+        $this->assertSame(Rol::supervisor(), $solitaria->fresh()->rol);
     }
 }

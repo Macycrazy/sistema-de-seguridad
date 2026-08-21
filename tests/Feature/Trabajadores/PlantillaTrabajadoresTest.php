@@ -72,7 +72,7 @@ class PlantillaTrabajadoresTest extends TestCase
     #[Test]
     public function descargar_plantilla_entrega_un_archivo(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
 
         Livewire::test(ListaDeTrabajadores::class)
             ->call('descargarPlantilla')

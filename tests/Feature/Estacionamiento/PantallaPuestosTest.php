@@ -19,17 +19,17 @@ class PantallaPuestosTest extends TestCase
     #[Test]
     public function solo_quien_administra_el_edificio_abre_la_pantalla(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::VIGILANTE]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
         $this->get(route('puestos'))->assertForbidden();
 
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
         $this->get(route('puestos'))->assertOk();
     }
 
     #[Test]
     public function agregar_un_puesto_lo_deja_en_el_catalogo(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
 
         Livewire::test(ListaDePuestos::class)
             ->set('codigo', 's2-14')
@@ -44,7 +44,7 @@ class PantallaPuestosTest extends TestCase
     #[Test]
     public function editar_carga_y_cambia_los_datos(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
         $puesto = Puesto::create(['codigo' => 'A-1', 'tipo' => 'carro', 'orden' => 1]);
 
         Livewire::test(ListaDePuestos::class)
@@ -60,7 +60,7 @@ class PantallaPuestosTest extends TestCase
     #[Test]
     public function deshabilitar_y_quitar_un_puesto(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
         $puesto = Puesto::create(['codigo' => 'A-1', 'orden' => 1]);
 
         Livewire::test(ListaDePuestos::class)

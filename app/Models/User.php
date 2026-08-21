@@ -45,9 +45,24 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
-            'rol' => Rol::class,
             'activo' => 'boolean',
         ];
+    }
+
+    /**
+     * El rol como objeto. La columna guarda el slug; aquí se resuelve al Rol (base o creado). Null
+     * si el slug quedó apuntando a un rol que ya no existe —no debería pasar: un rol en uso no se
+     * borra—.
+     */
+    public function getRolAttribute(?string $slug): ?Rol
+    {
+        return Rol::desde($slug);
+    }
+
+    /** Acepta un Rol o su slug, y guarda siempre el slug. */
+    public function setRolAttribute(Rol|string|null $rol): void
+    {
+        $this->attributes['rol'] = $rol instanceof Rol ? $rol->value : $rol;
     }
 
     /**
@@ -75,23 +90,23 @@ class User extends Authenticatable
 
     public function esVigilante(): bool
     {
-        return $this->rol === Rol::VIGILANTE;
+        return $this->rol?->esVigilante() ?? false;
     }
 
     public function esSupervisor(): bool
     {
-        return $this->rol === Rol::SUPERVISOR;
+        return $this->rol?->esSupervisor() ?? false;
     }
 
     public function esAdministrador(): bool
     {
-        return $this->rol === Rol::ADMINISTRADOR;
+        return $this->rol?->esAdministrador() ?? false;
     }
 
     /** Su rol llega a lo que se le pide. Ver Rol::alcanza(). */
     public function alcanza(Rol $minimo): bool
     {
-        return $this->rol instanceof Rol && $this->rol->alcanza($minimo);
+        return $this->rol?->alcanza($minimo) ?? false;
     }
 
     /** El nombre corto para la barra de arriba: «Deiber S.» */

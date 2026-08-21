@@ -31,7 +31,7 @@ class UserFactory extends Factory
             'usuario' => fake()->unique()->userName(),
             'nombre' => fake()->name(),
             'cedula' => fake()->unique()->numerify('########'),
-            'rol' => Rol::VIGILANTE,
+            'rol' => Rol::vigilante(),
             'activo' => true,
             'password' => static::$claveHasheada ??= Hash::make(self::CLAVE),
             'remember_token' => Str::random(10),
@@ -40,12 +40,12 @@ class UserFactory extends Factory
 
     public function supervisor(): static
     {
-        return $this->state(fn () => ['rol' => Rol::SUPERVISOR]);
+        return $this->state(fn () => ['rol' => Rol::supervisor()]);
     }
 
     public function administrador(): static
     {
-        return $this->state(fn () => ['rol' => Rol::ADMINISTRADOR]);
+        return $this->state(fn () => ['rol' => Rol::administrador()]);
     }
 
     public function desactivado(): static

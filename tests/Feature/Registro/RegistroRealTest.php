@@ -214,7 +214,7 @@ class RegistroRealTest extends TestCase
     #[Test]
     public function registrado_por_muestra_el_nombre_del_usuario(): void
     {
-        $vigilante = User::factory()->create(['nombre' => 'Luis Vigía', 'rol' => Rol::VIGILANTE]);
+        $vigilante = User::factory()->create(['nombre' => 'Luis Vigía', 'rol' => Rol::vigilante()]);
         $ana = $this->trabajador();
 
         $this->anotar($ana, MovimientoModel::ENTRADA, CarbonImmutable::today()->setTime(8, 0), $vigilante->id);

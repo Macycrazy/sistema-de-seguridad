@@ -1,36 +1,78 @@
 {{--
-    Qué puede hacer cada rol.
+    Los roles y qué puede hacer cada uno.
 
-    Los tres roles son fijos: los define el README y no se crean ni se borran desde aquí. Lo que
-    se mueve son los permisos, que es lo que abre cada pantalla.
+    Los tres base (vigilante, supervisor, administrador) son fijos: no se crean ni se borran, y son
+    la columna vertebral de la jerarquía. El administrador puede AÑADIR más roles, cada uno anclado
+    a un nivel (1, 2 o 3), que es lo que decide a quién puede tocar.
 
-    Lo que esta pantalla NO cambia es el orden de los roles. Darle «gestionar usuarios» al
-    vigilante le deja crear vigilantes, no administradores: a quién puede tocar cada quien lo
-    decide el código, y es lo que impide que esta misma pantalla sea una escalera al rol de arriba.
+    Lo que esta pantalla NO cambia es el ORDEN de los niveles: darle «gestionar usuarios» a un rol
+    de nivel bajo le deja crear roles de su nivel o menos, nunca por encima. A quién puede tocar
+    cada quien lo decide el código (Rol::alcanza), y es lo que impide que esto sea una escalera.
 --}}
 <div>
 
-    <div class="mb-6">
-        <div class="flex items-center gap-2.5">
-            <h1 class="text-3xl font-bold tracking-tight">Roles y permisos</h1>
-            <x-ayuda
-                titulo="Roles y permisos"
-                que="Qué puede hacer cada rol. Marcas por rol lo que abre, y el sistema respeta esas casillas en todo el sistema."
-                :pasos="[
-                    'Cada fila es un permiso; cada columna, un rol. Marca lo que ese rol puede hacer.',
-                    'Algunos permisos son <b>intocables</b> (no se pueden quitar) porque el sistema se quedaría sin salida.',
-                    'Nadie puede darse a sí mismo un permiso por encima de su rol.',
-                ]" />
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2.5">
+                <h1 class="text-3xl font-bold tracking-tight">Roles y permisos</h1>
+                <x-ayuda
+                    titulo="Roles y permisos"
+                    que="Los roles del sistema y qué abre cada uno. Cada columna es un rol; cada fila, un permiso."
+                    :pasos="[
+                        '<b>Nuevo rol</b>: un nombre y un nivel (1 como vigilante, 2 supervisor, 3 admin). El nivel decide a quién puede gestionar.',
+                        'Marca en su columna lo que ese rol puede hacer, y pulsa <b>Guardar</b>.',
+                        'Los tres roles base no se borran. Un rol nuevo no se puede borrar si hay usuarios que lo tienen.',
+                        'Ningún rol puede darse permisos por encima de su nivel; «gestionar permisos» es solo del administrador.',
+                    ]" />
+            </div>
+            <p class="mt-1 text-sm text-slate-500">Marca lo que abre cada rol, o crea uno nuevo.</p>
         </div>
-        <p class="mt-1 text-sm text-slate-500">Marca lo que abre cada rol.</p>
+
+        @unless ($gestionandoRol)
+            <x-boton wire:click="abrirNuevoRol">Nuevo rol</x-boton>
+        @endunless
     </div>
 
     @if ($confirmacion !== '')
         <x-aviso class="mb-5" wire:key="confirmacion">{{ $confirmacion }}</x-aviso>
     @endif
 
-    @if ($errors->has('permisos'))
-        <x-error class="mb-5">{{ $errors->first('permisos') }}</x-error>
+    @if ($errors->has('permisos') || $errors->has('rol'))
+        <x-error class="mb-5">{{ $errors->first('permisos') ?: $errors->first('rol') }}</x-error>
+    @endif
+
+    {{-- Alta / edición de un rol. El slug no se edita: renombrar no mueve a los usuarios. --}}
+    @if ($gestionandoRol)
+        <x-tarjeta parte="3" :titulo="$rolEditando ? 'Editar rol' : 'Nuevo rol'" class="mb-6">
+            <form wire:submit="guardarRol" class="flex flex-wrap items-end gap-4">
+                <div class="w-full sm:w-64">
+                    <x-campo
+                        etiqueta="Nombre del rol"
+                        nombre="nombreRol"
+                        autofocus
+                        maxlength="60"
+                        wire:model="nombreRol"
+                        :error="$errors->first('nombre')"
+                    />
+                </div>
+
+                <div class="w-full sm:w-64">
+                    <x-selector
+                        etiqueta="Nivel"
+                        nombre="nivelRol"
+                        :opciones="$this->niveles()"
+                        ayuda="Decide a quién puede gestionar, igual que el rol base de ese nivel."
+                        wire:model="nivelRol"
+                        :error="$errors->first('nivel')"
+                    />
+                </div>
+
+                <div class="flex items-center gap-2 pb-1">
+                    <x-boton type="submit">{{ $rolEditando ? 'Guardar' : 'Crear' }}</x-boton>
+                    <x-boton type="button" variante="secundario" wire:click="cancelarRol">Cancelar</x-boton>
+                </div>
+            </form>
+        </x-tarjeta>
     @endif
 
     <div class="overflow-hidden rounded border border-slate-200 bg-white shadow-sm">
@@ -40,8 +82,22 @@
                     <tr class="border-b border-slate-200 text-left font-mono text-xs uppercase tracking-widest text-slate-500">
                         <th scope="col" class="px-4 py-3 font-semibold">Permiso</th>
                         @foreach ($this->roles() as $rol)
-                            <th scope="col" class="w-40 px-4 py-3 text-center font-semibold">
-                                {{ $rol->etiqueta() }}
+                            <th scope="col" class="w-44 px-4 py-3 text-center font-semibold">
+                                <div class="flex flex-col items-center gap-0.5">
+                                    <span>{{ $rol->etiqueta() }}</span>
+                                    <span class="text-[10px] font-normal normal-case tracking-normal text-slate-400">
+                                        Nivel {{ $rol->nivel }}@unless ($rol->esBase()) · creado @endunless
+                                    </span>
+                                    @unless ($rol->esBase())
+                                        <div class="mt-1 flex items-center gap-2">
+                                            <button type="button" wire:click="abrirEdicionRol('{{ $rol->value }}')"
+                                                    class="text-[11px] font-semibold normal-case tracking-normal text-parte3 hover:underline">Editar</button>
+                                            <button type="button" wire:click="eliminarRol('{{ $rol->value }}')"
+                                                    wire:confirm="¿Borrar el rol «{{ $rol->nombre }}»? No se puede si hay usuarios que lo tienen."
+                                                    class="text-[11px] font-semibold normal-case tracking-normal text-alto hover:underline">Borrar</button>
+                                        </div>
+                                    @endunless
+                                </div>
                             </th>
                         @endforeach
                     </tr>
