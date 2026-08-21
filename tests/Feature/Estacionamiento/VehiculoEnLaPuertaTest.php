@@ -421,6 +421,39 @@ class VehiculoEnLaPuertaTest extends TestCase
     }
 
     #[Test]
+    public function elegir_un_vehiculo_del_desplegable_basta_para_llevarselo(): void
+    {
+        // El fallo que se veía: entrar a pie, salir con una moto de la empresa, y la moto seguía
+        // dentro. Había que elegirla Y pulsar «Añadir»; quien pulsaba SALIDA sin más salía a pie
+        // sin que nada lo avisara. Elegirla tiene que bastar.
+        $ana = $this->trabajador();
+        $flota = VehiculoDeFlota::create(['placa' => 'MOTOEMP', 'tipo_vehiculo' => DatosVehiculo::MOTO]);
+
+        $moto = VehiculoFijo::create([
+            'placa' => 'MOTOEMP',
+            'tipo_vehiculo' => DatosVehiculo::MOTO,
+            'flota_id' => $flota->id,
+            'entro_en' => now()->subDay(),
+        ]);
+
+        app(Marcaje::class)->registrar($ana, Movimiento::ENTRADA);   // entró a pie
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->set('otroVehiculoSalida', (string) $moto->id)   // solo elegir, sin «Añadir»
+            ->call('marcarSalida')
+            ->assertHasNoErrors();
+
+        $moto->refresh();
+
+        $this->assertNotNull($moto->salio_en, 'La moto se fue con Ana.');
+        $this->assertSame($ana->id, $moto->salida_conductor_id);
+        $this->assertSame(0, app(Estacionamiento::class)->cuantosDentro());
+    }
+
+    #[Test]
     public function el_mismo_vehiculo_no_puede_entrar_dos_veces(): void
     {
         $ana = $this->trabajador();

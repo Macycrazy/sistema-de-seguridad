@@ -655,17 +655,14 @@
                              Va en un desplegable y no en botones: son muchos, y llevarse el
                              vehículo de otro no debería costar lo mismo que equivocarse. --}}
                         @if ($this->otrosVehiculosDentro !== [])
-                            <div class="mt-3 flex flex-wrap items-end gap-3">
-                                <div class="w-full sm:w-80">
-                                    <x-selector etiqueta="…o se lleva otro que está dentro"
-                                                nombre="otroVehiculoSalida"
-                                                wire:model="otroVehiculoSalida"
-                                                :opciones="['' => 'Elegir vehículo…'] + $this->otrosVehiculosDentro" />
-                                </div>
-                                <div class="pb-1.5">
-                                    <x-boton type="button" variante="secundario" tamano="chico"
-                                             wire:click="llevarseOtro">Añadir</x-boton>
-                                </div>
+                            {{-- Elegir aquí lo añade en el acto: no hay un botón «Añadir» que
+                                 pulsar después. Lo había, y quien elegía la moto y pulsaba SALIDA
+                                 —lo natural— salía a pie con la moto todavía dentro. --}}
+                            <div class="mt-3 w-full sm:w-80">
+                                <x-selector etiqueta="…o se lleva otro que está dentro"
+                                            nombre="otroVehiculoSalida"
+                                            wire:model.live="otroVehiculoSalida"
+                                            :opciones="['' => 'Elegir vehículo…'] + $this->otrosVehiculosDentro" />
                             </div>
                         @endif
 

@@ -747,6 +747,18 @@ class Marcar extends Component
             ->all();
     }
 
+    /**
+     * Elegir un vehículo que no es suyo lo añade a la salida en el acto.
+     *
+     * Antes había que elegirlo y ADEMÁS pulsar «Añadir». Quien elegía la moto y pulsaba SALIDA
+     * directamente —lo natural— salía a pie y la moto se quedaba dentro sin que nada lo avisara.
+     * Un paso que se puede olvidar en la puerta es un paso que sobra.
+     */
+    public function updatedOtroVehiculoSalida(): void
+    {
+        $this->llevarseOtro();
+    }
+
     /** Añadir a la salida un vehículo que no es suyo: de la empresa o de otra persona. */
     public function llevarseOtro(): void
     {
@@ -872,6 +884,10 @@ class Marcar extends Component
         $puerta = app(VehiculoEnLaPuerta::class);
 
         if ($tipo === Movimiento::SALIDA) {
+            // Por si quedó uno elegido en el desplegable sin llegar a añadirse: se lo lleva igual.
+            // Lo que el vigilante ve elegido es lo que tiene que pasar.
+            $this->llevarseOtro();
+
             if ($this->vehiculosSalida === []) {
                 return [];
             }
