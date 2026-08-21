@@ -56,41 +56,54 @@ document.addEventListener('alpine:init', () => {
             if (!track) return;
 
             try {
-                if (typeof track.getCapabilities !== 'function') {
-                    // Si el navegador no expone capacidades avanzadas, reaplicamos las restricciones básicas
-                    // para ver si el navegador re-autofoca.
-                    await track.applyConstraints({ video: { facingMode: 'environment' } });
-                    return;
-                }
+                if (typeof track.getCapabilities !== 'function') return;
 
                 const capabilities = track.getCapabilities();
 
+                // Intentar usar pointsOfInterest si el navegador lo soporta (muy raro pero preciso)
+                if (capabilities.pointsOfInterest) {
+                    try {
+                        await track.applyConstraints({ advanced: [{ pointsOfInterest: [{ x: 0.5, y: 0.5 }] }] });
+                    } catch (e) { }
+                }
+
                 if (capabilities.focusMode) {
-                    if (capabilities.focusMode.includes('single-shot')) {
-                        await track.applyConstraints({
-                            advanced: [{ focusMode: 'single-shot' }]
-                        });
-                        // Si soporta focus continuo, regresamos a él después de un breve instante
+                    // Truco comprobado para forzar autoenfoque: Pasar a manual (para detener la lente) 
+                    // y luego a continuo (para forzar un nuevo barrido).
+                    if (capabilities.focusMode.includes('manual') && capabilities.focusMode.includes('continuous')) {
+                        let manualConfig = { focusMode: 'manual' };
+                        // Si permite forzar la distancia, lo enviamos al mínimo temporalmente
+                        if (capabilities.focusDistance && capabilities.focusDistance.min !== undefined) {
+                            manualConfig.focusDistance = capabilities.focusDistance.min;
+                        }
+                        
+                        await track.applyConstraints({ advanced: [manualConfig] });
+                        
+                        // Y regresamos a continuous para que vuelva a enfocar automáticamente
+                        setTimeout(async () => {
+                            try {
+                                if (this.stream && this.abierto) {
+                                    const t = this.stream.getVideoTracks()[0];
+                                    if (t) {
+                                        await t.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+                                    }
+                                }
+                            } catch (err) {}
+                        }, 100);
+                    } else if (capabilities.focusMode.includes('single-shot')) {
+                        await track.applyConstraints({ advanced: [{ focusMode: 'single-shot' }] });
                         if (capabilities.focusMode.includes('continuous')) {
                             setTimeout(async () => {
                                 try {
                                     if (this.stream && this.abierto) {
                                         const t = this.stream.getVideoTracks()[0];
-                                        if (t) {
-                                            await t.applyConstraints({
-                                                advanced: [{ focusMode: 'continuous' }]
-                                            });
-                                        }
+                                        if (t) await t.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
                                     }
-                                } catch (err) {
-                                    console.error("Error al volver a focus continuo:", err);
-                                }
+                                } catch (err) {}
                             }, 500);
                         }
                     } else if (capabilities.focusMode.includes('continuous')) {
-                        await track.applyConstraints({
-                            advanced: [{ focusMode: 'continuous' }]
-                        });
+                        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
                     }
                 }
             } catch (err) {
