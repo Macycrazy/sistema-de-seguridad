@@ -60,20 +60,18 @@ class VehiculosFijos
             ]);
         }
 
-        if ($puestoId === null) {
-            throw ValidationException::withMessages([
-                'puestoFijo' => 'Hay que decir en qué puesto queda.',
-            ]);
-        }
+        // El puesto es OPCIONAL: en la puerta del estacionamiento se anota el vehículo al entrar,
+        // y quién está adentro le pone la plaza después, cuando ve dónde quedó. Si se pone, tiene
+        // que estar libre y admitir el tipo; sin puesto, entra igual y queda «sin plaza» hasta que
+        // se la asignen.
+        if ($puestoId !== null) {
+            $libre = app(Estacionamiento::class)->puestosLibres($tipo)->contains('id', $puestoId);
 
-        // Que la plaza esté libre y admita el tipo lo decide el estacionamiento, que ya conoce lo
-        // que hay dentro (personas y otros fijos).
-        $libre = app(Estacionamiento::class)->puestosLibres($tipo)->contains('id', $puestoId);
-
-        if (! $libre) {
-            throw ValidationException::withMessages([
-                'puestoFijo' => 'Ese puesto no está libre para este tipo de vehículo.',
-            ]);
+            if (! $libre) {
+                throw ValidationException::withMessages([
+                    'puestoFijo' => 'Ese puesto no está libre para este tipo de vehículo.',
+                ]);
+            }
         }
 
         [$conductorId, $conductorNombreFinal] = $this->conductor($conductorCedula, $conductorNombre, 'conductorFija');
