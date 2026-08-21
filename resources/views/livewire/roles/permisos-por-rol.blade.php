@@ -80,13 +80,15 @@
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-slate-200 text-left font-mono text-xs uppercase tracking-widest text-slate-500">
-                        <th scope="col" class="px-4 py-3 font-semibold">Permiso</th>
+                        {{-- Fija al desplazar: con la tabla más ancha que el teléfono, sin esto
+                             se marcan casillas sin ver de qué permiso son. --}}
+                        <th scope="col" class="sticky left-0 z-10 bg-white px-3 py-3 font-semibold sm:px-4">Permiso</th>
                         @foreach ($this->roles() as $rol)
-                            <th scope="col" class="w-44 px-4 py-3 text-center font-semibold">
+                            <th scope="col" class="w-20 px-2 py-3 text-center font-semibold sm:w-44 sm:px-4">
                                 <div class="flex flex-col items-center gap-0.5">
-                                    <span>{{ $rol->etiqueta() }}</span>
+                                    <span class="break-words">{{ $rol->etiqueta() }}</span>
                                     <span class="text-[10px] font-normal normal-case tracking-normal text-slate-400">
-                                        Nivel {{ $rol->nivel }}@unless ($rol->esBase()) · creado @endunless
+                                        N{{ $rol->nivel }}<span class="hidden sm:inline">ivel</span>@unless ($rol->esBase())<span class="hidden sm:inline"> · creado</span>@endunless
                                     </span>
                                     @unless ($rol->esBase())
                                         <div class="mt-1 flex items-center gap-2">
@@ -107,7 +109,7 @@
                     @foreach ($this->porGrupo() as $grupo => $permisos)
                         {{-- Encabezado del módulo: agrupa su «ver» y su «gestionar». --}}
                         <tr wire:key="grupo-{{ $grupo }}" class="bg-slate-50">
-                            <td colspan="{{ count($this->roles()) + 1 }}" class="px-4 py-2">
+                            <td colspan="{{ count($this->roles()) + 1 }}" class="sticky left-0 bg-slate-50 px-3 py-2 sm:px-4">
                                 <span class="font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
                                     {{ $grupo }}
                                 </span>
@@ -116,38 +118,49 @@
 
                         @foreach ($permisos as $permiso)
                             <tr wire:key="permiso-{{ $permiso->value }}">
-                                <td class="px-4 py-3 pl-6">
-                                    <p class="font-semibold text-slate-900">{{ $permiso->etiqueta() }}</p>
-                                    <p class="mt-0.5 text-xs text-slate-500">{{ $permiso->explicacion() }}</p>
+                                {{-- La explicación solo desde tableta: en el teléfono ocupaba
+                                     tres o cuatro renglones y estiraba la fila entera, dejando
+                                     unas celdas enormes con un cuadradito diminuto en medio. No se
+                                     pierde: va en el «title» y sigue entera en la pantalla grande. --}}
+                                <td class="sticky left-0 z-10 min-w-[9rem] bg-white px-3 py-2 sm:px-4 sm:py-3 sm:pl-6">
+                                    <p class="font-semibold text-slate-900" title="{{ $permiso->explicacion() }}">{{ $permiso->etiqueta() }}</p>
+                                    <p class="mt-0.5 hidden text-xs text-slate-500 sm:block">{{ $permiso->explicacion() }}</p>
                                 </td>
 
                                 @foreach ($this->roles() as $rol)
-                                    <td class="px-4 py-3 text-center">
+                                    <td class="p-0 text-center">
                                         @if (! $this->editable($rol, $permiso))
                                             {{-- Clavado: ver Permiso::esIntocable(). --}}
                                             <span
-                                                class="font-mono text-xs uppercase tracking-widest {{ $matriz[$rol->value][$permiso->value] ? 'text-parte3' : 'text-slate-300' }}"
+                                                class="flex items-center justify-center px-2 py-3 font-mono text-[10px] uppercase tracking-widest sm:text-xs {{ $matriz[$rol->value][$permiso->value] ? 'text-parte3' : 'text-slate-300' }}"
                                                 title="No se puede cambiar: sin él, esta pantalla se cerraría para siempre."
                                             >
                                                 {{ $matriz[$rol->value][$permiso->value] ? 'Siempre' : 'Nunca' }}
                                             </span>
                                         @elseif ($this->bloqueada($rol, $permiso))
                                             {{-- Su «gestionar» está marcado: ver va incluido y no se puede quitar. --}}
-                                            <input
-                                                type="checkbox"
-                                                checked
-                                                disabled
-                                                class="h-5 w-5 rounded border-slate-300 text-parte3 opacity-60"
-                                                aria-label="{{ $permiso->etiqueta() }} · {{ $rol->etiqueta() }} (incluido con gestionar)"
-                                                title="Incluido: quien puede gestionar este módulo puede verlo."
-                                            >
+                                            <span class="flex items-center justify-center px-2 py-3"
+                                                  title="Incluido: quien puede gestionar este módulo puede verlo.">
+                                                <input
+                                                    type="checkbox"
+                                                    checked
+                                                    disabled
+                                                    class="h-5 w-5 rounded border-slate-300 text-parte3 opacity-60"
+                                                    aria-label="{{ $permiso->etiqueta() }} · {{ $rol->etiqueta() }} (incluido con gestionar)"
+                                                >
+                                            </span>
                                         @else
-                                            <input
-                                                type="checkbox"
-                                                class="h-5 w-5 rounded border-slate-300 text-parte3 focus:ring-2 focus:ring-parte3/40"
-                                                aria-label="{{ $permiso->etiqueta() }} · {{ $rol->etiqueta() }}"
-                                                wire:model.live="matriz.{{ $rol->value }}.{{ $permiso->value }}"
-                                            >
+                                            {{-- Toda la celda es zona de toque, no solo el
+                                                 cuadradito: en el teléfono acertarle a 20 píxeles
+                                                 con el dedo es lo que hacía la pantalla incómoda. --}}
+                                            <label class="flex cursor-pointer items-center justify-center px-2 py-3 transition hover:bg-slate-50">
+                                                <input
+                                                    type="checkbox"
+                                                    class="h-5 w-5 rounded border-slate-300 text-parte3 focus:ring-2 focus:ring-parte3/40"
+                                                    aria-label="{{ $permiso->etiqueta() }} · {{ $rol->etiqueta() }}"
+                                                    wire:model.live="matriz.{{ $rol->value }}.{{ $permiso->value }}"
+                                                >
+                                            </label>
                                         @endif
                                     </td>
                                 @endforeach
