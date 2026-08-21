@@ -134,7 +134,7 @@
                      fluye con la página (solo desplaza en horizontal, para las columnas anchas) y
                      hay una sola barra de scroll: la de la página. --}}
                 <div
-                    class="mt-3 overflow-x-auto rounded border border-slate-200 bg-white shadow-sm transition-opacity sm:max-h-[70vh] sm:overflow-auto"
+                    class="mt-3 max-w-full overflow-x-auto rounded border border-slate-200 bg-white shadow-sm transition-opacity sm:max-h-[70vh] sm:overflow-auto"
                     {{-- Los dos modificadores van en el MISMO atributo. Separados, el
                          `wire:loading.delay` suelto es una directiva por su cuenta, y una
                          wire:loading sin `.class` significa «muestra esto solo mientras
@@ -147,7 +147,7 @@
                          min-w: en un teléfono los anchos fijos no caben y la columna «Persona»
                          se aplastaba a cero —el ente se corría a su sitio y el encabezado se
                          encimaba—. Con un ancho mínimo, el contenedor desplaza en vez de aplastar. --}}
-                    <table class="w-full min-w-[52rem] table-fixed text-sm">
+                    <table class="w-full min-w-[40rem] table-fixed text-sm">
                         <caption class="sr-only">
                             Movimientos del {{ $this->diaElegido()->format('d/m/Y') }}, del más reciente al más antiguo.
                         </caption>
