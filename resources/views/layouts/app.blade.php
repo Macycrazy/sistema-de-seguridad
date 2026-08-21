@@ -33,6 +33,9 @@
     <link rel="icon" href="{{ asset('icons/icon-192.png') }}">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    {{-- A mano por lo mismo que los scripts: ver la nota al final del cuerpo. --}}
+    @livewireStyles
 </head>
 <body class="flex min-h-[100dvh] flex-col bg-slate-50 text-slate-900 antialiased">
 
@@ -229,6 +232,17 @@
             </nav>
         @endif
     @endauth
+
+    {{--
+        Livewire va PUESTO A MANO, y no se deja a su inyección automática, porque esa solo entra
+        cuando la página monta algún componente Livewire. «Administración» e «Inicio» son tarjetas
+        y enlaces —no montan ninguno—, así que se quedaban sin el paquete… y con él sin Alpine, que
+        es quien viaja dentro. Resultado: en esas dos pantallas el «?» de la ayuda no abría nada,
+        porque sus x-data y x-on:click eran atributos que nadie leía.
+
+        Aquí arriba de los scripts de página para que Alpine exista antes de que ninguno lo use.
+    --}}
+    @livewireScripts
 
     {{-- Scripts propios de una página (p. ej. el lector de QR de la puerta). Van al final del
          cuerpo para no frenar el pintado. --}}
