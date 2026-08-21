@@ -22,21 +22,23 @@ use Illuminate\Support\Collection;
  * si se llevó otro por la tarde, sale en su salida. Y si un carro entró con uno y salió con otro,
  * cada quien carga con el suyo —que es justo lo que hay que poder ver.
  *
- * Se empareja por día y no por cercanía de hora a propósito: la hora de la estadía la teclea el
- * guardia cuando puede, y adivinar «este de las 8:02 va con aquel de las 8:00» acertaría casi
- * siempre, que en seguridad es otra manera de decir que a veces miente. Quien movió dos vehículos
- * el mismo día ve los dos.
+ * Cada vehículo va a UN asiento: el de esa persona, ese sentido y ese día que más cerca esté de la
+ * hora en que se anotó. Al principio se marcaban todos los del día, por no fiarse de la hora que
+ * teclea el guardia, y salía peor: quien llegaba en carro, salía a pie a almorzar y volvía
+ * caminando aparecía entrando en carro las dos veces. Decir «entró con el carro» de una entrada a
+ * pie es afirmar algo falso; repartirlos por cercanía, como mucho, coloca uno en el asiento
+ * contiguo del mismo día.
  */
 final class VehiculosPorMovimiento
 {
     /**
-     * El mapa para un lote de movimientos, en UNA consulta: clave → los vehículos de ese asiento.
+     * El mapa para un lote de movimientos, en UNA consulta: id del asiento → sus vehículos.
      *
      * Se resuelve de golpe y no asiento por asiento porque el registro pinta 25 filas por página y
      * el histórico de una persona, todas las suyas.
      *
      * @param  Collection<int, Movimiento>  $movimientos
-     * @return array<string, list<DatosVehiculo>>
+     * @return array<int, list<DatosVehiculo>>
      */
     public function mapa(Collection $movimientos): array
     {
@@ -61,6 +63,20 @@ final class VehiculosPorMovimiento
                     ->orWhere(fn ($q) => $q->whereIn('salida_conductor_id', $personas)->whereBetween('salio_en', [$desde, $hasta]));
             })
             ->get();
+
+        // Los asientos, agrupados por persona + sentido + día: dentro de cada grupo se busca el
+        // más cercano en hora a cada vehículo.
+        $porGrupo = [];
+
+        foreach ($movimientos as $movimiento) {
+            $clave = self::clave(
+                $movimiento->persona_id,
+                $movimiento->tipo,
+                CarbonImmutable::parse($movimiento->ocurrio_en),
+            );
+
+            $porGrupo[$clave][] = $movimiento;
+        }
 
         $mapa = [];
 
@@ -91,7 +107,26 @@ final class VehiculosPorMovimiento
                     continue;
                 }
 
-                $mapa[self::clave($personaId, $sentido, $momento)][] = $datos;
+                $candidatos = $porGrupo[self::clave($personaId, $sentido, $momento)] ?? [];
+
+                if ($candidatos === []) {
+                    continue;
+                }
+
+                // El asiento más cercano en hora. Con uno solo —lo normal— es ese y ya.
+                $masCercano = null;
+                $distancia = null;
+
+                foreach ($candidatos as $candidato) {
+                    $suya = abs(CarbonImmutable::parse($candidato->ocurrio_en)->diffInSeconds($momento));
+
+                    if ($distancia === null || $suya < $distancia) {
+                        $masCercano = $candidato;
+                        $distancia = $suya;
+                    }
+                }
+
+                $mapa[$masCercano->id][] = $datos;
             }
         }
 
@@ -101,16 +136,10 @@ final class VehiculosPorMovimiento
     /** Los vehículos de un asiento concreto dentro de un mapa ya resuelto. */
     public static function de(array $mapa, Movimiento $movimiento): array
     {
-        $clave = self::clave(
-            $movimiento->persona_id,
-            $movimiento->tipo,
-            CarbonImmutable::parse($movimiento->ocurrio_en),
-        );
-
-        return $mapa[$clave] ?? [];
+        return $mapa[$movimiento->id] ?? [];
     }
 
-    /** Persona + sentido + día: lo que hace que un vehículo sea de este asiento y no de otro. */
+    /** Persona + sentido + día: el grupo de asientos entre los que puede estar un vehículo. */
     public static function clave(int|string $personaId, string $sentido, CarbonImmutable $cuando): string
     {
         return $personaId.'|'.$sentido.'|'.$cuando->toDateString();

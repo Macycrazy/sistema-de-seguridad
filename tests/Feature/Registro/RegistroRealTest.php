@@ -320,6 +320,54 @@ class RegistroRealTest extends TestCase
     }
 
     #[Test]
+    public function una_entrada_a_pie_no_se_queda_con_el_carro_de_la_entrada_anterior(): void
+    {
+        // El caso: llegar en carro, salir a pie a almorzar y volver caminando. La segunda entrada
+        // no puede decir que se entró en carro —el carro no se movió, sigue aparcado—.
+        $ana = $this->trabajador();
+
+        $this->anotar($ana, MovimientoModel::ENTRADA, CarbonImmutable::today()->setTime(8, 0));
+        $this->anotar($ana, MovimientoModel::SALIDA, CarbonImmutable::today()->setTime(12, 0));
+        $this->anotar($ana, MovimientoModel::ENTRADA, CarbonImmutable::today()->setTime(13, 0));
+
+        VehiculoFijo::create([
+            'placa' => 'AB123CD',
+            'tipo_vehiculo' => 'carro',
+            'entro_en' => CarbonImmutable::today()->setTime(8, 2),
+            'conductor_id' => $ana->id,
+        ]);
+
+        $movimientos = $this->fuente->movimientosDelDia(CarbonImmutable::today());
+
+        $entradas = $movimientos->filter(fn ($m) => $m->esEntrada())->sortBy(fn ($m) => $m->ocurrioEn)->values();
+
+        $this->assertSame('AB123CD', $entradas[0]->vehiculo()?->placa, 'La de las 8 llegó en carro.');
+        $this->assertFalse($entradas[1]->tieneVehiculo(), 'La de la 1 volvió a pie.');
+    }
+
+    #[Test]
+    public function dos_vehiculos_del_mismo_dia_se_reparten_entre_sus_entradas(): void
+    {
+        // Cada vehículo va al asiento más cercano en hora, no a todos los del día.
+        $ana = $this->trabajador();
+
+        $this->anotar($ana, MovimientoModel::ENTRADA, CarbonImmutable::today()->setTime(8, 0));
+        $this->anotar($ana, MovimientoModel::SALIDA, CarbonImmutable::today()->setTime(12, 0));
+        $this->anotar($ana, MovimientoModel::ENTRADA, CarbonImmutable::today()->setTime(15, 0));
+
+        VehiculoFijo::create(['placa' => 'MANANA1', 'tipo_vehiculo' => 'carro', 'entro_en' => CarbonImmutable::today()->setTime(8, 5), 'conductor_id' => $ana->id]);
+        VehiculoFijo::create(['placa' => 'TARDE22', 'tipo_vehiculo' => 'moto', 'entro_en' => CarbonImmutable::today()->setTime(15, 4), 'conductor_id' => $ana->id]);
+
+        $entradas = $this->fuente->movimientosDelDia(CarbonImmutable::today())
+            ->filter(fn ($m) => $m->esEntrada())
+            ->sortBy(fn ($m) => $m->ocurrioEn)
+            ->values();
+
+        $this->assertSame(['MANANA1'], array_map(fn ($v) => $v->placa, $entradas[0]->vehiculos));
+        $this->assertSame(['TARDE22'], array_map(fn ($v) => $v->placa, $entradas[1]->vehiculos));
+    }
+
+    #[Test]
     public function quien_entro_con_un_vehiculo_y_quien_salio_con_el_cargan_cada_uno_con_lo_suyo(): void
     {
         // Es el caso que hay que poder ver: un carro entra con uno y se lo lleva otro. La entrada
