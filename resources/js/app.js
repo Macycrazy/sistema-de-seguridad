@@ -24,13 +24,35 @@ document.addEventListener('alpine:init', () => {
             this.mensaje = 'Apunta al QR del carnet…';
 
             try {
-                // «environment» = la cámara trasera, que es con la que se apunta al carnet.
+                // Pedimos cámara trasera con alta resolución (Full HD ideal, o lo que soporte)
                 this.stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' },
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    },
                     audio: false,
                 });
+                
                 this.$refs.video.srcObject = this.stream;
                 await this.$refs.video.play();
+                
+                // Intentar aplicar un ligero zoom nativo para ver "más de cerca"
+                const track = this.stream.getVideoTracks()[0];
+                if (track && typeof track.getCapabilities === 'function') {
+                    const capabilities = track.getCapabilities();
+                    if (capabilities.zoom) {
+                        // Tratar de hacer un zoom de 2x (o el máximo si es menor)
+                        let targetZoom = 2.0;
+                        if (targetZoom > capabilities.zoom.max) targetZoom = capabilities.zoom.max;
+                        if (targetZoom < capabilities.zoom.min) targetZoom = capabilities.zoom.min;
+                        
+                        try {
+                            await track.applyConstraints({ advanced: [{ zoom: targetZoom }] });
+                        } catch (e) { console.log("No se pudo aplicar zoom nativo"); }
+                    }
+                }
+
                 this.buscar();
             } catch (e) {
                 this.mensaje = 'No se pudo abrir la cámara: ' + (e.message || e.name) +
@@ -111,36 +133,70 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        buscar() {
+        async buscar() {
             const video = this.$refs.video;
             const canvas = this.$refs.canvas;
             const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-            const tick = () => {
+            // Detectar si el navegador soporta el motor nativo (Google Play Services en Android)
+            let detectorNativo = null;
+            if ('BarcodeDetector' in window) {
+                try {
+                    detectorNativo = new window.BarcodeDetector({ formats: ['qr_code'] });
+                } catch (e) {
+                    detectorNativo = null;
+                }
+            }
+
+            const tick = async () => {
                 if (!this.abierto) return;
 
                 if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    let qrEncontrado = null;
 
-                    const imagen = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    const codigo = window.jsQR(imagen.data, imagen.width, imagen.height, {
-                        inversionAttempts: 'dontInvert',
-                    });
+                    if (detectorNativo) {
+                        try {
+                            // El motor nativo lee directo del video (es muchísimo más rápido y reconoce de más lejos)
+                            const barcodes = await detectorNativo.detect(video);
+                            if (barcodes.length > 0) {
+                                qrEncontrado = barcodes[0].rawValue;
+                            }
+                        } catch (err) {
+                            // Si falla, el loop sigue
+                        }
+                    } else {
+                        // Plan de respaldo: JS tradicional con jsQR (para iOS y otros navegadores)
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                    if (codigo && codigo.data) {
+                        const imagen = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const codigo = window.jsQR(imagen.data, imagen.width, imagen.height, {
+                            inversionAttempts: 'dontInvert',
+                        });
+                        
+                        if (codigo && codigo.data) {
+                            qrEncontrado = codigo.data;
+                        }
+                    }
+
+                    if (qrEncontrado) {
                         this.mensaje = 'Carnet leído, verificando…';
-                        wire.carnetEscaneado(codigo.data);
+                        wire.carnetEscaneado(qrEncontrado);
                         this.cerrar();
                         return;
                     }
                 }
 
-                this.raf = requestAnimationFrame(tick);
+                // Si usamos await adentro, mejor usar un ligero setTimeout para evitar saturar si falla requestAnimationFrame
+                if (detectorNativo) {
+                    setTimeout(() => { if (this.abierto) requestAnimationFrame(tick); }, 100);
+                } else {
+                    this.raf = requestAnimationFrame(tick);
+                }
             };
 
-            this.raf = requestAnimationFrame(tick);
+            tick();
         },
 
         cerrar() {
