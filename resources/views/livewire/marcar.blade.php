@@ -505,6 +505,94 @@
                     $claseSalida = $ancho.($puedeSalir ? ' '.$realce : '');
                 @endphp
 
+                {{-- EL VEHÍCULO, EN EL MISMO GESTO.
+
+                     Va justo encima de los botones: se ve al ir a marcar, sin buscarlo. Es
+                     opcional y de un toque —quien viene a pie no toca nada y la pantalla se
+                     comporta como siempre—, porque aquí hay cola detrás.
+
+                     Al entrar se elige con qué viene; al salir, qué se lleva. Nunca las dos, para
+                     que no haya dos cosas que decidir a la vez. --}}
+                @if ($puedeEntrar)
+                    <div class="mt-5 border-t border-slate-100 pt-5">
+                        <p class="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">
+                            ¿Trae vehículo? <span class="font-normal normal-case tracking-normal text-slate-400">— opcional</span>
+                        </p>
+
+                        <div class="mt-2.5 flex flex-wrap gap-2">
+                            {{-- Los suyos: un toque y ya está anotado a su nombre. --}}
+                            @foreach ($this->susVehiculos as $suyo)
+                                <button type="button" wire:click="elegirVehiculo('{{ $suyo->placa }}')"
+                                        class="flex items-center gap-2 rounded border px-3 py-2 text-sm transition
+                                               {{ $vehiculoEntrada === $suyo->placa
+                                                  ? 'border-parte1 bg-parte1-suave font-semibold text-parte1'
+                                                  : 'border-slate-300 text-slate-600 hover:bg-slate-50' }}">
+                                    <x-etiqueta :tipo="$suyo->tipo" tamano="chico" />
+                                    <span class="font-mono font-semibold tracking-wider">{{ $suyo->placa }}</span>
+                                </button>
+                            @endforeach
+
+                            <button type="button" wire:click="elegirVehiculo('otro')"
+                                    class="rounded border px-3 py-2 text-sm transition
+                                           {{ $vehiculoEntrada === 'otro'
+                                              ? 'border-parte1 bg-parte1-suave font-semibold text-parte1'
+                                              : 'border-slate-300 text-slate-600 hover:bg-slate-50' }}">
+                                {{ $this->susVehiculos->isEmpty() ? 'Anotar una placa' : 'Otro…' }}
+                            </button>
+                        </div>
+
+                        {{-- Solo cuando hace falta teclear. La primera vez se teclea; a partir de
+                             ahí el vehículo queda en su ficha y sale ahí arriba. --}}
+                        @if ($vehiculoEntrada === 'otro')
+                            <div class="mt-3 flex flex-wrap items-end gap-3">
+                                <div class="w-44">
+                                    <x-campo etiqueta="Placa" nombre="placaNueva" maxlength="15" autocomplete="off"
+                                             wire:model="placaNueva" :error="$errors->first('placaEntrada') ?: $errors->first('placaFija')" />
+                                </div>
+                                <div class="w-36">
+                                    <x-selector etiqueta="Tipo" nombre="tipoNuevo" wire:model="tipoNuevo"
+                                                :opciones="['carro' => 'Carro', 'moto' => 'Moto']" />
+                                </div>
+                                <p class="pb-2.5 text-xs text-slate-500">Se guarda en su ficha: la próxima vez es un toque.</p>
+                            </div>
+                        @elseif ($errors->has('placaEntrada') || $errors->has('placaFija'))
+                            <x-error class="mt-3">{{ $errors->first('placaEntrada') ?: $errors->first('placaFija') }}</x-error>
+                        @endif
+                    </div>
+                @endif
+
+                @if ($puedeSalir && $this->susVehiculosDentro->isNotEmpty())
+                    <div class="mt-5 border-t border-slate-100 pt-5">
+                        <p class="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">
+                            ¿Se lleva su vehículo? <span class="font-normal normal-case tracking-normal text-slate-400">— opcional</span>
+                        </p>
+
+                        <div class="mt-2.5 flex flex-wrap gap-2">
+                            @foreach ($this->susVehiculosDentro as $dentro)
+                                <button type="button" wire:click="alternarVehiculoSalida({{ $dentro->id }})"
+                                        class="flex items-center gap-2 rounded border px-3 py-2 text-sm transition
+                                               {{ in_array($dentro->id, $vehiculosSalida)
+                                                  ? 'border-parte1 bg-parte1-suave font-semibold text-parte1'
+                                                  : 'border-slate-300 text-slate-600 hover:bg-slate-50' }}">
+                                    <x-etiqueta :tipo="$dentro->tipo_vehiculo" tamano="chico" />
+                                    <span class="font-mono font-semibold tracking-wider">{{ $dentro->placa }}</span>
+                                    @if ($dentro->puesto)
+                                        <span class="font-mono text-xs text-slate-400">{{ $dentro->puesto->codigo }}</span>
+                                    @endif
+                                </button>
+                            @endforeach
+                        </div>
+
+                        <p class="mt-2 text-xs text-slate-500">
+                            Si sale a pie y el vehículo se queda, no toques nada.
+                        </p>
+
+                        @error('vehiculoSalida')
+                            <x-error class="mt-3">{{ $message }}</x-error>
+                        @enderror
+                    </div>
+                @endif
+
                 {{-- LOS DOS BOTONES.
 
                      Se desplazan con la ficha, como todo lo demás: NO van pegados al borde de
@@ -669,12 +757,21 @@
                 </li>
                 <li class="flex items-start gap-3">
                     <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-marca text-sm font-bold text-white">3</span>
+                    <p class="text-slate-700"><b class="font-semibold text-slate-900">¿Trae vehículo?</b> Tócalo ahí mismo y queda anotado a su nombre; no hace falta ir al estacionamiento. Si viene a pie, no toques nada.</p>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-marca text-sm font-bold text-white">4</span>
                     <p class="text-slate-700"><b class="font-semibold text-slate-900">Pulsa Entrada o Salida.</b> El sistema ya resalta el botón que toca.</p>
                 </li>
             </ol>
 
             <p class="mt-5 rounded-lg bg-invitado-suave px-3 py-2.5 text-sm font-medium text-invitado">
                 ¿No tiene carnet y no aparece? Es un <b>invitado</b>: escribe su nombre, el motivo y a qué piso va.
+            </p>
+
+            <p class="mt-3 rounded-lg bg-slate-100 px-3 py-2.5 text-sm text-slate-600">
+                Al <b>salir</b> solo se ofrecen los vehículos que están dentro a su nombre. Si sale a pie y el
+                carro se queda, no toques nada: se queda anotado.
             </p>
 
             <x-boton type="button" x-on:click="ayuda = false" class="mt-6 w-full">Entendido</x-boton>
