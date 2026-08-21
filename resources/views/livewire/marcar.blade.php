@@ -130,23 +130,23 @@
                             <div class="absolute -bottom-1 -right-1 h-8 w-8 border-b-4 border-r-4 border-parte1 rounded-br-lg"></div>
                             
                             {{-- Línea láser animada --}}
-                            <div class="absolute left-0 w-full h-[2px] bg-red-500 shadow-[0_0_12px_3px_rgba(239,68,68,0.8)]"
+                            <div class="absolute left-0 w-full h-[2px] bg-white shadow-[0_0_12px_3px_rgba(255,255,255,0.7)]"
                                  style="animation: laser 2.5s ease-in-out infinite;"></div>
                         </div>
                     </div>
 
-                    {{-- Cuadro de enfoque animado tipo cámara al tocar --}}
+                    {{-- Pulso de enfoque animado al tocar --}}
                     <div x-show="mostrandoCuadro"
                          x-transition:enter="transition ease-out duration-200"
-                         x-transition:enter-start="opacity-0 scale-150"
+                         x-transition:enter-start="opacity-0 scale-50"
                          x-transition:enter-end="opacity-100 scale-100"
-                         x-transition:leave="transition ease-in duration-300"
-                         x-transition:leave-start="opacity-100"
-                         x-transition:leave-end="opacity-0"
+                         x-transition:leave="transition ease-out duration-500"
+                         x-transition:leave-start="opacity-100 scale-100"
+                         x-transition:leave-end="opacity-0 scale-150"
                          :style="{ top: topCuadro, left: leftCuadro }"
                          x-cloak
-                         class="pointer-events-none absolute h-12 w-12 border-2 border-yellow-400 rounded-lg select-none z-30">
-                        <div class="absolute inset-4 border border-yellow-400/40 rounded-full"></div>
+                         class="pointer-events-none absolute h-12 w-12 flex items-center justify-center rounded-full border-[1.5px] border-white/80 bg-white/10 shadow-[0_0_10px_rgba(255,255,255,0.5)] z-30">
+                         <div class="h-1.5 w-1.5 rounded-full bg-white/90 shadow-sm"></div>
                     </div>
 
                     <p x-text="mensaje"
