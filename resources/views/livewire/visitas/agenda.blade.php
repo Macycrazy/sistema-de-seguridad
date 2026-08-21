@@ -7,7 +7,9 @@
         <div class="w-40">
             <x-campo etiqueta="Día" nombre="fecha" type="date" wire:model.live="fecha" />
         </div>
-        <x-boton wire:click="abrirAlta">Agendar visita</x-boton>
+        @can('gestionar-visitas')
+            <x-boton wire:click="abrirAlta">Agendar visita</x-boton>
+        @endcan
     </div>
 
     {{-- Alta --}}
@@ -83,7 +85,7 @@
                             <x-etiqueta :tipo="$estado" tamano="chico" />
                         </td>
                         <td class="whitespace-nowrap px-4 py-3 text-right">
-                            @if ($visita->estaEsperada())
+                            @if ($visita->estaEsperada() && auth()->user()->can('gestionar-visitas'))
                                 <button wire:click="marcarLlegada({{ $visita->id }})"
                                         class="text-sm font-semibold text-parte2 hover:underline">Llegó</button>
                                 <button wire:click="cancelar({{ $visita->id }})"

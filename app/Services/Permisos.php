@@ -27,7 +27,17 @@ class Permisos
 
     public function tiene(Rol $rol, Permiso $permiso): bool
     {
-        return isset($this->cargados()[$rol->value][$permiso->value]);
+        $delRol = $this->cargados()[$rol->value] ?? [];
+
+        if (isset($delRol[$permiso->value])) {
+            return true;
+        }
+
+        // Gestionar implica ver: quien puede cambiar un módulo puede entrar a verlo aunque no tenga
+        // marcado el «ver». Así basta con dar «gestionar» y no hay que acordarse de marcar los dos.
+        $implicador = $permiso->implicadoPor();
+
+        return $implicador !== null && isset($delRol[$implicador->value]);
     }
 
     /**

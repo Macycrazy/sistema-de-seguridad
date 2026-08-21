@@ -35,7 +35,11 @@
         @endforeach
 
         <div class="pt-2">
-            <x-boton type="submit">Guardar</x-boton>
+            @can('gestionar-ajustes')
+                <x-boton type="submit">Guardar</x-boton>
+            @else
+                <p class="text-sm text-slate-500">Solo lectura: no tienes permiso para cambiar los ajustes.</p>
+            @endcan
         </div>
     </form>
 </div>

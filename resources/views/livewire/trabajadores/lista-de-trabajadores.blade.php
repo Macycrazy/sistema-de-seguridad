@@ -27,8 +27,9 @@
             />
         </div>
 
-        {{-- Cargar en bloque y dar de alta son cosas de nómina: los invitados nacen en la puerta. --}}
-        @unless ($this->verInvitados())
+        {{-- Cargar en bloque y dar de alta son cosas de nómina: los invitados nacen en la puerta.
+             Y son de quien gestiona el personal: quien solo puede ver, no las ve. --}}
+        @if (! $this->verInvitados() && auth()->user()->can('gestionar-personal'))
             <div class="flex flex-wrap items-center gap-3">
                 {{-- La plantilla en blanco, para que la carga masiva salga normalizada. --}}
                 <button type="button" wire:click="descargarPlantilla"
@@ -50,7 +51,7 @@
 
                 <x-boton wire:click="abrirAlta">Nuevo trabajador</x-boton>
             </div>
-        @endunless
+        @endif
     </div>
     @error('archivo') <p class="mt-2 text-sm text-alto">{{ $message }}</p> @enderror
 
@@ -199,17 +200,21 @@
                             @endif
                         </td>
                         <td class="px-4 py-3 text-right">
-                            <div class="flex items-center justify-end gap-3">
-                                <button wire:click="editar({{ $p->id }})"
-                                        class="text-sm font-semibold text-parte3 hover:underline">Editar</button>
-                                @if ($p->activo)
-                                    <button wire:click="desactivar({{ $p->id }})"
-                                            class="text-sm font-semibold text-alto hover:underline">Desactivar</button>
-                                @else
-                                    <button wire:click="reactivar({{ $p->id }})"
-                                            class="text-sm font-semibold text-parte3 hover:underline">Reactivar</button>
-                                @endif
-                            </div>
+                            @can('gestionar-personal')
+                                <div class="flex items-center justify-end gap-3">
+                                    <button wire:click="editar({{ $p->id }})"
+                                            class="text-sm font-semibold text-parte3 hover:underline">Editar</button>
+                                    @if ($p->activo)
+                                        <button wire:click="desactivar({{ $p->id }})"
+                                                class="text-sm font-semibold text-alto hover:underline">Desactivar</button>
+                                    @else
+                                        <button wire:click="reactivar({{ $p->id }})"
+                                                class="text-sm font-semibold text-parte3 hover:underline">Reactivar</button>
+                                    @endif
+                                </div>
+                            @else
+                                <span class="text-slate-300">—</span>
+                            @endcan
                         </td>
                     </tr>
                 @empty

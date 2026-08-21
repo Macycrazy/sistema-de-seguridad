@@ -39,7 +39,8 @@ class Arbol extends Component
 
     public function boot(): void
     {
-        Gate::authorize('gestionar-personal');
+        // Para ENTRAR basta con ver; lo que cambia datos exige «gestionar» aparte.
+        Gate::authorize('ver-organigrama');
 
         $this->organigrama = app(Organigrama::class);
     }
@@ -65,8 +66,16 @@ class Arbol extends Component
         return $this->organigrama->posiblesMadres($excluir);
     }
 
+    /** Cambiar es aparte de ver: quien solo puede ver entra, pero no toca nada. */
+    protected function exigirGestion(): void
+    {
+        Gate::authorize('gestionar-organigrama');
+    }
+
     public function abrirAlta(): void
     {
+        $this->exigirGestion();
+
         $this->reset('nombre', 'codigo', 'ente', 'parentId', 'editando', 'aviso');
         $this->parentId = '';
         $this->resetValidation();
@@ -75,6 +84,8 @@ class Arbol extends Component
 
     public function editar(int $id): void
     {
+        $this->exigirGestion();
+
         $dep = Departamento::findOrFail($id);
         $this->editando = $dep->id;
         $this->nombre = $dep->nombre;
@@ -95,6 +106,8 @@ class Arbol extends Component
 
     public function guardar(): void
     {
+        $this->exigirGestion();
+
         $this->resetValidation();
         $parent = $this->parentId === '' || $this->parentId === null ? null : (int) $this->parentId;
 
@@ -122,6 +135,8 @@ class Arbol extends Component
 
     public function activar(int $id, bool $activo): void
     {
+        $this->exigirGestion();
+
         $dep = Departamento::findOrFail($id);
         $this->organigrama->activar($dep, $activo);
         unset($this->unidades);
@@ -130,6 +145,8 @@ class Arbol extends Component
 
     public function eliminar(int $id): void
     {
+        $this->exigirGestion();
+
         $dep = Departamento::findOrFail($id);
 
         try {

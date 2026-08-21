@@ -44,7 +44,8 @@ class Agenda extends Component
 
     public function boot(): void
     {
-        Gate::authorize('gestionar-visitas');
+        // Para ENTRAR basta con ver; agendar o cancelar exige «gestionar» aparte.
+        Gate::authorize('ver-visitas');
 
         $this->servicio = app(VisitasEsperadas::class);
     }
@@ -78,8 +79,16 @@ class Agenda extends Component
         return $this->servicio->proximas()->count();
     }
 
+    /** Cambiar la agenda es aparte de verla: quien solo puede ver entra, pero no toca nada. */
+    protected function exigirGestion(): void
+    {
+        Gate::authorize('gestionar-visitas');
+    }
+
     public function abrirAlta(): void
     {
+        $this->exigirGestion();
+
         $this->reset('nombre', 'cedula', 'aQuienVisita', 'motivo', 'notas', 'aviso');
         $this->fechaEsperada = $this->diaElegido()->toDateString();
         $this->resetValidation();
@@ -95,6 +104,8 @@ class Agenda extends Component
 
     public function agendar(): void
     {
+        $this->exigirGestion();
+
         $this->resetValidation();
 
         try {
@@ -121,6 +132,8 @@ class Agenda extends Component
 
     public function marcarLlegada(int $id): void
     {
+        $this->exigirGestion();
+
         $this->servicio->marcarLlegada(VisitaEsperada::findOrFail($id));
         unset($this->visitas, $this->esperadasProximas);
         $this->aviso = 'Marcada como llegada.';
@@ -128,6 +141,8 @@ class Agenda extends Component
 
     public function cancelar(int $id): void
     {
+        $this->exigirGestion();
+
         $this->servicio->cancelar(VisitaEsperada::findOrFail($id));
         unset($this->visitas, $this->esperadasProximas);
         $this->aviso = 'Visita cancelada.';

@@ -19,13 +19,15 @@
 
     @php
         // Cada tarjeta con su permiso: el panel muestra solo lo que cada quien puede administrar.
+        // El permiso es el de ENTRAR (ver-*): quien solo puede ver un módulo también ve su tarjeta.
+        // Como gestionar implica ver, quien pueda gestionarlo entra por el mismo permiso.
         $modulos = [
-            ['ruta' => 'trabajadores', 'permiso' => 'gestionar-personal', 'titulo' => 'Trabajadores', 'texto' => 'Alta e importación del personal que se marca.'],
-            ['ruta' => 'organigrama', 'permiso' => 'gestionar-personal', 'titulo' => 'Organigrama', 'texto' => 'La estructura de unidades del CIIP.'],
-            ['ruta' => 'usuarios', 'permiso' => 'gestionar-usuarios', 'titulo' => 'Usuarios', 'texto' => 'Cuentas que entran al sistema, roles y claves.'],
-            ['ruta' => 'edificio', 'permiso' => 'gestionar-edificio', 'titulo' => 'Edificio', 'texto' => 'Las oficinas que se ofrecen al marcar el piso.'],
-            ['ruta' => 'puestos', 'permiso' => 'gestionar-edificio', 'titulo' => 'Puestos', 'texto' => 'Las plazas numeradas del estacionamiento.'],
-            ['ruta' => 'ajustes', 'permiso' => 'gestionar-ajustes', 'titulo' => 'Ajustes', 'texto' => 'Reglas de tiempo, umbrales de alerta y retención.'],
+            ['ruta' => 'trabajadores', 'permiso' => 'ver-personal', 'titulo' => 'Trabajadores', 'texto' => 'Alta e importación del personal que se marca.'],
+            ['ruta' => 'organigrama', 'permiso' => 'ver-organigrama', 'titulo' => 'Organigrama', 'texto' => 'La estructura de unidades del CIIP.'],
+            ['ruta' => 'usuarios', 'permiso' => 'ver-usuarios', 'titulo' => 'Usuarios', 'texto' => 'Cuentas que entran al sistema, roles y claves.'],
+            ['ruta' => 'edificio', 'permiso' => 'ver-edificio', 'titulo' => 'Edificio', 'texto' => 'Las oficinas que se ofrecen al marcar el piso.'],
+            ['ruta' => 'puestos', 'permiso' => 'ver-puestos', 'titulo' => 'Puestos', 'texto' => 'Las plazas numeradas del estacionamiento.'],
+            ['ruta' => 'ajustes', 'permiso' => 'ver-ajustes', 'titulo' => 'Ajustes', 'texto' => 'Reglas de tiempo, umbrales de alerta y retención.'],
             ['ruta' => 'auditoria', 'permiso' => 'ver-auditoria', 'titulo' => 'Auditoría', 'texto' => 'Quién consultó, exportó o cambió qué.'],
             ['ruta' => 'roles', 'permiso' => 'gestionar-permisos', 'titulo' => 'Roles', 'texto' => 'Qué puede hacer cada rol.'],
             ['ruta' => 'respaldos', 'permiso' => 'gestionar-respaldos', 'titulo' => 'Respaldos', 'texto' => 'Copias de seguridad de la base de datos.'],

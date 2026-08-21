@@ -37,7 +37,8 @@ class ListaDePuestos extends Component
 
     public function boot(): void
     {
-        Gate::authorize('gestionar-edificio');
+        // Para ENTRAR basta con ver; lo que cambia datos exige «gestionar» aparte.
+        Gate::authorize('ver-puestos');
 
         $this->catalogo = app(CatalogoDePuestos::class);
     }
@@ -56,8 +57,16 @@ class ListaDePuestos extends Component
         return CatalogoDePuestos::TIPOS;
     }
 
+    /** Cambiar es aparte de ver: quien solo puede ver entra, pero no toca nada. */
+    protected function exigirGestion(): void
+    {
+        Gate::authorize('gestionar-puestos');
+    }
+
     public function abrirAlta(): void
     {
+        $this->exigirGestion();
+
         $this->reset('codigo', 'tipo', 'zona', 'editando', 'aviso');
         $this->resetValidation();
         $this->creando = true;
@@ -65,6 +74,8 @@ class ListaDePuestos extends Component
 
     public function editar(int $id): void
     {
+        $this->exigirGestion();
+
         $puesto = Puesto::findOrFail($id);
         $this->editando = $puesto->id;
         $this->codigo = $puesto->codigo;
@@ -83,6 +94,8 @@ class ListaDePuestos extends Component
 
     public function guardar(): void
     {
+        $this->exigirGestion();
+
         $orden = $this->editando ? Puesto::find($this->editando)?->orden : null;
 
         try {
@@ -101,12 +114,16 @@ class ListaDePuestos extends Component
 
     public function activar(int $id, bool $activo): void
     {
+        $this->exigirGestion();
+
         $this->catalogo->activar(Puesto::findOrFail($id), $activo);
         $this->aviso = $activo ? 'Puesto habilitado.' : 'Puesto deshabilitado.';
     }
 
     public function eliminar(int $id): void
     {
+        $this->exigirGestion();
+
         $puesto = Puesto::findOrFail($id);
         $this->catalogo->eliminar($puesto);
         app(Auditoria::class)->cambioOficinas('quitó el puesto '.$puesto->codigo);

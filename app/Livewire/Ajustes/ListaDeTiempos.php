@@ -28,7 +28,8 @@ class ListaDeTiempos extends Component
 
     public function boot(): void
     {
-        Gate::authorize('gestionar-ajustes');
+        // Para ENTRAR basta con ver; cambiar los ajustes exige «gestionar» aparte.
+        Gate::authorize('ver-ajustes');
 
         $this->servicio = app(ReglasDeTiempo::class);
     }
@@ -48,6 +49,8 @@ class ListaDeTiempos extends Component
 
     public function guardar(): void
     {
+        Gate::authorize('gestionar-ajustes');
+
         $this->resetValidation();
         $huboError = false;
 

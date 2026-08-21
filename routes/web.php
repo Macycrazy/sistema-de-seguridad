@@ -67,7 +67,7 @@ Route::middleware('auth')->group(function () {
     Route::view('/alertas', 'alertas')->middleware('can:ver-registro')->name('alertas');
 
     // La agenda de visitas esperadas: recepción anticipa quién viene, la puerta lo confirma.
-    Route::view('/visitas', 'visitas')->middleware('can:gestionar-visitas')->name('visitas');
+    Route::view('/visitas', 'visitas')->middleware('can:ver-visitas')->name('visitas');
 
     // El panel de administración: reúne en un solo sitio todo lo de admin (personal, organigrama,
     // usuarios, edificio, ajustes, auditoría, roles), para que el menú de arriba no se llene. Lo
@@ -76,19 +76,19 @@ Route::middleware('auth')->group(function () {
 
     // Meter la nómina: alta manual e importación por Excel, mientras la asociación con el sistema
     // de carnets no la traiga sola.
-    Route::view('/trabajadores', 'trabajadores')->middleware('can:gestionar-personal')->name('trabajadores');
+    Route::view('/trabajadores', 'trabajadores')->middleware('can:ver-personal')->name('trabajadores');
 
     // El organigrama como dato: la estructura de unidades a la que pertenece el personal.
-    Route::view('/organigrama', 'organigrama')->middleware('can:gestionar-personal')->name('organigrama');
+    Route::view('/organigrama', 'organigrama')->middleware('can:ver-organigrama')->name('organigrama');
 
     // El catálogo de oficinas del edificio, que la puerta ofrece al marcar el piso de un invitado.
-    Route::view('/edificio', 'edificio')->middleware('can:gestionar-edificio')->name('edificio');
+    Route::view('/edificio', 'edificio')->middleware('can:ver-edificio')->name('edificio');
 
     // El catálogo de puestos del estacionamiento: las plazas numeradas donde se para cada vehículo.
-    Route::view('/puestos', 'puestos')->middleware('can:gestionar-edificio')->name('puestos');
+    Route::view('/puestos', 'puestos')->middleware('can:ver-puestos')->name('puestos');
 
     // Las reglas de tiempo del marcaje, ajustables sin reprogramar.
-    Route::view('/ajustes', 'ajustes')->middleware('can:gestionar-ajustes')->name('ajustes');
+    Route::view('/ajustes', 'ajustes')->middleware('can:ver-ajustes')->name('ajustes');
 
     // La bitácora de auditoría: quién consultó, exportó o cambió qué.
     Route::view('/auditoria', 'auditoria')->middleware('can:ver-auditoria')->name('auditoria');
@@ -99,7 +99,7 @@ Route::middleware('auth')->group(function () {
      * Quién entra lo dice el permiso; qué puede hacer con cada fila —nadie toca a quien esté por
      * encima de su rol— lo decide GestionDeUsuarios, y eso no se configura.
      */
-    Route::view('/usuarios', 'usuarios')->middleware('can:gestionar-usuarios')->name('usuarios');
+    Route::view('/usuarios', 'usuarios')->middleware('can:ver-usuarios')->name('usuarios');
 
     // Parte 3 · qué puede hacer cada rol. Solo el administrador, y no se puede quitar.
     Route::view('/roles', 'roles')->middleware('can:gestionar-permisos')->name('roles');
