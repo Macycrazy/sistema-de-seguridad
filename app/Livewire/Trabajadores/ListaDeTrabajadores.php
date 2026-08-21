@@ -85,7 +85,8 @@ class ListaDeTrabajadores extends Component
     {
         // El permiso en «boot» y no en «mount»: las acciones rehidratan sin volver a montar, así
         // que a quien le quiten el permiso con la pantalla abierta se le corta aquí mismo.
-        Gate::authorize('gestionar-personal');
+        // Para ENTRAR basta con ver; cada acción que cambia datos exige «gestionar» aparte.
+        Gate::authorize('ver-personal');
 
         $this->gestion = app(GestionDeTrabajadores::class);
         $this->invitadosGestion = app(GestionDeInvitados::class);
@@ -215,8 +216,16 @@ class ListaDeTrabajadores extends Component
             ->all();
     }
 
+    /** Cambiar el personal es aparte de verlo: quien solo puede ver entra, pero no toca nada. */
+    protected function exigirGestion(): void
+    {
+        Gate::authorize('gestionar-personal');
+    }
+
     public function abrirAlta(): void
     {
+        $this->exigirGestion();
+
         // Alta manual: solo de trabajadores. Los invitados nacen en la puerta, no aquí.
         $this->filtro = Persona::TRABAJADOR;
         $this->limpiarFormulario();
@@ -227,6 +236,8 @@ class ListaDeTrabajadores extends Component
     /** Carga a una persona en el formulario para corregir sus datos. La cédula queda fija. */
     public function editar(int $id): void
     {
+        $this->exigirGestion();
+
         $persona = Persona::findOrFail($id);
 
         $this->limpiarFormulario();
@@ -250,6 +261,8 @@ class ListaDeTrabajadores extends Component
 
     public function guardar(): void
     {
+        $this->exigirGestion();
+
         // Si la validación del servicio falla, la ValidationException sube y Livewire la pinta
         // junto a cada campo. No hace falta atraparla.
         if ($this->verInvitados()) {
@@ -280,6 +293,8 @@ class ListaDeTrabajadores extends Component
     /** El guardado de la corrección de un invitado: siempre es una edición, nunca un alta. */
     private function guardarInvitado(): void
     {
+        $this->exigirGestion();
+
         $invitado = Persona::where('tipo', Persona::INVITADO)->findOrFail($this->editandoId);
 
         $this->invitadosGestion->editar(
@@ -307,11 +322,15 @@ class ListaDeTrabajadores extends Component
     /** La plantilla en blanco con las columnas exactas y el ente en desplegable. */
     public function descargarPlantilla(): BinaryFileResponse
     {
+        $this->exigirGestion();
+
         return Excel::download(new PlantillaTrabajadores, 'plantilla-personal.xlsx');
     }
 
     public function importar(): void
     {
+        $this->exigirGestion();
+
         $this->validate(
             ['archivo' => 'required|file|mimes:xlsx,xls,csv'],
             ['archivo.required' => 'Elige un archivo primero.', 'archivo.mimes' => 'Tiene que ser un Excel (.xlsx, .xls) o un .csv.'],
@@ -329,6 +348,8 @@ class ListaDeTrabajadores extends Component
 
     public function desactivar(int $id): void
     {
+        $this->exigirGestion();
+
         $persona = Persona::findOrFail($id);
         $this->gestion->desactivar($persona);
         $this->aviso = ($persona->esInvitado() ? 'Invitado' : 'Trabajador').' desactivado: ya no se le puede marcar.';
@@ -336,6 +357,8 @@ class ListaDeTrabajadores extends Component
 
     public function reactivar(int $id): void
     {
+        $this->exigirGestion();
+
         $persona = Persona::findOrFail($id);
         $this->gestion->reactivar($persona);
         $this->aviso = ($persona->esInvitado() ? 'Invitado' : 'Trabajador').' reactivado.';

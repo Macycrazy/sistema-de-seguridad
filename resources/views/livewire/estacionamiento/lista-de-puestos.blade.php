@@ -4,7 +4,9 @@
     @endif
 
     <div class="flex items-center justify-end gap-4">
-        <x-boton wire:click="abrirAlta">Nuevo puesto</x-boton>
+        @can('gestionar-puestos')
+            <x-boton wire:click="abrirAlta">Nuevo puesto</x-boton>
+        @endcan
     </div>
 
     {{-- Alta / edición --}}
@@ -58,20 +60,24 @@
                             @endif
                         </td>
                         <td class="px-4 py-3 text-right">
-                            <div class="flex items-center justify-end gap-3">
-                                <button wire:click="editar({{ $puesto->id }})"
-                                        class="text-sm font-semibold text-parte3 hover:underline">Editar</button>
-                                @if ($puesto->activo)
-                                    <button wire:click="activar({{ $puesto->id }}, false)"
-                                            class="text-sm font-semibold text-slate-500 hover:underline">Deshabilitar</button>
-                                @else
-                                    <button wire:click="activar({{ $puesto->id }}, true)"
-                                            class="text-sm font-semibold text-parte3 hover:underline">Habilitar</button>
-                                @endif
-                                <button wire:click="eliminar({{ $puesto->id }})"
-                                        wire:confirm="¿Quitar el puesto {{ $puesto->codigo }} del catálogo?"
-                                        class="text-sm font-semibold text-alto hover:underline">Quitar</button>
-                            </div>
+                            @can('gestionar-puestos')
+                                <div class="flex items-center justify-end gap-3">
+                                    <button wire:click="editar({{ $puesto->id }})"
+                                            class="text-sm font-semibold text-parte3 hover:underline">Editar</button>
+                                    @if ($puesto->activo)
+                                        <button wire:click="activar({{ $puesto->id }}, false)"
+                                                class="text-sm font-semibold text-slate-500 hover:underline">Deshabilitar</button>
+                                    @else
+                                        <button wire:click="activar({{ $puesto->id }}, true)"
+                                                class="text-sm font-semibold text-parte3 hover:underline">Habilitar</button>
+                                    @endif
+                                    <button wire:click="eliminar({{ $puesto->id }})"
+                                            wire:confirm="¿Quitar el puesto {{ $puesto->codigo }} del catálogo?"
+                                            class="text-sm font-semibold text-alto hover:underline">Quitar</button>
+                                </div>
+                            @else
+                                <span class="text-slate-300">—</span>
+                            @endcan
                         </td>
                     </tr>
                 @empty

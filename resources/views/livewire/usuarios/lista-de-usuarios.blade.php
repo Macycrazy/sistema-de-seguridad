@@ -25,9 +25,11 @@
                 nota="Para quitar acceso, <b>Desactivar</b> (conserva el rastro). <b>Borrar</b> es solo para cuentas creadas por error." />
         </div>
 
-        @unless ($creando)
-            <x-boton wire:click="abrirFormulario">Nuevo usuario</x-boton>
-        @endunless
+        @can('gestionar-usuarios')
+            @unless ($creando)
+                <x-boton wire:click="abrirFormulario">Nuevo usuario</x-boton>
+            @endunless
+        @endcan
     </div>
 
     {{-- El aviso nunca repite la clave: la escribió quien gestiona, ya la sabe. --}}
@@ -158,7 +160,7 @@
                                         botones. Es cortesía: el servicio corta igual a quien mande
                                         la acción sin pasar por aquí.
                                     --}}
-                                    @if ($this->puedeGestionar($fila))
+                                    @if ($this->puedeGestionar($fila) && auth()->user()->can('gestionar-usuarios'))
                                         <x-boton
                                             variante="secundario"
                                             tamano="chico"

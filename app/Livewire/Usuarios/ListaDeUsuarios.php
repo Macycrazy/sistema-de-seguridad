@@ -72,7 +72,8 @@ class ListaDeUsuarios extends Component
          * posteriores rehidratan el componente sin volver a montarlo. Al administrador al que le
          * bajen el rol con la pantalla abierta se le corta aquí mismo.
          */
-        Gate::authorize('gestionar-usuarios');
+        // Para ENTRAR basta con ver; dar de alta, editar o borrar exige «gestionar» aparte.
+        Gate::authorize('ver-usuarios');
 
         $this->gestion = app(GestionDeUsuarios::class);
     }
@@ -120,8 +121,16 @@ class ListaDeUsuarios extends Component
         return auth()->user()->alcanza($fila->rol);
     }
 
+    /** Cambiar usuarios es aparte de verlos: quien solo puede ver entra, pero no toca nada. */
+    protected function exigirGestion(): void
+    {
+        Gate::authorize('gestionar-usuarios');
+    }
+
     public function abrirFormulario(): void
     {
+        $this->exigirGestion();
+
         $this->olvidarLoAnterior();
         $this->creando = true;
     }
@@ -135,6 +144,8 @@ class ListaDeUsuarios extends Component
     /** Carga a un usuario en el formulario para corregir sus datos (nombre, usuario, cédula). */
     public function editar(int $id): void
     {
+        $this->exigirGestion();
+
         $this->olvidarLoAnterior();
 
         $usuario = $this->encontrar($id);
@@ -148,6 +159,8 @@ class ListaDeUsuarios extends Component
     /** El botón del formulario: crea si es nuevo, o guarda la corrección si se está editando. */
     public function guardar(): void
     {
+        $this->exigirGestion();
+
         if ($this->editandoId !== null) {
             $this->guardarEdicion();
 
@@ -184,6 +197,8 @@ class ListaDeUsuarios extends Component
 
     public function eliminar(int $id): void
     {
+        $this->exigirGestion();
+
         $this->olvidarLoAnterior();
 
         try {
@@ -200,6 +215,8 @@ class ListaDeUsuarios extends Component
 
     public function crear(): void
     {
+        $this->exigirGestion();
+
         $this->olvidarLoAnterior();
 
         $rol = Rol::tryFrom($this->rol);
@@ -237,6 +254,8 @@ class ListaDeUsuarios extends Component
     /** Abre el campo para teclearle una clave nueva a alguien de la lista. */
     public function abrirCambioDeClave(int $id): void
     {
+        $this->exigirGestion();
+
         $this->olvidarLoAnterior();
         $this->cambiandoClaveA = $id;
     }
@@ -250,6 +269,8 @@ class ListaDeUsuarios extends Component
 
     public function guardarCambioDeClave(): void
     {
+        $this->exigirGestion();
+
         if ($this->cambiandoClaveA === null) {
             return;
         }
@@ -271,6 +292,8 @@ class ListaDeUsuarios extends Component
 
     public function desactivar(int $id): void
     {
+        $this->exigirGestion();
+
         $this->olvidarLoAnterior();
 
         try {
@@ -286,6 +309,8 @@ class ListaDeUsuarios extends Component
 
     public function reactivar(int $id): void
     {
+        $this->exigirGestion();
+
         $this->olvidarLoAnterior();
 
         try {
@@ -302,6 +327,8 @@ class ListaDeUsuarios extends Component
     /** Abre el selector de rol de esa fila. */
     public function abrirCambioDeRol(int $id): void
     {
+        $this->exigirGestion();
+
         $this->olvidarLoAnterior();
 
         $this->cambiandoRolA = $id;
@@ -317,6 +344,8 @@ class ListaDeUsuarios extends Component
 
     public function guardarCambioDeRol(): void
     {
+        $this->exigirGestion();
+
         if ($this->cambiandoRolA === null) {
             return;
         }
