@@ -2,6 +2,8 @@
 
 namespace App\Services\Estacionamiento;
 
+use App\Models\Movimiento;
+use App\Models\Persona;
 use App\Models\Puesto;
 use App\Models\User;
 use App\Models\VehiculoFijo;
@@ -316,6 +318,44 @@ final class Estacionamiento
                 'salioPor' => $e->salidaUsuario?->nombre ?? $e->salidaUsuario?->usuario,
                 'dentro' => $e->salio_en === null,
             ]);
+    }
+
+    /**
+     * Quién pudo llevarse este vehículo: para elegir en vez de teclear una cédula a ciegas.
+     *
+     * Primero el que lo metió, que es quien se lo lleva casi siempre. Después la gente que ya
+     * marcó su salida hoy: si alguien salió del edificio y este carro sigue aquí, es justo el
+     * candidato —y es el caso que deja estadías abiertas, porque quien se va en un vehículo no
+     * siempre pasa a decirlo—. Los más recientes primero.
+     *
+     * @return Collection<int, Persona>
+     */
+    public function quienesPudieronLlevarselo(VehiculoFijo $estadia, int $limite = 20): Collection
+    {
+        $candidatos = collect();
+
+        if ($estadia->conductor) {
+            $candidatos->push($estadia->conductor);
+        }
+
+        // Los que hoy marcaron salida, del más reciente al más antiguo. Se mira el ÚLTIMO
+        // movimiento de cada quien: quien salió y volvió a entrar está dentro, no se fue.
+        $salieron = Movimiento::ultimoDeCadaPersona()
+            ->where('movimientos.tipo', Movimiento::SALIDA)
+            ->where('movimientos.ocurrio_en', '>=', CarbonImmutable::today())
+            ->orderByDesc('movimientos.ocurrio_en')
+            ->limit($limite)
+            ->pluck('movimientos.persona_id');
+
+        $personas = Persona::query()->whereIn('id', $salieron)->get()->keyBy('id');
+
+        foreach ($salieron as $id) {
+            if (isset($personas[$id])) {
+                $candidatos->push($personas[$id]);
+            }
+        }
+
+        return $candidatos->unique('id')->values();
     }
 
     /** Cuánto lleva dentro, dicho corto: «3 h 20 min», «45 min». */

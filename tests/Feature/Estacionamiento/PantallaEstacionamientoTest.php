@@ -3,6 +3,8 @@
 namespace Tests\Feature\Estacionamiento;
 
 use App\Livewire\Estacionamiento\Panel;
+use App\Models\Movimiento;
+use App\Models\Persona;
 use App\Models\Puesto;
 use App\Models\User;
 use App\Models\VehiculoDeFlota;
@@ -199,6 +201,57 @@ class PantallaEstacionamientoTest extends TestCase
 
         $panel->call('cancelarFijo');
         $this->assertStringContainsString('wire:poll', $panel->html());
+    }
+
+    #[Test]
+    public function al_sacar_un_vehiculo_se_ofrece_quien_pudo_llevarselo(): void
+    {
+        // Antes había que teclear la cédula de memoria. Casi siempre es el que lo trajo o alguien
+        // que acaba de marcar su salida —que es justo quien se va en un vehículo sin pasar a
+        // decirlo, y deja la estadía abierta—.
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
+
+        $ana = Persona::create(['cedula' => '11111111', 'tipo' => Persona::TRABAJADOR, 'nombre' => 'ANA PÉREZ', 'activo' => true]);
+        $luis = Persona::create(['cedula' => '22222222', 'tipo' => Persona::TRABAJADOR, 'nombre' => 'LUIS GÓMEZ', 'activo' => true]);
+
+        // Luis entró y ya se fue del edificio; el carro lo trajo Ana y sigue dentro.
+        Movimiento::create(['persona_id' => $luis->id, 'tipo' => Movimiento::ENTRADA, 'ocurrio_en' => CarbonImmutable::today()->setTime(8, 0)]);
+        Movimiento::create(['persona_id' => $luis->id, 'tipo' => Movimiento::SALIDA, 'ocurrio_en' => CarbonImmutable::today()->setTime(17, 0)]);
+
+        $estadia = $this->estadia('AB123CD', ['conductor_id' => $ana->id, 'conductor_nombre' => $ana->nombre]);
+
+        Livewire::test(Panel::class)
+            ->call('abrirSalida', $estadia->id)
+            ->assertSee('Quién se lo lleva')
+            ->assertSee('lo trajo')          // Ana sale marcada como quien lo metió
+            ->assertSee('LUIS GÓMEZ')        // y Luis, que ya marcó su salida
+            ->set('conductorSalidaCedula', '22222222')
+            ->call('confirmarSalida')
+            ->assertHasNoErrors();
+
+        $estadia->refresh();
+
+        $this->assertNotNull($estadia->salio_en);
+        $this->assertSame($luis->id, $estadia->salida_conductor_id);
+    }
+
+    #[Test]
+    public function quien_salio_y_volvio_a_entrar_no_se_ofrece_como_quien_se_lo_lleva(): void
+    {
+        // Se mira su ÚLTIMO movimiento: quien salió a almorzar y volvió está dentro, no se fue.
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
+
+        $luis = Persona::create(['cedula' => '22222222', 'tipo' => Persona::TRABAJADOR, 'nombre' => 'LUIS GÓMEZ', 'activo' => true]);
+
+        Movimiento::create(['persona_id' => $luis->id, 'tipo' => Movimiento::ENTRADA, 'ocurrio_en' => CarbonImmutable::today()->setTime(8, 0)]);
+        Movimiento::create(['persona_id' => $luis->id, 'tipo' => Movimiento::SALIDA, 'ocurrio_en' => CarbonImmutable::today()->setTime(12, 0)]);
+        Movimiento::create(['persona_id' => $luis->id, 'tipo' => Movimiento::ENTRADA, 'ocurrio_en' => CarbonImmutable::today()->setTime(13, 0)]);
+
+        $estadia = $this->estadia('AB123CD');
+
+        Livewire::test(Panel::class)
+            ->call('abrirSalida', $estadia->id)
+            ->assertDontSee('LUIS GÓMEZ');
     }
 
     #[Test]

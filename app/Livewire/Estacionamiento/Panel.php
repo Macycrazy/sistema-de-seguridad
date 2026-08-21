@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Estacionamiento;
 
+use App\Models\Persona;
 use App\Models\Puesto;
 use App\Models\VehiculoDeFlota;
 use App\Models\VehiculoFijo;
@@ -384,11 +385,41 @@ class Panel extends Component
     }
 
     /** Abre la salida de un fijo: pide quién se lo lleva. */
+    /**
+     * Quién pudo llevarse el vehículo que se está sacando, para elegirlo de una lista.
+     *
+     * Antes había que teclear la cédula de memoria. Casi siempre es el que lo metió o alguien que
+     * acaba de marcar su salida, así que se ofrecen: se elige en vez de recordar.
+     *
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function quienesPudieronLlevarselo(): array
+    {
+        if ($this->sacandoFijo === null) {
+            return [];
+        }
+
+        $estadia = VehiculoFijo::with('conductor')->find($this->sacandoFijo);
+
+        if (! $estadia) {
+            return [];
+        }
+
+        return app(Estacionamiento::class)->quienesPudieronLlevarselo($estadia)
+            ->mapWithKeys(fn (Persona $p) => [
+                (string) $p->cedula => $p->nombre.' · '.$p->cedula
+                    .($estadia->conductor_id === $p->id ? ' (lo trajo)' : ''),
+            ])
+            ->all();
+    }
+
     public function abrirSalida(int $id): void
     {
         $this->reset('conductorSalidaCedula', 'conductorSalidaNombre', 'aviso');
         $this->resetValidation();
         $this->sacandoFijo = $id;
+        unset($this->quienesPudieronLlevarselo);
     }
 
     public function cancelarSalida(): void
@@ -486,6 +517,7 @@ class Panel extends Component
             $this->dentro, $this->vehiculos, $this->resumen, $this->historial, $this->pernoctan,
             $this->opcionesPorVehiculo, $this->fijos, $this->puestosLibresFijo,
             $this->flota, $this->flotaDisponible, $this->historialDePlaca,
+            $this->quienesPudieronLlevarselo,
         );
     }
 

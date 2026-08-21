@@ -159,8 +159,23 @@
                         <tr wire:key="salida-{{ $v->id }}" class="bg-alto-suave/30">
                             <td colspan="6" class="px-4 py-4">
                                 <form wire:submit="confirmarSalida" class="flex flex-wrap items-end gap-3">
+                                    {{-- Quién se lo lleva, elegido en vez de tecleado de memoria:
+                                         el que lo trajo y los que ya marcaron su salida hoy —que
+                                         es justo quien se va en un vehículo sin pasar a decirlo—. --}}
+                                    @if ($this->quienesPudieronLlevarselo !== [])
+                                        <div class="w-64">
+                                            {{-- Id propio y modelo compartido con el campo de al
+                                                 lado: elegir aquí rellena la cédula, y quien
+                                                 prefiera teclearla la teclea. --}}
+                                            <x-selector etiqueta="Quién se lo lleva" nombre="conductorSalidaLista"
+                                                        wire:model.live="conductorSalidaCedula"
+                                                        :opciones="['' => 'Otra persona…'] + $this->quienesPudieronLlevarselo"
+                                                        :error="$errors->first('conductorSalida')" />
+                                        </div>
+                                    @endif
                                     <div class="w-40">
-                                        <x-campo etiqueta="Cédula de quien lo saca" nombre="conductorSalidaCedula" inputmode="numeric" maxlength="9"
+                                        <x-campo etiqueta="{{ $this->quienesPudieronLlevarselo !== [] ? '…o su cédula' : 'Cédula de quien lo saca' }}"
+                                                 nombre="conductorSalidaCedula" inputmode="numeric" maxlength="9"
                                                  oninput="this.value = this.value.replace(/[^0-9]/g, '')" ayuda="Opcional."
                                                  wire:model="conductorSalidaCedula" :error="$errors->first('conductorSalida')" />
                                     </div>
