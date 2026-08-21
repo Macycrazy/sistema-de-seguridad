@@ -12,8 +12,17 @@
 <div>
 
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
+        <div class="flex items-center gap-2.5">
             <h1 class="text-3xl font-bold tracking-tight">Usuarios</h1>
+            <x-ayuda
+                titulo="Usuarios"
+                que="Las cuentas que ENTRAN al sistema (no las personas que se marcan en la puerta): su nombre de usuario, su clave y su rol."
+                :pasos="[
+                    '<b>Nuevo usuario</b>: usuario, nombre, rol y una clave. La clave la pones tú y se la dictas.',
+                    '<b>Editar</b> cambia nombre, usuario y cédula; <b>Cambiar rol</b> y <b>Cambio de clave</b> van aparte.',
+                    'Cada quien solo puede tocar a los de su rol o por debajo, nunca por encima.',
+                ]"
+                nota="Para quitar acceso, <b>Desactivar</b> (conserva el rastro). <b>Borrar</b> es solo para cuentas creadas por error." />
         </div>
 
         @unless ($creando)

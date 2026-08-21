@@ -11,7 +11,17 @@
 <div>
 
     <div class="mb-6">
-        <h1 class="text-3xl font-bold tracking-tight">Roles y permisos</h1>
+        <div class="flex items-center gap-2.5">
+            <h1 class="text-3xl font-bold tracking-tight">Roles y permisos</h1>
+            <x-ayuda
+                titulo="Roles y permisos"
+                que="Qué puede hacer cada rol. Marcas por rol lo que abre, y el sistema respeta esas casillas en todo el sistema."
+                :pasos="[
+                    'Cada fila es un permiso; cada columna, un rol. Marca lo que ese rol puede hacer.',
+                    'Algunos permisos son <b>intocables</b> (no se pueden quitar) porque el sistema se quedaría sin salida.',
+                    'Nadie puede darse a sí mismo un permiso por encima de su rol.',
+                ]" />
+        </div>
         <p class="mt-1 text-sm text-slate-500">Marca lo que abre cada rol.</p>
     </div>
 

@@ -5,7 +5,17 @@
 
 @section('contenido')
     <div class="flex flex-wrap items-end justify-between gap-5">
-        <h1 class="text-3xl font-bold tracking-tight">Hola, {{ auth()->user()->nombreCorto() }}</h1>
+        <div class="flex items-center gap-2.5">
+            <h1 class="text-3xl font-bold tracking-tight">Hola, {{ auth()->user()->nombreCorto() }}</h1>
+            <x-ayuda
+                titulo="Inicio"
+                que="Tu punto de partida: el pulso del edificio (cuántos hay dentro) y los accesos a lo que puedes usar."
+                :pasos="[
+                    'Arriba, el <b>número de gente dentro</b>, de un vistazo.',
+                    'Los accesos de abajo son a lo tuyo: <b>operación</b> (marcar, estacionamiento) y, si tienes permiso, <b>administración</b>.',
+                    'Cada pantalla tiene su propia ayuda: busca el <b>«?»</b> junto a su título.',
+                ]" />
+        </div>
 
         {{-- El pulso del edificio, de un vistazo. Es el mismo número que gobierna marcar y el
              registro: se reusa el contador, sin tocar esos módulos. --}}
