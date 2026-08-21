@@ -212,6 +212,7 @@
                     <thead>
                         <tr class="border-b border-slate-200 text-left font-mono text-xs uppercase tracking-widest text-slate-500">
                             <th class="px-4 py-3 font-semibold">Placa</th>
+                            <th class="px-4 py-3 font-semibold">Estado</th>
                             <th class="px-4 py-3 font-semibold">Entró</th>
                             <th class="px-4 py-3 font-semibold">Con</th>
                             <th class="px-4 py-3 font-semibold">Salió</th>
@@ -223,6 +224,16 @@
                         @foreach ($this->historialDePlaca as $h)
                             <tr wire:key="placa-{{ $loop->index }}">
                                 <td class="px-4 py-3 font-mono font-bold tracking-wider text-slate-900">{{ $h->placa }}</td>
+                                {{-- Dicho en la propia fila: buscar una placa saca también sus
+                                     visitas pasadas, y ver la placa en pantalla se leía como que
+                                     el vehículo sigue aquí. --}}
+                                <td class="px-4 py-3">
+                                    @if ($h->dentro)
+                                        <span class="font-mono text-xs font-bold uppercase tracking-widest text-parte1">Dentro</span>
+                                    @else
+                                        <span class="font-mono text-xs uppercase tracking-widest text-slate-400">Ya salió</span>
+                                    @endif
+                                </td>
                                 <td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-500">
                                     {{ $h->entro_en->translatedFormat('D j M · g:i a') }}
                                     @if ($h->entroPor)
@@ -232,8 +243,7 @@
                                 <td class="px-4 py-3 text-slate-600">{{ $h->entroCon ?: '—' }}</td>
                                 <td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-500">
                                     @if ($h->dentro)
-                                        <x-etiqueta tipo="entrada" tamano="chico" />
-                                        <span class="ml-1 text-slate-400">sigue dentro</span>
+                                        <span class="text-slate-400">—</span>
                                     @else
                                         {{ $h->salio_en->translatedFormat('D j M · g:i a') }}
                                         @if ($h->salioPor)

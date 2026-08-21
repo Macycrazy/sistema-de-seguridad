@@ -78,6 +78,30 @@ class VehiculosFijosTest extends TestCase
     }
 
     #[Test]
+    public function sacar_un_vehiculo_cierra_tambien_las_estadias_duplicadas_de_esa_placa(): void
+    {
+        // El síntoma que se veía: se le marcaba la salida al carro, se actualizaba la pantalla, y
+        // el carro seguía dentro. Eran dos estadías abiertas de antes de la regla que lo impide;
+        // se cerraba una y quedaba la otra.
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
+
+        $vieja = VehiculoFijo::create(['placa' => 'ABC123', 'tipo_vehiculo' => DatosVehiculo::CARRO, 'entro_en' => now()->subHours(3)]);
+        $nueva = VehiculoFijo::create(['placa' => 'ABC123', 'tipo_vehiculo' => DatosVehiculo::CARRO, 'entro_en' => now()->subHour()]);
+        $otro = VehiculoFijo::create(['placa' => 'ZZZ999', 'tipo_vehiculo' => DatosVehiculo::CARRO, 'entro_en' => now()->subHour()]);
+
+        $cerradas = app(VehiculosFijos::class)->sacar($nueva, conductorNombre: 'Ana');
+
+        $this->assertSame(2, $cerradas, 'Se fue el vehículo: no puede quedar ninguna suya abierta.');
+        $this->assertNotNull($vieja->fresh()->salio_en);
+        $this->assertNotNull($nueva->fresh()->salio_en);
+        $this->assertNull($otro->fresh()->salio_en, 'El de otra placa no se toca.');
+        $this->assertSame(1, app(Estacionamiento::class)->cuantosDentro());
+
+        // Y queda dicho, para que no parezca que se arregló solo.
+        $this->assertDatabaseHas('bitacora', ['accion' => Auditoria::CERRO_DUPLICADA, 'sobre' => 'ABC123']);
+    }
+
+    #[Test]
     public function anota_un_vehiculo_fijo_en_un_puesto_libre(): void
     {
         $puesto = Puesto::create(['codigo' => 'A-1', 'orden' => 1]);

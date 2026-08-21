@@ -255,6 +255,24 @@ class PantallaEstacionamientoTest extends TestCase
     }
 
     #[Test]
+    public function el_historial_dice_en_cada_fila_si_el_vehiculo_sigue_dentro_o_ya_salio(): void
+    {
+        // Buscar una placa saca también sus visitas pasadas, y ver la placa en la pantalla se leía
+        // como que el vehículo sigue aquí.
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
+
+        $this->estadia('XYZ789', [
+            'entro_en' => CarbonImmutable::today()->setTime(8, 0),
+            'salio_en' => CarbonImmutable::today()->setTime(17, 0),
+        ]);
+
+        Livewire::test(Panel::class)
+            ->set('busqueda', 'XYZ789')
+            ->assertSee('Ya salió')
+            ->assertDontSee('sigue dentro');
+    }
+
+    #[Test]
     public function buscar_por_placa_deja_solo_la_que_coincide(): void
     {
         $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));

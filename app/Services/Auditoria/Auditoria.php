@@ -68,6 +68,9 @@ class Auditoria
 
     public const SACO_VEHICULO = 'saco-vehiculo';
 
+    /** Se cerró una estadía que sobraba: el mismo vehículo figuraba dentro dos veces. */
+    public const CERRO_DUPLICADA = 'cerro-estadia-duplicada';
+
     /** La acción, en frase, para la pantalla. */
     public const ETIQUETAS = [
         self::INGRESO_CORRECTO => 'Entró al sistema',
@@ -94,6 +97,7 @@ class Auditoria
         self::RESPALDO => 'Respaldo',
         self::ANOTO_VEHICULO => 'Anotó un vehículo',
         self::SACO_VEHICULO => 'Sacó un vehículo',
+        self::CERRO_DUPLICADA => 'Cerró una estadía duplicada',
     ];
 
     /**
@@ -268,6 +272,21 @@ class Auditoria
             self::SACO_VEHICULO,
             $estadia->placa,
             'Se lo llevó: '.($estadia->salida_conductor_nombre ?: 'sin conductor anotado'),
+        );
+    }
+
+    /**
+     * Se cerró de oficio una estadía que sobraba.
+     *
+     * No es una salida: es la limpieza de un vehículo que figuraba dentro dos veces. Se anota
+     * aparte para que se pueda ver cuántos duplicados había y de cuándo venían.
+     */
+    public function cerroEstadiaDuplicada(VehiculoFijo $estadia): void
+    {
+        $this->anota(
+            self::CERRO_DUPLICADA,
+            $estadia->placa,
+            'Estaba dentro por duplicado desde el '.$estadia->entro_en->format('d/m/Y g:i a'),
         );
     }
 

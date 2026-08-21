@@ -435,7 +435,7 @@ class Panel extends Component
         }
 
         try {
-            app(VehiculosFijos::class)->sacar(
+            $cerradas = app(VehiculosFijos::class)->sacar(
                 VehiculoFijo::findOrFail($this->sacandoFijo),
                 conductorCedula: $this->conductorSalidaCedula,
                 conductorNombre: $this->conductorSalidaNombre,
@@ -447,7 +447,13 @@ class Panel extends Component
         }
 
         $this->cancelarSalida();
-        $this->aviso = 'Vehículo retirado: su puesto queda libre.';
+
+        // Si había duplicados se dice: el guardia tiene que enterarse de que ese vehículo figuraba
+        // dentro más de una vez, no encontrárselo arreglado sin explicación.
+        $this->aviso = $cerradas > 1
+            ? 'Vehículo retirado. Estaba anotado '.$cerradas.' veces dentro: se cerraron todas y su puesto queda libre.'
+            : 'Vehículo retirado: su puesto queda libre.';
+
         $this->actualizar();
     }
 

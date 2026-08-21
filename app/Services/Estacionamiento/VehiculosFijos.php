@@ -117,6 +117,9 @@ class VehiculosFijos
      * usuario). La entrada ya guardaba su usuario; la salida no guardaba ninguno, así que de un
      * vehículo que se fue sin deber irse no quedaba constancia de quién lo dejó salir.
      *
+     * Devuelve cuántas estadías se cerraron. Normalmente una; más de una significa que ese
+     * vehículo estaba dentro por duplicado (ver abajo).
+     *
      * @throws ValidationException
      */
     public function sacar(
@@ -124,21 +127,44 @@ class VehiculosFijos
         ?string $conductorCedula = null,
         ?string $conductorNombre = null,
         ?int $usuarioId = null,
-    ): void {
+    ): int {
         if ($fijo->salio_en !== null) {
-            return;
+            return 0;
         }
 
         [$conductorId, $conductorNombreFinal] = $this->conductor($conductorCedula, $conductorNombre, 'conductorSalida');
 
-        $fijo->update([
+        $salida = [
             'salio_en' => now(),
             'salida_conductor_id' => $conductorId,
             'salida_conductor_nombre' => $conductorNombreFinal,
             'salida_usuario_id' => $usuarioId ?? auth()->id(),
-        ]);
+        ];
 
+        $fijo->update($salida);
         app(Auditoria::class)->sacoVehiculo($fijo);
+
+        /*
+         * Se cierran TODAS las estadías abiertas de esa placa, no solo la que se tocó.
+         *
+         * Un vehículo no puede estar dentro dos veces —ahora se impide al anotarlo—, pero los
+         * duplicados de antes siguen ahí, y con ellos pasaba esto: se le marcaba la salida al
+         * carro, se actualizaba la pantalla, y el carro seguía apareciendo dentro. El vehículo se
+         * fue de verdad: dejar la otra abierta lo tendría dentro para siempre, ocupando plaza y
+         * contando en el aforo.
+         */
+        $duplicadas = VehiculoFijo::query()
+            ->abiertos()
+            ->where('placa', $fijo->placa)
+            ->where('id', '!=', $fijo->id)
+            ->get();
+
+        foreach ($duplicadas as $otra) {
+            $otra->update($salida);
+            app(Auditoria::class)->cerroEstadiaDuplicada($otra);
+        }
+
+        return 1 + $duplicadas->count();
     }
 
     /**
