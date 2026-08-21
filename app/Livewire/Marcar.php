@@ -5,10 +5,12 @@ namespace App\Livewire;
 use App\Models\Movimiento;
 use App\Models\Persona;
 use App\Models\Vehiculo;
+use App\Models\VehiculoDeFlota;
 use App\Models\VehiculoFijo;
 use App\Services\Auditoria\Auditoria;
 use App\Services\Carnets\Verificador;
 use App\Services\DatosVehiculo;
+use App\Services\Estacionamiento\Flota;
 use App\Services\Estacionamiento\VehiculoEnLaPuerta;
 use App\Services\Marcaje;
 use Illuminate\Support\Collection;
@@ -42,6 +44,15 @@ class Marcar extends Component
      * tocando cualquier cosa. Con su botón, entrar a pie es una elección que se ve tomada.
      */
     public const VEHICULO_A_PIE = '';
+
+    /**
+     * Lo que precede al id cuando se elige un vehículo de la empresa: «flota:7».
+     *
+     * Los de la empresa no son de nadie —no están clavados a un conductor—, así que no salen de la
+     * ficha de la persona sino del catálogo de la flota. Cualquiera puede traerlos y cualquiera
+     * puede llevárselos; lo que queda anotado es quién lo hizo cada vez.
+     */
+    public const PREFIJO_FLOTA = 'flota:';
 
     /** Lo único que el vigilante teclea. */
     public string $cedula = '';
@@ -381,6 +392,7 @@ class Marcar extends Component
             unset(
                 $this->persona, $this->sugerido, $this->esperaHasta, $this->esperaSalidaHasta,
                 $this->motivoEspera, $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
+                $this->flotaParaEntrar,
             );
 
             return;
@@ -395,6 +407,7 @@ class Marcar extends Component
         unset(
             $this->persona, $this->sugerido, $this->esperaHasta, $this->esperaSalidaHasta,
             $this->motivoEspera, $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
+            $this->flotaParaEntrar,
         );
 
         // Que el vigilante haya sacado la ficha de esta cédula queda anotado. Con dedup: el tecleo
@@ -614,6 +627,7 @@ class Marcar extends Component
         unset(
             $this->persona, $this->sugerido, $this->esperaHasta, $this->esperaSalidaHasta,
             $this->motivoEspera, $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
+            $this->flotaParaEntrar,
         );
     }
 
@@ -670,6 +684,19 @@ class Marcar extends Component
         $persona = $this->persona();
 
         return $persona ? app(VehiculoEnLaPuerta::class)->dentroASuNombre($persona) : collect();
+    }
+
+    /**
+     * Los vehículos de la empresa que se pueden traer ahora: los del catálogo que no están dentro.
+     *
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function flotaParaEntrar(): array
+    {
+        return app(Flota::class)->disponibles()
+            ->mapWithKeys(fn (VehiculoDeFlota $v) => [self::PREFIJO_FLOTA.$v->id => $v->descripcion()])
+            ->all();
     }
 
     /** Elegir con qué entra: a pie, uno de los suyos, u «otro» para teclear una placa. */
@@ -843,6 +870,25 @@ class Marcar extends Component
             return [];
         }
 
+        // Uno de la empresa: la placa sale del catálogo, no de la ficha de nadie.
+        if (str_starts_with($this->vehiculoEntrada, self::PREFIJO_FLOTA)) {
+            $deLaFlota = VehiculoDeFlota::find((int) substr($this->vehiculoEntrada, strlen(self::PREFIJO_FLOTA)));
+
+            if (! $deLaFlota) {
+                throw ValidationException::withMessages([
+                    'placaEntrada' => 'Ese vehículo de la empresa ya no está en el catálogo. Vuelve a elegirlo.',
+                ]);
+            }
+
+            return [$puerta->entra(
+                persona: $persona,
+                placa: $deLaFlota->placa,
+                tipo: $deLaFlota->tipo_vehiculo,
+                marca: $deLaFlota->marca,
+                color: $deLaFlota->color,
+            )->placa];
+        }
+
         // «otro» es teclear una placa; cualquier otra cosa es la placa de uno de los suyos, que
         // ya viene limpia de su ficha.
         $esNuevo = $this->vehiculoEntrada === self::VEHICULO_OTRO;
@@ -886,6 +932,7 @@ class Marcar extends Component
             $this->persona, $this->sugerido, $this->esperaHasta,
             $this->esperaSalidaHasta, $this->dentro, $this->dentroPorTipo,
             $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
+            $this->flotaParaEntrar,
         );
     }
 

@@ -557,6 +557,19 @@
                             </button>
                         </div>
 
+                        {{-- Los de la empresa no son de nadie: no salen de la ficha de la
+                             persona sino del catálogo, y cualquiera puede traerlos. Van en un
+                             desplegable porque pueden ser muchos y no son el caso de todos los
+                             días. Comparten estado con los botones de arriba, así que elegir aquí
+                             desmarca «A pie» y al revés. --}}
+                        @if ($this->flotaParaEntrar !== [])
+                            <div class="mt-3 w-full sm:w-72">
+                                <x-selector etiqueta="…o uno de la empresa" nombre="vehiculoDeLaEmpresa"
+                                            wire:model.live="vehiculoEntrada"
+                                            :opciones="['' => 'Ninguno'] + $this->flotaParaEntrar" />
+                            </div>
+                        @endif
+
                         {{-- Solo cuando hace falta teclear. La primera vez se teclea; a partir de
                              ahí el vehículo queda en su ficha y sale ahí arriba. --}}
                         @if ($vehiculoEntrada === 'otro')
@@ -823,7 +836,7 @@
                 </li>
                 <li class="flex items-start gap-3">
                     <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-marca text-sm font-bold text-white">3</span>
-                    <p class="text-slate-700"><b class="font-semibold text-slate-900">Di cómo entra:</b> «A pie», o su vehículo. Si tocas el vehículo queda anotado a su nombre ahí mismo, sin ir al estacionamiento.</p>
+                    <p class="text-slate-700"><b class="font-semibold text-slate-900">Di cómo entra:</b> «A pie», su vehículo, o uno de la empresa. Queda anotado ahí mismo, sin ir al estacionamiento.</p>
                 </li>
                 <li class="flex items-start gap-3">
                     <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-marca text-sm font-bold text-white">4</span>
@@ -836,8 +849,9 @@
             </p>
 
             <p class="mt-3 rounded-lg bg-slate-100 px-3 py-2.5 text-sm text-slate-600">
-                Al <b>salir</b>, los suyos salen de un toque; si se lleva el de un compañero o uno de la
-                empresa, elígelo en «se lleva otro que está dentro». Solo se puede sacar lo que está dentro.
+                Los vehículos de la <b>empresa</b> no son de nadie: cualquiera puede traerlos y cualquiera
+                puede llevárselos, y queda anotado quién lo hizo cada vez. Al <b>salir</b>, los suyos salen de
+                un toque; el de un compañero o uno de la empresa, en «se lleva otro que está dentro».
                 Si sale «a pie», su carro se queda anotado.
             </p>
 

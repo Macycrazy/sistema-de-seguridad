@@ -311,6 +311,81 @@ class VehiculoEnLaPuertaTest extends TestCase
     }
 
     #[Test]
+    public function un_vehiculo_de_la_empresa_se_trae_eligiendolo_del_catalogo(): void
+    {
+        // Los de la empresa no son de nadie: no están en la ficha de ninguna persona, así que se
+        // eligen del catálogo. Cualquiera puede traerlos.
+        $ana = $this->trabajador();
+        $flota = VehiculoDeFlota::create(['placa' => 'EMP001', 'tipo_vehiculo' => DatosVehiculo::CARRO, 'marca' => 'Toyota']);
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSee('EMP001')
+            ->set('vehiculoEntrada', Marcar::PREFIJO_FLOTA.$flota->id)
+            ->call('marcarEntrada')
+            ->assertHasNoErrors();
+
+        $estadia = VehiculoFijo::where('placa', 'EMP001')->firstOrFail();
+
+        $this->assertSame($flota->id, $estadia->flota_id);
+        $this->assertSame($ana->id, $estadia->conductor_id, 'Queda quién lo trajo, aunque el carro no sea suyo.');
+        $this->assertDatabaseMissing('vehiculos', ['persona_id' => $ana->id, 'placa' => 'EMP001']);
+    }
+
+    #[Test]
+    public function un_vehiculo_de_la_empresa_que_esta_dentro_no_se_ofrece_para_traerlo(): void
+    {
+        $this->trabajador();
+        $flota = VehiculoDeFlota::create(['placa' => 'EMP001', 'tipo_vehiculo' => DatosVehiculo::CARRO]);
+
+        VehiculoFijo::create([
+            'placa' => 'EMP001',
+            'tipo_vehiculo' => DatosVehiculo::CARRO,
+            'flota_id' => $flota->id,
+            'entro_en' => now()->subDay(),
+        ]);
+
+        $componente = Livewire::test(Marcar::class)->set('cedula', '12345678')->call('buscar');
+
+        $this->assertSame([], $componente->instance()->flotaParaEntrar);
+    }
+
+    #[Test]
+    public function cualquiera_puede_llevarse_un_vehiculo_de_la_empresa_que_no_tiene_conductor(): void
+    {
+        // El caso del carro de la empresa que vive en el estacionamiento: no lo trajo nadie hoy,
+        // no es de nadie, y aun así alguien tiene que poder sacarlo dejando constancia.
+        $ana = $this->trabajador();
+        $flota = VehiculoDeFlota::create(['placa' => 'EMP001', 'tipo_vehiculo' => DatosVehiculo::CARRO]);
+
+        $estadia = VehiculoFijo::create([
+            'placa' => 'EMP001',
+            'tipo_vehiculo' => DatosVehiculo::CARRO,
+            'flota_id' => $flota->id,
+            'entro_en' => now()->subDays(2),
+            'conductor_id' => null,
+        ]);
+
+        app(Marcaje::class)->registrar($ana, Movimiento::ENTRADA);
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSee('EMP001')
+            ->set('otroVehiculoSalida', (string) $estadia->id)
+            ->call('llevarseOtro')
+            ->call('marcarSalida')
+            ->assertHasNoErrors();
+
+        $estadia->refresh();
+
+        $this->assertNotNull($estadia->salio_en);
+        $this->assertSame($ana->id, $estadia->salida_conductor_id, 'Queda quién se lo llevó.');
+    }
+
+    #[Test]
     public function el_mismo_vehiculo_no_puede_entrar_dos_veces(): void
     {
         $ana = $this->trabajador();
