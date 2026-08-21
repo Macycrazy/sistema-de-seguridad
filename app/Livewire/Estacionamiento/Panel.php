@@ -422,6 +422,26 @@ class Panel extends Component
 
     // --- La flota de la empresa (catálogo) ---
 
+    /**
+     * Anotar la entrada de un vehículo de la flota desde su propia fila del catálogo.
+     *
+     * Agregar un vehículo a la flota es cargarlo en el catálogo, no meterlo en el
+     * estacionamiento: son dos cosas y se confunden. Sin esto había que cerrar la flota, abrir
+     * «Anotar vehículo» y buscarlo en un desplegable, y nada en la pantalla lo decía.
+     */
+    public function anotarDeLaFlota(int $flotaId): void
+    {
+        if (! $this->flotaDisponible->contains('id', $flotaId)) {
+            $this->aviso = 'Ese vehículo ya está dentro: hay que marcarle la salida antes de volver a anotarlo.';
+
+            return;
+        }
+
+        $this->cerrarFlota();
+        $this->abrirFijo();
+        $this->flotaFija = (string) $flotaId;
+    }
+
     public function abrirFlota(): void
     {
         $this->reset('placaFlota', 'tipoFlota', 'marcaFlota', 'colorFlota', 'notaFlota', 'aviso');

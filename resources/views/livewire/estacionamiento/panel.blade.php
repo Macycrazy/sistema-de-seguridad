@@ -6,7 +6,19 @@
     $total = $r['total'];
 @endphp
 
-<div wire:loading.class="opacity-60" class="transition-opacity">
+{{--
+    Se refresca solo cada medio minuto.
+
+    Antes no hacía falta: esta pantalla era la única que movía vehículos, así que lo que mostraba
+    solo cambiaba por lo que se hacía en ella. Desde que la puerta también los anota y los saca,
+    quien la tiene abierta ve un estado viejo —un vehículo que ya se fue sigue ahí— y no tiene por
+    qué sospecharlo. El botón «Actualizar» se queda: sirve para no esperar.
+
+    NO se sondea con un formulario abierto: un refresco a media escritura le mueve el sitio bajo
+    las manos a quien está tecleando una placa.
+--}}
+<div wire:loading.class="opacity-60" class="transition-opacity"
+     @if (! $agregandoFijo && ! $gestionandoFlota && $sacandoFijo === null) wire:poll.30s @endif>
     @if ($aviso !== '')
         <x-aviso class="mb-4" wire:key="aviso">{{ $aviso }}</x-aviso>
     @endif
@@ -224,73 +236,89 @@
         </div>
     @endif
 
-    {{-- Anotar un vehículo (de la flota o a mano, con conductor y puesto) y gestionar la flota. --}}
-    @if ($this->hayPuestos)
-        @if ($gestionandoFlota)
-            <div class="mt-3 rounded border border-slate-200 bg-white p-4 shadow-sm">
-                <p class="mb-2 font-mono text-xs font-bold uppercase tracking-widest text-slate-500">Flota de la empresa</p>
-                <form wire:submit="guardarFlota" class="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                    <x-campo etiqueta="Placa" nombre="placaFlota" maxlength="15" wire:model="placaFlota" :error="$errors->first('placaFlota')" />
-                    <x-selector etiqueta="Tipo" nombre="tipoFlota" :opciones="['carro' => 'Carro', 'moto' => 'Moto']" wire:model="tipoFlota" />
-                    <x-campo etiqueta="Marca" nombre="marcaFlota" ayuda="Opcional." maxlength="40" wire:model="marcaFlota" />
-                    <x-campo etiqueta="Color" nombre="colorFlota" ayuda="Opcional." maxlength="30" wire:model="colorFlota" />
-                    <x-boton type="submit">Agregar a la flota</x-boton>
-                </form>
+    {{-- Anotar un vehículo (de la flota o a mano, con conductor y puesto) y gestionar la flota.
 
-                @if ($this->flota->isNotEmpty())
-                    <ul class="mt-3 divide-y divide-slate-100 text-sm">
-                        @foreach ($this->flota as $f)
-                            <li class="flex items-center justify-between py-2" wire:key="flota-{{ $f->id }}">
-                                <span class="font-mono font-semibold text-slate-800">{{ $f->placa }}
-                                    <span class="font-normal text-slate-400">· {{ $f->etiquetaTipo() }} {{ trim(($f->marca ?? '').' '.($f->color ?? '')) }}</span>
-                                </span>
+         Esto estuvo escondido tras «si hay puestos cargados», que dejó de tener sentido cuando el
+         puesto pasó a ser opcional: un vehículo entra igual y se le asigna la plaza después. Los
+         botones que lo abren SÍ se veían, así que sin plazas cargadas se pulsaban y no pasaba
+         nada. --}}
+    @if ($gestionandoFlota)
+        <div class="mt-3 rounded border border-slate-200 bg-white p-4 shadow-sm">
+            <p class="mb-2 font-mono text-xs font-bold uppercase tracking-widest text-slate-500">Flota de la empresa</p>
+            <form wire:submit="guardarFlota" class="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <x-campo etiqueta="Placa" nombre="placaFlota" maxlength="15" wire:model="placaFlota" :error="$errors->first('placaFlota')" />
+                <x-selector etiqueta="Tipo" nombre="tipoFlota" :opciones="['carro' => 'Carro', 'moto' => 'Moto']" wire:model="tipoFlota" />
+                <x-campo etiqueta="Marca" nombre="marcaFlota" ayuda="Opcional." maxlength="40" wire:model="marcaFlota" />
+                <x-campo etiqueta="Color" nombre="colorFlota" ayuda="Opcional." maxlength="30" wire:model="colorFlota" />
+                <x-boton type="submit">Agregar a la flota</x-boton>
+            </form>
+
+            @if ($this->flota->isNotEmpty())
+                <ul class="mt-3 divide-y divide-slate-100 text-sm">
+                    @foreach ($this->flota as $f)
+                        <li class="flex items-center justify-between py-2" wire:key="flota-{{ $f->id }}">
+                            <span class="font-mono font-semibold text-slate-800">{{ $f->placa }}
+                                <span class="font-normal text-slate-400">· {{ $f->etiquetaTipo() }} {{ trim(($f->marca ?? '').' '.($f->color ?? '')) }}</span>
+                            </span>
+                            <span class="flex shrink-0 items-center gap-3">
+                                {{-- Agregarlo a la flota es cargarlo en el catálogo, no meterlo
+                                     en el estacionamiento. Sin este botón había que cerrar
+                                     esto, abrir «Anotar vehículo» y buscarlo en el
+                                     desplegable, y nada lo decía. --}}
+                                @if ($this->flotaDisponible->contains('id', $f->id))
+                                    <button wire:click="anotarDeLaFlota({{ $f->id }})"
+                                            class="text-sm font-semibold text-parte1 hover:underline">Anotar entrada</button>
+                                @else
+                                    <span class="font-mono text-xs uppercase tracking-widest text-slate-400">está dentro</span>
+                                @endif
+
                                 <button wire:click="eliminarFlota({{ $f->id }})" wire:confirm="¿Quitar {{ $f->placa }} de la flota?"
                                         class="text-sm font-semibold text-alto hover:underline">Quitar</button>
-                            </li>
-                        @endforeach
-                    </ul>
-                @endif
+                            </span>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
 
-                <div class="mt-3">
-                    <x-boton type="button" variante="secundario" wire:click="cerrarFlota">Cerrar</x-boton>
-                </div>
+            <div class="mt-3">
+                <x-boton type="button" variante="secundario" wire:click="cerrarFlota">Cerrar</x-boton>
             </div>
-        @endif
+        </div>
+    @endif
 
-        @if ($agregandoFijo)
-            @php
-                $opFijo = ['' => 'Sin puesto todavía'];
-                foreach ($this->puestosLibresFijo as $p) {
-                    $opFijo[$p->id] = $p->codigo.($p->zona ? ' · '.$p->zona : '').' ('.$p->etiquetaTipo().')';
-                }
-                $opFlota = ['' => 'Teclear a mano…'];
-                foreach ($this->flotaDisponible as $f) {
-                    $opFlota[$f->id] = $f->descripcion();
-                }
-                $aMano = $flotaFija === '';
-            @endphp
-            <form wire:submit="agregarFijo" class="mt-3 rounded border border-slate-200 bg-white p-4 shadow-sm">
-                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <x-selector etiqueta="De la flota" nombre="flotaFija" :opciones="$opFlota" wire:model.live="flotaFija" />
-                    @if ($aMano)
-                        <x-campo etiqueta="Placa" nombre="placaFija" maxlength="15" wire:model="placaFija" :error="$errors->first('placaFija')" />
-                        <x-selector etiqueta="Tipo" nombre="tipoFija" :opciones="['carro' => 'Carro', 'moto' => 'Moto']" wire:model.live="tipoFija" />
-                    @endif
-                    <x-selector etiqueta="Puesto" nombre="puestoFijo" :opciones="$opFijo" wire:model="puestoFijo" :error="$errors->first('puestoFijo')" />
-                    <x-campo etiqueta="Cédula del conductor" nombre="conductorCedulaFija" inputmode="numeric" maxlength="9"
-                             oninput="this.value = this.value.replace(/[^0-9]/g, '')" ayuda="Opcional. Si está en el sistema."
-                             wire:model="conductorCedulaFija" :error="$errors->first('conductorFija')" />
-                    <x-campo etiqueta="…o nombre del conductor" nombre="conductorNombreFija" ayuda="Opcional." maxlength="120" wire:model="conductorNombreFija" />
-                    @if ($aMano)
-                        <x-campo etiqueta="Nota" nombre="notaFija" ayuda="Opcional." maxlength="120" wire:model="notaFija" />
-                    @endif
-                </div>
-                <div class="mt-4 flex items-center gap-3">
-                    <x-boton type="submit">Anotar</x-boton>
-                    <x-boton type="button" variante="secundario" wire:click="cancelarFijo">Cancelar</x-boton>
-                </div>
-            </form>
-        @endif
+    @if ($agregandoFijo)
+        @php
+            $opFijo = ['' => 'Sin puesto todavía'];
+            foreach ($this->puestosLibresFijo as $p) {
+                $opFijo[$p->id] = $p->codigo.($p->zona ? ' · '.$p->zona : '').' ('.$p->etiquetaTipo().')';
+            }
+            $opFlota = ['' => 'Teclear a mano…'];
+            foreach ($this->flotaDisponible as $f) {
+                $opFlota[$f->id] = $f->descripcion();
+            }
+            $aMano = $flotaFija === '';
+        @endphp
+        <form wire:submit="agregarFijo" class="mt-3 rounded border border-slate-200 bg-white p-4 shadow-sm">
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <x-selector etiqueta="De la flota" nombre="flotaFija" :opciones="$opFlota" wire:model.live="flotaFija" />
+                @if ($aMano)
+                    <x-campo etiqueta="Placa" nombre="placaFija" maxlength="15" wire:model="placaFija" :error="$errors->first('placaFija')" />
+                    <x-selector etiqueta="Tipo" nombre="tipoFija" :opciones="['carro' => 'Carro', 'moto' => 'Moto']" wire:model.live="tipoFija" />
+                @endif
+                <x-selector etiqueta="Puesto" nombre="puestoFijo" :opciones="$opFijo" wire:model="puestoFijo" :error="$errors->first('puestoFijo')" />
+                <x-campo etiqueta="Cédula del conductor" nombre="conductorCedulaFija" inputmode="numeric" maxlength="9"
+                         oninput="this.value = this.value.replace(/[^0-9]/g, '')" ayuda="Opcional. Si está en el sistema."
+                         wire:model="conductorCedulaFija" :error="$errors->first('conductorFija')" />
+                <x-campo etiqueta="…o nombre del conductor" nombre="conductorNombreFija" ayuda="Opcional." maxlength="120" wire:model="conductorNombreFija" />
+                @if ($aMano)
+                    <x-campo etiqueta="Nota" nombre="notaFija" ayuda="Opcional." maxlength="120" wire:model="notaFija" />
+                @endif
+            </div>
+            <div class="mt-4 flex items-center gap-3">
+                <x-boton type="submit">Anotar</x-boton>
+                <x-boton type="button" variante="secundario" wire:click="cancelarFijo">Cancelar</x-boton>
+            </div>
+        </form>
     @endif
 
     {{-- El registro del día: entradas Y salidas de vehículos hoy. Plegado, para no cargarlo si no

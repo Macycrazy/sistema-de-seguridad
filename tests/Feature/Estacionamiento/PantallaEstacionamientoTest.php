@@ -5,6 +5,7 @@ namespace Tests\Feature\Estacionamiento;
 use App\Livewire\Estacionamiento\Panel;
 use App\Models\Puesto;
 use App\Models\User;
+use App\Models\VehiculoDeFlota;
 use App\Models\VehiculoFijo;
 use App\Services\DatosVehiculo;
 use App\Usuarios\Rol;
@@ -126,6 +127,78 @@ class PantallaEstacionamientoTest extends TestCase
             ->assertSee('Historial')
             ->assertSee('VIE123')
             ->assertSee('LUIS GÓMEZ');
+    }
+
+    #[Test]
+    public function el_formulario_de_anotar_se_abre_aunque_no_haya_puestos_cargados(): void
+    {
+        // El botón se veía siempre pero el formulario estaba escondido tras «si hay puestos»:
+        // sin plazas cargadas se pulsaba y no pasaba nada. El puesto es opcional desde que un
+        // vehículo puede entrar sin plaza.
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
+
+        $this->assertSame(0, Puesto::count());
+
+        Livewire::test(Panel::class)
+            ->call('abrirFijo')
+            ->assertSee('De la flota')
+            ->call('abrirFlota')
+            ->assertSee('Agregar a la flota');
+    }
+
+    #[Test]
+    public function un_vehiculo_de_la_flota_se_anota_desde_su_fila_del_catalogo(): void
+    {
+        // Cargarlo en la flota es catálogo, no entrada. Antes había que cerrar la flota, abrir
+        // «Anotar vehículo» y buscarlo en el desplegable, sin que nada lo dijera.
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
+
+        $flota = VehiculoDeFlota::create(['placa' => 'EMP001', 'tipo_vehiculo' => DatosVehiculo::CARRO]);
+
+        Livewire::test(Panel::class)
+            ->call('abrirFlota')
+            ->assertSee('Anotar entrada')
+            ->call('anotarDeLaFlota', $flota->id)
+            ->assertSet('agregandoFijo', true)
+            ->assertSet('gestionandoFlota', false)
+            ->assertSet('flotaFija', (string) $flota->id)
+            ->call('agregarFijo')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('vehiculos_fijos', ['placa' => 'EMP001', 'flota_id' => $flota->id, 'salio_en' => null]);
+    }
+
+    #[Test]
+    public function un_vehiculo_de_la_flota_que_ya_esta_dentro_no_se_ofrece_para_anotar(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
+
+        $flota = VehiculoDeFlota::create(['placa' => 'EMP001', 'tipo_vehiculo' => DatosVehiculo::CARRO]);
+        $this->estadia('EMP001', ['flota_id' => $flota->id]);
+
+        Livewire::test(Panel::class)
+            ->call('abrirFlota')
+            ->assertSee('está dentro')
+            ->call('anotarDeLaFlota', $flota->id)
+            ->assertSet('agregandoFijo', false);
+    }
+
+    #[Test]
+    public function la_pantalla_se_refresca_sola_salvo_con_un_formulario_abierto(): void
+    {
+        // La puerta también mueve vehículos ahora: quien tenga esto abierto vería un vehículo que
+        // ya se fue. Pero un refresco a media escritura le movería el sitio bajo las manos a quien
+        // está tecleando una placa.
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
+
+        $panel = Livewire::test(Panel::class);
+        $this->assertStringContainsString('wire:poll', $panel->html());
+
+        $panel->call('abrirFijo');
+        $this->assertStringNotContainsString('wire:poll', $panel->html(), 'Con el formulario abierto no se sondea.');
+
+        $panel->call('cancelarFijo');
+        $this->assertStringContainsString('wire:poll', $panel->html());
     }
 
     #[Test]
