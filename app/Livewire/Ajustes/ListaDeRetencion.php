@@ -27,7 +27,8 @@ class ListaDeRetencion extends Component
 
     public function boot(): void
     {
-        Gate::authorize('gestionar-ajustes');
+        // Para ENTRAR basta con ver; cambiar los ajustes exige «gestionar» aparte.
+        Gate::authorize('ver-ajustes');
 
         $this->servicio = app(RetencionDeDatos::class);
     }
@@ -47,6 +48,8 @@ class ListaDeRetencion extends Component
 
     public function guardar(): void
     {
+        Gate::authorize('gestionar-ajustes');
+
         $this->resetValidation();
         $huboError = false;
 

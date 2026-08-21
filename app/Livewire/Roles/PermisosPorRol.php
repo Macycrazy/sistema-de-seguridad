@@ -57,6 +57,22 @@ class PermisosPorRol extends Component
     }
 
     /**
+     * Los permisos agrupados por módulo, para pintar la pantalla con un encabezado por grupo.
+     *
+     * @return array<string, array<int, Permiso>>
+     */
+    public function porGrupo(): array
+    {
+        $grupos = [];
+
+        foreach (Permiso::cases() as $permiso) {
+            $grupos[$permiso->grupo()][] = $permiso;
+        }
+
+        return $grupos;
+    }
+
+    /**
      * Si esa casilla se puede tocar.
      *
      * «Gestionar permisos» está clavado en administrador: quitárselo cerraría esta pantalla para
@@ -65,6 +81,24 @@ class PermisosPorRol extends Component
     public function editable(Rol $rol, Permiso $permiso): bool
     {
         return ! $permiso->esIntocable();
+    }
+
+    /**
+     * El «ver» de un módulo se bloquea (marcado y sin poder tocar) cuando su «gestionar» está
+     * activo: gestionar implica ver, así que quitarle el ver a quien puede gestionar no significa
+     * nada. Se enseña marcado para que se entienda, y se deja fijo para que no confunda.
+     */
+    public function bloqueada(Rol $rol, Permiso $permiso): bool
+    {
+        $implicador = $permiso->implicadoPor();
+
+        return $implicador !== null && ($this->matriz[$rol->value][$implicador->value] ?? false);
+    }
+
+    /** Al marcar un «gestionar», su «ver» se enciende solo: gestionar implica ver. */
+    public function updatedMatriz(): void
+    {
+        $this->aplicarImplicaciones();
     }
 
     public function guardar(): void
@@ -135,6 +169,20 @@ class PermisosPorRol extends Component
         foreach (Rol::cases() as $rol) {
             foreach (Permiso::cases() as $permiso) {
                 $this->matriz[$rol->value][$permiso->value] = $this->permisos->tiene($rol, $permiso);
+            }
+        }
+    }
+
+    /** Deja marcado el «ver» de todo módulo cuyo «gestionar» esté marcado. Gestionar implica ver. */
+    protected function aplicarImplicaciones(): void
+    {
+        foreach (Rol::cases() as $rol) {
+            foreach (Permiso::cases() as $permiso) {
+                $implicador = $permiso->implicadoPor();
+
+                if ($implicador !== null && ($this->matriz[$rol->value][$implicador->value] ?? false)) {
+                    $this->matriz[$rol->value][$permiso->value] = true;
+                }
             }
         }
     }

@@ -12,7 +12,9 @@
             La estructura de unidades. Cuelga unas de otras para armar el árbol; la gente enlazada
             se agrupa por su unidad en reportes y filtros. No reescribe el texto de las fichas.
         </p>
-        <x-boton wire:click="abrirAlta">Nueva unidad</x-boton>
+        @can('gestionar-organigrama')
+            <x-boton wire:click="abrirAlta">Nueva unidad</x-boton>
+        @endcan
     </div>
 
     {{-- Alta / edición --}}
@@ -78,14 +80,18 @@
                         </td>
                         <td class="px-4 py-3 text-right tabular-nums text-slate-600">{{ $unidad->personas_count }}</td>
                         <td class="whitespace-nowrap px-4 py-3 text-right">
-                            <button wire:click="editar({{ $unidad->id }})"
-                                    class="text-sm font-semibold text-parte3 hover:underline">Editar</button>
-                            <button wire:click="activar({{ $unidad->id }}, {{ $unidad->activo ? 'false' : 'true' }})"
-                                    class="ml-4 text-sm font-semibold text-slate-500 hover:underline">
-                                {{ $unidad->activo ? 'Desactivar' : 'Reactivar' }}
-                            </button>
-                            <button wire:click="eliminar({{ $unidad->id }})"
-                                    class="ml-4 text-sm font-semibold text-alto hover:underline">Quitar</button>
+                            @can('gestionar-organigrama')
+                                <button wire:click="editar({{ $unidad->id }})"
+                                        class="text-sm font-semibold text-parte3 hover:underline">Editar</button>
+                                <button wire:click="activar({{ $unidad->id }}, {{ $unidad->activo ? 'false' : 'true' }})"
+                                        class="ml-4 text-sm font-semibold text-slate-500 hover:underline">
+                                    {{ $unidad->activo ? 'Desactivar' : 'Reactivar' }}
+                                </button>
+                                <button wire:click="eliminar({{ $unidad->id }})"
+                                        class="ml-4 text-sm font-semibold text-alto hover:underline">Quitar</button>
+                            @else
+                                <span class="text-slate-300">—</span>
+                            @endcan
                         </td>
                     </tr>
                 @empty

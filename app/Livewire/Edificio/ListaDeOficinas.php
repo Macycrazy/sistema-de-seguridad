@@ -37,7 +37,8 @@ class ListaDeOficinas extends Component
 
     public function boot(): void
     {
-        Gate::authorize('gestionar-edificio');
+        // Para ENTRAR basta con ver; lo que cambia datos exige «gestionar» aparte.
+        Gate::authorize('ver-edificio');
 
         $this->catalogo = app(CatalogoDelEdificio::class);
     }
@@ -69,8 +70,16 @@ class ListaDeOficinas extends Component
         return $deTrabajadores->merge($deOficinas)->unique()->sort()->values()->all();
     }
 
+    /** Cambiar es aparte de ver: quien solo puede ver entra, pero no toca nada. */
+    protected function exigirGestion(): void
+    {
+        Gate::authorize('gestionar-edificio');
+    }
+
     public function abrirAlta(): void
     {
+        $this->exigirGestion();
+
         $this->reset('codigo', 'nombre', 'gerencia', 'editando', 'aviso');
         $this->resetValidation();
         $this->creando = true;
@@ -78,6 +87,8 @@ class ListaDeOficinas extends Component
 
     public function editar(int $id): void
     {
+        $this->exigirGestion();
+
         $oficina = Oficina::findOrFail($id);
         $this->editando = $oficina->id;
         $this->codigo = $oficina->codigo;
@@ -96,6 +107,8 @@ class ListaDeOficinas extends Component
 
     public function guardar(): void
     {
+        $this->exigirGestion();
+
         // Al editar se conserva su orden; al crear, va al final (lo decide el servicio).
         $orden = $this->editando ? Oficina::find($this->editando)?->orden : null;
 
@@ -109,6 +122,8 @@ class ListaDeOficinas extends Component
 
     public function eliminar(int $id): void
     {
+        $this->exigirGestion();
+
         $oficina = Oficina::findOrFail($id);
         $this->catalogo->eliminar($oficina);
         app(Auditoria::class)->cambioOficinas('quitó '.$oficina->codigo);

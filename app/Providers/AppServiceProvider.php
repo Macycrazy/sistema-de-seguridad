@@ -68,14 +68,21 @@ class AppServiceProvider extends ServiceProvider
      * Lo que sigue siendo código, y a propósito, es el orden de los roles: a quién puede tocar
      * cada quien lo dice Rol::alcanza(), no esta tabla. Ver App\Usuarios\Permiso.
      */
-    /** Los permisos que hacen a alguien «de administración»: los que abren el panel de admin. */
+    /**
+     * Los permisos que hacen a alguien «de administración»: los que abren el panel de admin.
+     *
+     * Se listan los «ver» de cada módulo: como gestionar implica ver (Permiso::implicadoPor), quien
+     * pueda gestionarlo también entra por aquí, y quien solo pueda verlo también ve el panel.
+     */
     private const PERMISOS_DE_ADMIN = [
-        Permiso::GESTIONAR_PERSONAL,
-        Permiso::GESTIONAR_EDIFICIO,
-        Permiso::GESTIONAR_AJUSTES,
-        Permiso::GESTIONAR_RESPALDOS,
+        Permiso::VER_PERSONAL,
+        Permiso::VER_ORGANIGRAMA,
+        Permiso::VER_USUARIOS,
+        Permiso::VER_EDIFICIO,
+        Permiso::VER_PUESTOS,
+        Permiso::VER_AJUSTES,
         Permiso::VER_AUDITORIA,
-        Permiso::GESTIONAR_USUARIOS,
+        Permiso::GESTIONAR_RESPALDOS,
         Permiso::GESTIONAR_PERMISOS,
     ];
 

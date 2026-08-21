@@ -4,7 +4,9 @@
     @endif
 
     <div class="flex items-center justify-end gap-4">
-        <x-boton wire:click="abrirAlta">Nueva oficina</x-boton>
+        @can('gestionar-edificio')
+            <x-boton wire:click="abrirAlta">Nueva oficina</x-boton>
+        @endcan
     </div>
 
     {{-- Alta / edición --}}
@@ -58,10 +60,14 @@
                         <td class="px-4 py-3 text-slate-600">{{ $oficina->nombre ?: '—' }}</td>
                         <td class="px-4 py-3 text-slate-600">{{ $oficina->gerencia ?: '—' }}</td>
                         <td class="px-4 py-3 text-right">
-                            <button wire:click="editar({{ $oficina->id }})"
-                                    class="text-sm font-semibold text-parte3 hover:underline">Editar</button>
-                            <button wire:click="eliminar({{ $oficina->id }})"
-                                    class="ml-4 text-sm font-semibold text-alto hover:underline">Quitar</button>
+                            @can('gestionar-edificio')
+                                <button wire:click="editar({{ $oficina->id }})"
+                                        class="text-sm font-semibold text-parte3 hover:underline">Editar</button>
+                                <button wire:click="eliminar({{ $oficina->id }})"
+                                        class="ml-4 text-sm font-semibold text-alto hover:underline">Quitar</button>
+                            @else
+                                <span class="text-slate-300">—</span>
+                            @endcan
                         </td>
                     </tr>
                 @empty

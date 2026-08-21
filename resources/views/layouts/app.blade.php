@@ -91,7 +91,7 @@
                             ['ruta' => 'marcar', 'texto' => 'Marcar', 'permiso' => null],
                             ['ruta' => 'estacionamiento', 'texto' => 'Estacionamiento', 'permiso' => null],
                             ['ruta' => 'registro', 'texto' => 'Registro', 'permiso' => 'ver-registro', 'rutas' => ['registro', 'reportes', 'alertas'], 'insignia' => $alertasActivas],
-                            ['ruta' => 'visitas', 'texto' => 'Visitas', 'permiso' => 'gestionar-visitas'],
+                            ['ruta' => 'visitas', 'texto' => 'Visitas', 'permiso' => 'ver-visitas'],
                         ])->filter(fn ($m) => $puede($m['permiso']));
 
                         $administracion = collect([
@@ -174,7 +174,7 @@
                 ['ruta' => 'marcar', 'texto' => 'Marcar', 'permiso' => null, 'icono' => 'marcar'],
                 ['ruta' => 'estacionamiento', 'texto' => 'Vehículos', 'permiso' => null, 'icono' => 'estacionamiento'],
                 ['ruta' => 'registro', 'texto' => 'Registro', 'permiso' => 'ver-registro', 'icono' => 'registro', 'rutas' => ['registro', 'reportes', 'alertas'], 'insignia' => $alertasActivas],
-                ['ruta' => 'visitas', 'texto' => 'Visitas', 'permiso' => 'gestionar-visitas', 'icono' => 'visitas'],
+                ['ruta' => 'visitas', 'texto' => 'Visitas', 'permiso' => 'ver-visitas', 'icono' => 'visitas'],
                 ['ruta' => 'administracion', 'texto' => 'Admin', 'permiso' => 'ver-administracion', 'icono' => 'administracion'],
             ])->filter(fn ($t) => $puede($t['permiso']))->values();
 
