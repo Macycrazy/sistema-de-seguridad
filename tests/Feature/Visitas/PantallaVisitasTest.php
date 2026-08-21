@@ -19,17 +19,17 @@ class PantallaVisitasTest extends TestCase
     #[Test]
     public function el_vigilante_no_agenda_pero_el_supervisor_si(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::VIGILANTE]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
         $this->get(route('visitas'))->assertForbidden();
 
-        $this->actingAs(User::factory()->create(['rol' => Rol::SUPERVISOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::supervisor()]));
         $this->get(route('visitas'))->assertOk();
     }
 
     #[Test]
     public function agendar_desde_la_pantalla_la_lista_en_su_dia(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::SUPERVISOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::supervisor()]));
 
         Livewire::test(Agenda::class)
             ->call('abrirAlta')
@@ -45,7 +45,7 @@ class PantallaVisitasTest extends TestCase
     #[Test]
     public function marcar_la_llegada_desde_la_pantalla(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::SUPERVISOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::supervisor()]));
         $visita = VisitaEsperada::create(['nombre' => 'ANA', 'fecha_esperada' => CarbonImmutable::today(), 'estado' => VisitaEsperada::ESPERADA]);
 
         Livewire::test(Agenda::class)

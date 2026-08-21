@@ -9,6 +9,17 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 abstract class TestCase extends BaseTestCase
 {
     /**
+     * Cada prueba arranca con la caché de roles en blanco. RefreshDatabase revierte la base pero no
+     * la memoria estática de Rol, así que un rol creado en una prueba se colaría en la siguiente.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Rol::olvidar();
+    }
+
+    /**
      * Abre una sesión para la prueba.
      *
      * Desde la parte 3, ninguna pantalla del sistema se ve sin haber entrado. Las pruebas que no
@@ -21,9 +32,9 @@ abstract class TestCase extends BaseTestCase
      * El usuario NO se guarda en la base, a propósito: así esto sirve igual en las pruebas que no
      * montan tablas, como las del registro.
      */
-    protected function entrandoComo(Rol $rol = Rol::ADMINISTRADOR): User
+    protected function entrandoComo(?Rol $rol = null): User
     {
-        $usuario = User::factory()->make(['rol' => $rol]);
+        $usuario = User::factory()->make(['rol' => $rol ?? Rol::administrador()]);
 
         $this->actingAs($usuario);
 

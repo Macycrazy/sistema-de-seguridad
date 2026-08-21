@@ -18,17 +18,17 @@ class PantallaOficinasTest extends TestCase
     #[Test]
     public function solo_quien_tiene_el_permiso_abre_la_pantalla(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::VIGILANTE]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
         $this->get(route('edificio'))->assertForbidden();
 
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
         $this->get(route('edificio'))->assertOk();
     }
 
     #[Test]
     public function agregar_una_oficina_la_deja_en_el_catalogo(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
 
         Livewire::test(ListaDeOficinas::class)
             ->set('codigo', '6-1')
@@ -42,7 +42,7 @@ class PantallaOficinasTest extends TestCase
     #[Test]
     public function asocia_una_gerencia_al_piso_en_mayusculas(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
 
         Livewire::test(ListaDeOficinas::class)
             ->set('codigo', '4-1')
@@ -57,7 +57,7 @@ class PantallaOficinasTest extends TestCase
     #[Test]
     public function agregar_sin_codigo_muestra_el_error(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
 
         Livewire::test(ListaDeOficinas::class)
             ->set('codigo', '')
@@ -68,7 +68,7 @@ class PantallaOficinasTest extends TestCase
     #[Test]
     public function quitar_una_oficina_la_borra(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
         $oficina = Oficina::create(['codigo' => 'X-1', 'orden' => 99]);
 
         Livewire::test(ListaDeOficinas::class)

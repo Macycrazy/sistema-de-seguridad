@@ -99,7 +99,7 @@ class VehiculosFijosTest extends TestCase
     #[Test]
     public function desde_el_panel_se_anota_y_se_saca_un_fijo(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::VIGILANTE]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
         $puesto = Puesto::create(['codigo' => 'A-1', 'orden' => 1]);
 
         Livewire::test(Panel::class)

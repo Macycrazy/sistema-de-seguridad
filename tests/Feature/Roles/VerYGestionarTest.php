@@ -28,25 +28,25 @@ class VerYGestionarTest extends TestCase
     /** Deja a un rol EXACTAMENTE con los permisos que se le pasen. */
     private function soloConEstos(Rol $rol, Permiso ...$permisos): void
     {
-        $admin = User::factory()->create(['rol' => Rol::ADMINISTRADOR]);
+        $admin = User::factory()->create(['rol' => Rol::administrador()]);
         $this->permisos()->guardar($rol, $permisos, $admin);
     }
 
     #[Test]
     public function gestionar_implica_ver(): void
     {
-        $this->soloConEstos(Rol::SUPERVISOR, Permiso::GESTIONAR_PERSONAL);
+        $this->soloConEstos(Rol::supervisor(), Permiso::GESTIONAR_PERSONAL);
 
         // No se le marcó «ver-personal», pero al poder gestionar, puede ver.
-        $this->assertTrue($this->permisos()->tiene(Rol::SUPERVISOR, Permiso::VER_PERSONAL));
+        $this->assertTrue($this->permisos()->tiene(Rol::supervisor(), Permiso::VER_PERSONAL));
     }
 
     #[Test]
     public function con_solo_ver_entra_a_la_pantalla(): void
     {
-        $this->soloConEstos(Rol::SUPERVISOR, Permiso::VER_PERSONAL);
+        $this->soloConEstos(Rol::supervisor(), Permiso::VER_PERSONAL);
 
-        $this->actingAs(User::factory()->create(['rol' => Rol::SUPERVISOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::supervisor()]));
 
         $this->get(route('trabajadores'))->assertOk();
     }
@@ -54,9 +54,9 @@ class VerYGestionarTest extends TestCase
     #[Test]
     public function con_solo_ver_no_puede_gestionar(): void
     {
-        $this->soloConEstos(Rol::SUPERVISOR, Permiso::VER_PERSONAL);
+        $this->soloConEstos(Rol::supervisor(), Permiso::VER_PERSONAL);
 
-        $this->actingAs(User::factory()->create(['rol' => Rol::SUPERVISOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::supervisor()]));
 
         Livewire::test(ListaDeTrabajadores::class)
             ->set('cedula', '12.345.678')
@@ -71,9 +71,9 @@ class VerYGestionarTest extends TestCase
     #[Test]
     public function sin_ver_no_entra(): void
     {
-        $this->soloConEstos(Rol::SUPERVISOR); // sin ningún permiso de personal
+        $this->soloConEstos(Rol::supervisor()); // sin ningún permiso de personal
 
-        $this->actingAs(User::factory()->create(['rol' => Rol::SUPERVISOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::supervisor()]));
 
         $this->get(route('trabajadores'))->assertForbidden();
     }
@@ -81,9 +81,9 @@ class VerYGestionarTest extends TestCase
     #[Test]
     public function con_gestionar_entra_y_cambia(): void
     {
-        $this->soloConEstos(Rol::SUPERVISOR, Permiso::GESTIONAR_PERSONAL);
+        $this->soloConEstos(Rol::supervisor(), Permiso::GESTIONAR_PERSONAL);
 
-        $this->actingAs(User::factory()->create(['rol' => Rol::SUPERVISOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::supervisor()]));
 
         $this->get(route('trabajadores'))->assertOk();
 

@@ -19,17 +19,17 @@ class PantallaOrganigramaTest extends TestCase
     #[Test]
     public function solo_quien_gestiona_personal_entra(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::SUPERVISOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::supervisor()]));
         $this->get(route('organigrama'))->assertForbidden();
 
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
         $this->get(route('organigrama'))->assertOk();
     }
 
     #[Test]
     public function crear_una_unidad_la_lista_y_deja_rastro(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
 
         Livewire::test(Arbol::class)
             ->call('abrirAlta')
@@ -45,7 +45,7 @@ class PantallaOrganigramaTest extends TestCase
     #[Test]
     public function un_nombre_vacio_no_crea_nada_y_pinta_el_error(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
 
         Livewire::test(Arbol::class)
             ->call('abrirAlta')

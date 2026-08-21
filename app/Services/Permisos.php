@@ -80,7 +80,7 @@ class Permisos
          * más, venga lo que venga en la petición. Quitárselo cerraría esta pantalla para siempre;
          * dárselo a otro rol le dejaría concederse a sí mismo todo lo demás en dos clics.
          */
-        if ($rol === Rol::ADMINISTRADOR) {
+        if ($rol === Rol::administrador()) {
             $valores->push(Permiso::GESTIONAR_PERMISOS);
         }
 
@@ -106,10 +106,13 @@ class Permisos
         $this->olvidar();
     }
 
-    /** Vuelve a dejar los permisos como venían de fábrica. */
+    /**
+     * Vuelve a dejar los permisos como venían de fábrica. Solo toca los tres roles base: los roles
+     * creados por el administrador no tenían valor «de fábrica», así que se quedan como están.
+     */
     public function restablecer(User $quienLoHace): void
     {
-        foreach (Rol::cases() as $rol) {
+        foreach (Rol::base() as $rol) {
             $this->guardar(
                 $rol,
                 array_values(array_filter(

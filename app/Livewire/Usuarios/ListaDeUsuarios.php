@@ -80,7 +80,7 @@ class ListaDeUsuarios extends Component
 
     public function mount(): void
     {
-        $this->rol = Rol::VIGILANTE->value;
+        $this->rol = Rol::vigilante()->value;
     }
 
     /** @return Collection<int, User> */
@@ -403,7 +403,7 @@ class ListaDeUsuarios extends Component
         $this->nombre = '';
         $this->cedula = '';
         $this->clave = '';
-        $this->rol = Rol::VIGILANTE->value;
+        $this->rol = Rol::vigilante()->value;
         $this->editandoId = null;
         $this->resetErrorBag();
     }

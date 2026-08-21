@@ -46,7 +46,7 @@ class GestionDeUsuariosTest extends TestCase
             ->set('usuario', 'jmartinez')
             ->set('nombre', 'José Martínez Rojas')
             ->set('cedula', 'V-12.345.678')
-            ->set('rol', Rol::VIGILANTE->value)
+            ->set('rol', Rol::vigilante()->value)
             ->set('clave', self::CLAVE)
             ->call('crear')
             ->assertHasNoErrors();
@@ -55,7 +55,7 @@ class GestionDeUsuariosTest extends TestCase
 
         $this->assertSame('José Martínez Rojas', $creado->nombre);
         $this->assertSame('12345678', $creado->cedula);
-        $this->assertSame(Rol::VIGILANTE, $creado->rol);
+        $this->assertSame(Rol::vigilante(), $creado->rol);
         $this->assertTrue($creado->activo);
         $this->assertTrue(Hash::check(self::CLAVE, $creado->password));
     }
@@ -73,7 +73,7 @@ class GestionDeUsuariosTest extends TestCase
         Livewire::test(ListaDeUsuarios::class)
             ->set('usuario', 'jmartinez')
             ->set('nombre', 'José Martínez Rojas')
-            ->set('rol', Rol::VIGILANTE->value)
+            ->set('rol', Rol::vigilante()->value)
             ->set('clave', self::CLAVE)
             ->call('crear')
             ->assertHasNoErrors();
@@ -105,7 +105,7 @@ class GestionDeUsuariosTest extends TestCase
             ->call('abrirFormulario')
             ->set('usuario', 'jmartinez')
             ->set('nombre', 'José Martínez Rojas')
-            ->set('rol', Rol::VIGILANTE->value)
+            ->set('rol', Rol::vigilante()->value)
             ->set('clave', self::CLAVE)
             ->call('crear')
             ->assertDontSee(self::CLAVE)
@@ -125,7 +125,7 @@ class GestionDeUsuariosTest extends TestCase
         Livewire::test(ListaDeUsuarios::class)
             ->set('usuario', 'jmartinez')
             ->set('nombre', 'José Martínez Rojas')
-            ->set('rol', Rol::VIGILANTE->value)
+            ->set('rol', Rol::vigilante()->value)
             ->call('crear')
             ->assertHasErrors('clave');
 
@@ -140,7 +140,7 @@ class GestionDeUsuariosTest extends TestCase
         Livewire::test(ListaDeUsuarios::class)
             ->set('usuario', 'jmartinez')
             ->set('nombre', 'José Martínez Rojas')
-            ->set('rol', Rol::VIGILANTE->value)
+            ->set('rol', Rol::vigilante()->value)
             ->set('clave', 'corta')
             ->call('crear')
             ->assertHasErrors('clave');
@@ -197,7 +197,7 @@ class GestionDeUsuariosTest extends TestCase
         Livewire::test(ListaDeUsuarios::class)
             ->set('usuario', 'jmartinez')
             ->set('nombre', 'Otro José')
-            ->set('rol', Rol::VIGILANTE->value)
+            ->set('rol', Rol::vigilante()->value)
             ->set('clave', self::CLAVE)
             ->call('crear')
             ->assertHasErrors('usuario');
@@ -291,8 +291,8 @@ class GestionDeUsuariosTest extends TestCase
         $admin = $this->administrador();
         $gestion = app(GestionDeUsuarios::class);
 
-        $gestion->crear('uno', 'Uno', '12345678', Rol::VIGILANTE, self::CLAVE, $admin);
-        $dos = $gestion->crear('dos', 'Dos', '12345678', Rol::VIGILANTE, self::CLAVE, $admin);
+        $gestion->crear('uno', 'Uno', '12345678', Rol::vigilante(), self::CLAVE, $admin);
+        $dos = $gestion->crear('dos', 'Dos', '12345678', Rol::vigilante(), self::CLAVE, $admin);
 
         $this->assertSame('12345678', $dos->cedula);
         $this->assertSame(2, User::where('cedula', '12345678')->count());
@@ -302,7 +302,7 @@ class GestionDeUsuariosTest extends TestCase
     public function el_administrador_edita_los_datos_de_un_usuario(): void
     {
         $this->administrador();
-        $usuario = User::factory()->create(['usuario' => 'viejo', 'nombre' => 'Nombre Viejo', 'rol' => Rol::VIGILANTE]);
+        $usuario = User::factory()->create(['usuario' => 'viejo', 'nombre' => 'Nombre Viejo', 'rol' => Rol::vigilante()]);
 
         Livewire::test(ListaDeUsuarios::class)
             ->call('editar', $usuario->id)
@@ -321,8 +321,8 @@ class GestionDeUsuariosTest extends TestCase
     public function al_editar_no_puede_tomar_el_usuario_de_otro(): void
     {
         $this->administrador();
-        User::factory()->create(['usuario' => 'ocupado', 'rol' => Rol::VIGILANTE]);
-        $usuario = User::factory()->create(['usuario' => 'libre', 'rol' => Rol::VIGILANTE]);
+        User::factory()->create(['usuario' => 'ocupado', 'rol' => Rol::vigilante()]);
+        $usuario = User::factory()->create(['usuario' => 'libre', 'rol' => Rol::vigilante()]);
 
         Livewire::test(ListaDeUsuarios::class)
             ->call('editar', $usuario->id)
@@ -337,7 +337,7 @@ class GestionDeUsuariosTest extends TestCase
     public function el_administrador_borra_a_un_usuario(): void
     {
         $this->administrador();
-        $usuario = User::factory()->create(['rol' => Rol::VIGILANTE]);
+        $usuario = User::factory()->create(['rol' => Rol::vigilante()]);
 
         Livewire::test(ListaDeUsuarios::class)
             ->call('eliminar', $usuario->id)

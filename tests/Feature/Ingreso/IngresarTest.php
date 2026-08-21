@@ -58,7 +58,7 @@ class IngresarTest extends TestCase
     #[Test]
     public function con_el_usuario_y_la_clave_buenos_se_entra(): void
     {
-        $usuario = $this->usuario(['usuario' => 'vigilante', 'rol' => Rol::VIGILANTE]);
+        $usuario = $this->usuario(['usuario' => 'vigilante', 'rol' => Rol::vigilante()]);
 
         Livewire::test(Ingresar::class)
             ->set('usuario', 'vigilante')
@@ -74,7 +74,7 @@ class IngresarTest extends TestCase
     {
         // El usuario se guarda en minúsculas; el teclado del teléfono capitaliza la primera letra
         // y a veces deja un espacio. Aun así se entra: el login normaliza lo tecleado.
-        $usuario = $this->usuario(['usuario' => 'j.perez', 'rol' => Rol::VIGILANTE]);
+        $usuario = $this->usuario(['usuario' => 'j.perez', 'rol' => Rol::vigilante()]);
 
         Livewire::test(Ingresar::class)
             ->set('usuario', '  J.Perez ')
@@ -88,7 +88,7 @@ class IngresarTest extends TestCase
     #[Test]
     public function el_vigilante_cae_en_la_pantalla_que_va_a_usar_todo_el_turno(): void
     {
-        $this->usuario(['usuario' => 'vigilante', 'rol' => Rol::VIGILANTE]);
+        $this->usuario(['usuario' => 'vigilante', 'rol' => Rol::vigilante()]);
 
         Livewire::test(Ingresar::class)
             ->set('usuario', 'vigilante')
@@ -100,7 +100,7 @@ class IngresarTest extends TestCase
     #[Test]
     public function los_demas_caen_en_el_inicio(): void
     {
-        $this->usuario(['usuario' => 'jefa', 'rol' => Rol::ADMINISTRADOR]);
+        $this->usuario(['usuario' => 'jefa', 'rol' => Rol::administrador()]);
 
         Livewire::test(Ingresar::class)
             ->set('usuario', 'jefa')

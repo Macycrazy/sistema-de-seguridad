@@ -292,7 +292,7 @@ class GestionDeUsuarios
 
     public function administradoresActivos(): int
     {
-        return User::query()->activos()->where('rol', Rol::ADMINISTRADOR)->count();
+        return User::query()->activos()->where('rol', Rol::administrador())->count();
     }
 
     /**

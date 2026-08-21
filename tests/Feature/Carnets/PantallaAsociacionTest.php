@@ -18,10 +18,10 @@ class PantallaAsociacionTest extends TestCase
     #[Test]
     public function solo_quien_gestiona_ajustes_entra(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::SUPERVISOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::supervisor()]));
         $this->get(route('asociacion'))->assertForbidden();
 
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
         $this->get(route('asociacion'))->assertOk();
     }
 
@@ -29,7 +29,7 @@ class PantallaAsociacionTest extends TestCase
     public function el_boton_prueba_la_conexion(): void
     {
         Http::fake(['*' => Http::response('', 200)]);
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
 
         Livewire::test(Carnets::class)
             ->set('url', 'http://172.21.140.245:8000')
@@ -40,7 +40,7 @@ class PantallaAsociacionTest extends TestCase
     #[Test]
     public function verificar_sin_qr_pide_pegarlo(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
 
         Livewire::test(Carnets::class)
             ->set('url', 'http://carnets:8000')
