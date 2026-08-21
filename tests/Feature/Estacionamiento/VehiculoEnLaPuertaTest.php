@@ -52,10 +52,60 @@ class VehiculoEnLaPuertaTest extends TestCase
         Livewire::test(Marcar::class)
             ->set('cedula', '12345678')
             ->call('buscar')
+            ->assertSee('A pie')                                   // es una opción visible
+            ->assertSet('vehiculoEntrada', Marcar::VEHICULO_A_PIE)  // y viene elegida
             ->call('marcarEntrada')
             ->assertHasNoErrors();
 
         $this->assertSame(0, app(Estacionamiento::class)->cuantosDentro());
+    }
+
+    #[Test]
+    public function el_boton_de_a_pie_deshace_un_vehiculo_elegido_por_error(): void
+    {
+        // Quien toca el carro sin querer tiene que poder volver atrás sin recargar la pantalla.
+        $ana = $this->trabajador();
+        Vehiculo::create(['persona_id' => $ana->id, 'tipo' => DatosVehiculo::CARRO, 'placa' => 'AB123CD']);
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('elegirVehiculo', 'AB123CD')
+            ->assertSet('vehiculoEntrada', 'AB123CD')
+            ->call('elegirVehiculo', Marcar::VEHICULO_A_PIE)
+            ->assertSet('vehiculoEntrada', Marcar::VEHICULO_A_PIE)
+            ->call('marcarEntrada')
+            ->assertHasNoErrors();
+
+        $this->assertSame(0, app(Estacionamiento::class)->cuantosDentro());
+    }
+
+    #[Test]
+    public function el_boton_de_salir_a_pie_desmarca_el_vehiculo_que_se_iba_a_llevar(): void
+    {
+        $this->trabajador();
+
+        $componente = Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('elegirVehiculo', Marcar::VEHICULO_OTRO)
+            ->set('placaNueva', 'AB123CD')
+            ->call('marcarEntrada');
+
+        $estadia = VehiculoFijo::where('placa', 'AB123CD')->firstOrFail();
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
+
+        $componente
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('alternarVehiculoSalida', $estadia->id)
+            ->assertSet('vehiculosSalida', [$estadia->id])
+            ->call('salirAPie')
+            ->assertSet('vehiculosSalida', [])
+            ->call('marcarSalida')
+            ->assertHasNoErrors();
+
+        $this->assertNull($estadia->fresh()->salio_en, 'El carro se queda dentro.');
     }
 
     #[Test]

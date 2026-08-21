@@ -33,6 +33,16 @@ class Marcar extends Component
     /** Lo que vale «vehiculoEntrada» cuando la placa se teclea en vez de elegirse de su ficha. */
     public const VEHICULO_OTRO = 'otro';
 
+    /**
+     * Entrar a pie: sin vehículo. Es lo de por omisión —la mayoría llega caminando— pero tiene su
+     * propio botón igual que los demás.
+     *
+     * No basta con dejarlo sin elegir. Al lado de unos botones con placas, «no toques nada» no se
+     * lee como una opción: se lee como que falta algo por hacer, y quien no está seguro acaba
+     * tocando cualquier cosa. Con su botón, entrar a pie es una elección que se ve tomada.
+     */
+    public const VEHICULO_A_PIE = '';
+
     /** Lo único que el vigilante teclea. */
     public string $cedula = '';
 
@@ -653,12 +663,19 @@ class Marcar extends Component
         return $persona ? app(VehiculoEnLaPuerta::class)->dentroASuNombre($persona) : collect();
     }
 
-    /** Elegir con qué entra: uno de los suyos, «otro» para teclear, o nada para entrar a pie. */
+    /** Elegir con qué entra: a pie, uno de los suyos, u «otro» para teclear una placa. */
     public function elegirVehiculo(string $cual): void
     {
-        // Volver a tocar el que ya estaba puesto lo quita: así se deshace sin buscar un botón de
-        // deshacer, que es como se comporta todo lo demás que se elige tocando.
-        $this->vehiculoEntrada = $this->vehiculoEntrada === $cual ? '' : $cual;
+        // Volver a tocar el que ya estaba puesto vuelve a «a pie»: así se deshace sin buscar un
+        // botón de deshacer, que es como se comporta todo lo demás que se elige tocando.
+        $this->vehiculoEntrada = $this->vehiculoEntrada === $cual ? self::VEHICULO_A_PIE : $cual;
+        $this->resetValidation();
+    }
+
+    /** Sale a pie: deja sin marcar todos sus vehículos, que se quedan dentro. */
+    public function salirAPie(): void
+    {
+        $this->vehiculosSalida = [];
         $this->resetValidation();
     }
 
