@@ -39,6 +39,31 @@ final class VehiculoEnLaPuerta
     }
 
     /**
+     * De sus vehículos, cuáles están dentro ahora mismo.
+     *
+     * Se llega en el carro y se sale a pie —a almorzar, a un trámite— y el carro se queda. Al
+     * volver, la puerta seguía ofreciendo ese carro como si se pudiera entrar otra vez con él. No
+     * se puede: ya está aquí, y anotarlo de nuevo lo pondría dentro dos veces.
+     *
+     * @return Collection<int, string> las placas
+     */
+    public function suyosQueEstanDentro(Persona $persona): Collection
+    {
+        $placas = $this->suyos($persona)->pluck('placa');
+
+        if ($placas->isEmpty()) {
+            return collect();
+        }
+
+        return VehiculoFijo::query()
+            ->abiertos()
+            ->whereIn('placa', $placas)
+            ->pluck('placa')
+            ->unique()
+            ->values();
+    }
+
+    /**
      * Los vehículos que están DENTRO y que metió esta persona: los que se le ofrecen de un toque.
      *
      * @return Collection<int, VehiculoFijo>

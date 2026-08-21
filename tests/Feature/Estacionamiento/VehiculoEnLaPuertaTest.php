@@ -454,6 +454,53 @@ class VehiculoEnLaPuertaTest extends TestCase
     }
 
     #[Test]
+    public function el_carro_que_se_quedo_aparcado_no_se_ofrece_para_volver_a_entrar_con_el(): void
+    {
+        // Se llega en el carro y se sale a pie —a almorzar, a un trámite— y el carro se queda. Al
+        // volver, la puerta lo seguía ofreciendo como si se pudiera entrar otra vez con él.
+        $ana = $this->trabajador();
+        Vehiculo::create(['persona_id' => $ana->id, 'tipo' => DatosVehiculo::CARRO, 'placa' => 'AB123CD']);
+
+        VehiculoFijo::create([
+            'placa' => 'AB123CD',
+            'tipo_vehiculo' => DatosVehiculo::CARRO,
+            'entro_en' => now()->subHours(4),
+            'conductor_id' => $ana->id,
+        ]);
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSee('ya está dentro')
+            ->assertSet('susPlacasDentro', ['AB123CD']);
+    }
+
+    #[Test]
+    public function si_aun_asi_se_intenta_entrar_con_el_carro_que_ya_esta_dentro_no_se_traga(): void
+    {
+        // La pantalla lo apaga, pero la regla vive en el servidor: una petición a mano no puede
+        // meter el mismo carro dos veces.
+        $ana = $this->trabajador();
+
+        VehiculoFijo::create([
+            'placa' => 'AB123CD',
+            'tipo_vehiculo' => DatosVehiculo::CARRO,
+            'entro_en' => now()->subHours(4),
+            'conductor_id' => $ana->id,
+        ]);
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('elegirVehiculo', Marcar::VEHICULO_OTRO)
+            ->set('placaNueva', 'AB123CD')
+            ->call('marcarEntrada')
+            ->assertHasErrors();
+
+        $this->assertSame(1, VehiculoFijo::abiertos()->where('placa', 'AB123CD')->count());
+    }
+
+    #[Test]
     public function el_mismo_vehiculo_no_puede_entrar_dos_veces(): void
     {
         $ana = $this->trabajador();

@@ -392,6 +392,7 @@ class Marcar extends Component
             unset(
                 $this->persona, $this->sugerido, $this->esperaHasta, $this->esperaSalidaHasta,
                 $this->motivoEspera, $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
+                $this->susPlacasDentro,
                 $this->flotaParaEntrar, $this->hayFlotaCargada,
             );
 
@@ -407,6 +408,7 @@ class Marcar extends Component
         unset(
             $this->persona, $this->sugerido, $this->esperaHasta, $this->esperaSalidaHasta,
             $this->motivoEspera, $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
+            $this->susPlacasDentro,
             $this->flotaParaEntrar, $this->hayFlotaCargada,
         );
 
@@ -627,6 +629,7 @@ class Marcar extends Component
         unset(
             $this->persona, $this->sugerido, $this->esperaHasta, $this->esperaSalidaHasta,
             $this->motivoEspera, $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
+            $this->susPlacasDentro,
             $this->flotaParaEntrar, $this->hayFlotaCargada,
         );
     }
@@ -671,6 +674,19 @@ class Marcar extends Component
         $persona = $this->persona();
 
         return $persona ? app(VehiculoEnLaPuerta::class)->suyos($persona) : collect();
+    }
+
+    /**
+     * De sus vehículos, cuáles están ya dentro: no se puede volver a entrar con ellos.
+     *
+     * @return list<string>
+     */
+    #[Computed]
+    public function susPlacasDentro(): array
+    {
+        $persona = $this->persona();
+
+        return $persona ? app(VehiculoEnLaPuerta::class)->suyosQueEstanDentro($persona)->all() : [];
     }
 
     /**
@@ -961,6 +977,7 @@ class Marcar extends Component
             $this->persona, $this->sugerido, $this->esperaHasta,
             $this->esperaSalidaHasta, $this->dentro, $this->dentroPorTipo,
             $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
+            $this->susPlacasDentro,
             $this->flotaParaEntrar, $this->hayFlotaCargada,
         );
     }

@@ -536,16 +536,29 @@
                                 A pie
                             </button>
 
-                            {{-- Los suyos: un toque y ya está anotado a su nombre. --}}
+                            {{-- Los suyos: un toque y ya está anotado a su nombre.
+
+                                 El que ya está aparcado dentro no se ofrece: se llega en el carro
+                                 y se sale a pie, y al volver la pantalla lo seguía ofreciendo como
+                                 si se pudiera entrar otra vez con él. Se enseña apagado y no se
+                                 esconde, para que se vea dónde está en vez de desaparecer. --}}
                             @foreach ($this->susVehiculos as $suyo)
-                                <button type="button" wire:click="elegirVehiculo('{{ $suyo->placa }}')"
-                                        class="flex items-center gap-2 rounded border px-3 py-2 text-sm transition
-                                               {{ $vehiculoEntrada === $suyo->placa
-                                                  ? 'border-parte1 bg-parte1-suave font-semibold text-parte1'
-                                                  : 'border-slate-300 text-slate-600 hover:bg-slate-50' }}">
-                                    <x-etiqueta :tipo="$suyo->tipo" tamano="chico" />
-                                    <span class="font-mono font-semibold tracking-wider">{{ $suyo->placa }}</span>
-                                </button>
+                                @if (in_array($suyo->placa, $this->susPlacasDentro, true))
+                                    <span class="flex cursor-not-allowed items-center gap-2 rounded border border-dashed border-slate-200 px-3 py-2 text-sm text-slate-400"
+                                          title="Ya está aparcado dentro: no se puede entrar otra vez con él.">
+                                        <span class="font-mono font-semibold tracking-wider line-through">{{ $suyo->placa }}</span>
+                                        <span class="font-mono text-[10px] uppercase tracking-widest">ya está dentro</span>
+                                    </span>
+                                @else
+                                    <button type="button" wire:click="elegirVehiculo('{{ $suyo->placa }}')"
+                                            class="flex items-center gap-2 rounded border px-3 py-2 text-sm transition
+                                                   {{ $vehiculoEntrada === $suyo->placa
+                                                      ? 'border-parte1 bg-parte1-suave font-semibold text-parte1'
+                                                      : 'border-slate-300 text-slate-600 hover:bg-slate-50' }}">
+                                        <x-etiqueta :tipo="$suyo->tipo" tamano="chico" />
+                                        <span class="font-mono font-semibold tracking-wider">{{ $suyo->placa }}</span>
+                                    </button>
+                                @endif
                             @endforeach
 
                             <button type="button" wire:click="elegirVehiculo('otro')"
