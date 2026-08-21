@@ -34,6 +34,25 @@ class VehiculosFijosTest extends TestCase
     }
 
     #[Test]
+    public function se_anota_un_vehiculo_sin_puesto_y_se_le_asigna_despues(): void
+    {
+        // En la puerta del estacionamiento se anota el vehículo al entrar, sin saber aún la plaza.
+        $fijo = app(VehiculosFijos::class)->registrar('AB123CD', DatosVehiculo::CARRO, null, conductorNombre: 'Ana');
+
+        $this->assertNull($fijo->puesto_id);
+        $this->assertDatabaseHas('vehiculos_fijos', ['placa' => 'AB123CD', 'puesto_id' => null, 'salio_en' => null]);
+
+        // Ya está dentro (cuenta), aunque todavía sin plaza.
+        $this->assertSame(1, app(Estacionamiento::class)->cuantosDentro());
+
+        // Luego, quien está adentro le pone el puesto.
+        $puesto = Puesto::create(['codigo' => 'A-1', 'orden' => 1]);
+        app(Estacionamiento::class)->asignarPuesto($fijo->id, $puesto->id);
+
+        $this->assertSame($puesto->id, $fijo->fresh()->puesto_id);
+    }
+
+    #[Test]
     public function un_fijo_ocupa_su_puesto_para_todos(): void
     {
         $a1 = Puesto::create(['codigo' => 'A-1', 'orden' => 1]);
@@ -57,19 +76,12 @@ class VehiculosFijosTest extends TestCase
     }
 
     #[Test]
-    public function sin_placa_o_sin_puesto_no_se_anota(): void
+    public function sin_placa_no_se_anota(): void
     {
         $puesto = Puesto::create(['codigo' => 'A-1', 'orden' => 1]);
 
-        try {
-            app(VehiculosFijos::class)->registrar('   ', DatosVehiculo::CARRO, $puesto->id);
-            $this->fail('Debió exigir la placa.');
-        } catch (ValidationException $e) {
-            $this->assertArrayHasKey('placaFija', $e->errors());
-        }
-
         $this->expectException(ValidationException::class);
-        app(VehiculosFijos::class)->registrar('AB123CD', DatosVehiculo::CARRO, null);
+        app(VehiculosFijos::class)->registrar('   ', DatosVehiculo::CARRO, $puesto->id);
     }
 
     #[Test]
