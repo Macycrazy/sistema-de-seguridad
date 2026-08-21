@@ -172,6 +172,58 @@
         </table>
     </div>
 
+    {{-- Lo que ha hecho esa placa: no solo si está dentro ahora, sino todas las veces que ha
+         estado, con quién entró, con quién salió y quién lo dejó pasar. Solo sale al buscar. --}}
+    @if ($this->historialDePlaca->isNotEmpty())
+        <div class="mt-4">
+            <p class="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">
+                Historial de «{{ $busqueda }}»
+            </p>
+
+            <div class="mt-2 overflow-x-auto rounded border border-slate-200 bg-white shadow-sm">
+                <table class="w-full min-w-[48rem] text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-200 text-left font-mono text-xs uppercase tracking-widest text-slate-500">
+                            <th class="px-4 py-3 font-semibold">Placa</th>
+                            <th class="px-4 py-3 font-semibold">Entró</th>
+                            <th class="px-4 py-3 font-semibold">Con</th>
+                            <th class="px-4 py-3 font-semibold">Salió</th>
+                            <th class="px-4 py-3 font-semibold">Con</th>
+                            <th class="px-4 py-3 font-semibold">Puesto</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @foreach ($this->historialDePlaca as $h)
+                            <tr wire:key="placa-{{ $loop->index }}">
+                                <td class="px-4 py-3 font-mono font-bold tracking-wider text-slate-900">{{ $h->placa }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-500">
+                                    {{ $h->entro_en->translatedFormat('D j M · g:i a') }}
+                                    @if ($h->entroPor)
+                                        <span class="block text-slate-400">por {{ $h->entroPor }}</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 text-slate-600">{{ $h->entroCon ?: '—' }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-500">
+                                    @if ($h->dentro)
+                                        <x-etiqueta tipo="entrada" tamano="chico" />
+                                        <span class="ml-1 text-slate-400">sigue dentro</span>
+                                    @else
+                                        {{ $h->salio_en->translatedFormat('D j M · g:i a') }}
+                                        @if ($h->salioPor)
+                                            <span class="block text-slate-400">por {{ $h->salioPor }}</span>
+                                        @endif
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 text-slate-600">{{ $h->dentro ? '—' : ($h->salioCon ?: '—') }}</td>
+                                <td class="px-4 py-3 font-mono font-semibold text-slate-700">{{ $h->puesto ?: '—' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+
     {{-- Anotar un vehículo (de la flota o a mano, con conductor y puesto) y gestionar la flota. --}}
     @if ($this->hayPuestos)
         @if ($gestionandoFlota)
@@ -252,6 +304,21 @@
         </button>
 
         @if ($verHistorial)
+            {{-- Qué día se mira. Empieza en hoy; el botón vuelve a hoy sin pelear con el calendario. --}}
+            <div class="mt-3 flex flex-wrap items-end gap-3">
+                <div class="w-48">
+                    <x-campo etiqueta="Día" nombre="fechaHistorial" type="date" wire:model.live="fechaHistorial" />
+                </div>
+                @unless ($this->historialEsHoy())
+                    <div class="pb-1.5">
+                        <x-boton type="button" variante="secundario" tamano="chico" wire:click="verHistorialDeHoy">Ver hoy</x-boton>
+                    </div>
+                @endunless
+                <p class="pb-2.5 text-sm text-slate-500">
+                    Qué vehículos entraron y salieron ese día, y con quién.
+                </p>
+            </div>
+
             <div class="mt-3 overflow-x-auto rounded border border-slate-200 bg-white shadow-sm">
                 <table class="w-full min-w-[40rem] text-sm">
                     <thead>
@@ -261,6 +328,7 @@
                             <th class="px-4 py-3 font-semibold">Placa</th>
                             <th class="px-4 py-3 font-semibold">Vehículo</th>
                             <th class="px-4 py-3 font-semibold">Conductor</th>
+                            <th class="px-4 py-3 font-semibold">Registrado por</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -271,9 +339,18 @@
                                 <td class="px-4 py-3 font-mono font-bold tracking-wider text-slate-900">{{ $m->placa ?: '—' }}</td>
                                 <td class="px-4 py-3 text-slate-600">{{ $m->vehiculo->etiquetaTipo() }} {{ trim(($m->marca ?? '').' '.($m->color ?? '')) }}</td>
                                 <td class="px-4 py-3 text-slate-600">{{ $m->conductor ?: '—' }}</td>
+                                {{-- Quién lo dejó entrar o salir, que no es lo mismo que a quién se
+                                     le entregó el vehículo. --}}
+                                <td class="px-4 py-3 font-mono text-xs text-slate-500">{{ $m->registradoPor ?: '—' }}</td>
                             </tr>
                         @empty
-                            <x-tabla-vacia :columnas="5">Hoy no ha entrado ni salido ningún vehículo.</x-tabla-vacia>
+                            <x-tabla-vacia :columnas="6">
+                                @if ($this->historialEsHoy())
+                                    Hoy no ha entrado ni salido ningún vehículo.
+                                @else
+                                    Ese día no entró ni salió ningún vehículo.
+                                @endif
+                            </x-tabla-vacia>
                         @endforelse
                     </tbody>
                 </table>
@@ -324,7 +401,6 @@
                                     </td>
                                     <td class="px-4 py-3 text-slate-600">
                                         {{ $r->quien }}
-                                        @if ($r->origen === 'fijo')<span class="ml-1 font-mono text-xs text-slate-400">fijo</span>@endif
                                     </td>
                                     <td class="whitespace-nowrap px-4 py-3 text-right font-mono text-xs text-slate-500">{{ $r->entro_en->translatedFormat('D j M · g:i a') }}</td>
                                 </tr>

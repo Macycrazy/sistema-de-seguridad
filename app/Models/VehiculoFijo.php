@@ -30,6 +30,9 @@ class VehiculoFijo extends Model
         'salida_conductor_id',
         'salida_conductor_nombre',
         'usuario_id',
+        // Desde qué cuenta se dio por entregado el vehículo. No es el conductor: ese es a quién se
+        // le entregó. Ver la migración 2026_08_23_120000.
+        'salida_usuario_id',
     ];
 
     protected function casts(): array
@@ -64,6 +67,18 @@ class VehiculoFijo extends Model
     public function salidaConductor(): BelongsTo
     {
         return $this->belongsTo(Persona::class, 'salida_conductor_id');
+    }
+
+    /** Quién lo anotó al entrar. */
+    public function usuario(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'usuario_id');
+    }
+
+    /** Quién le marcó la salida. */
+    public function salidaUsuario(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'salida_usuario_id');
     }
 
     /** «Carro» o «Moto», para la pantalla. */

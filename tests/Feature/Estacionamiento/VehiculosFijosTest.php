@@ -8,6 +8,7 @@ use App\Models\Puesto;
 use App\Models\User;
 use App\Models\VehiculoDeFlota;
 use App\Models\VehiculoFijo;
+use App\Services\Auditoria\Auditoria;
 use App\Services\DatosVehiculo;
 use App\Services\Estacionamiento\Estacionamiento;
 use App\Services\Estacionamiento\Flota;
@@ -22,6 +23,59 @@ use Tests\TestCase;
 class VehiculosFijosTest extends TestCase
 {
     use RefreshDatabase;
+
+    #[Test]
+    public function sacar_un_vehiculo_deja_constancia_de_quien_lo_dejo_salir(): void
+    {
+        // A quién se le entregó y quién lo dejó salir son dos cosas distintas, y las dos tienen
+        // que quedar: si mañana sale un vehículo que no debía, hay que saber desde qué cuenta.
+        $guardia = User::factory()->create(['rol' => Rol::vigilante()]);
+        $this->actingAs($guardia);
+
+        $estadia = app(VehiculosFijos::class)->registrar('AB123CD', DatosVehiculo::CARRO, null);
+        app(VehiculosFijos::class)->sacar($estadia, conductorNombre: 'Luis Gómez');
+
+        $estadia->refresh();
+
+        $this->assertSame($guardia->id, $estadia->salida_usuario_id, 'Falta quién lo dejó salir.');
+        $this->assertSame('LUIS GÓMEZ', mb_strtoupper((string) $estadia->salida_conductor_nombre));
+        $this->assertSame($guardia->id, $estadia->usuario_id, 'La entrada también guarda su usuario.');
+    }
+
+    #[Test]
+    public function anotar_y_sacar_un_vehiculo_quedan_en_la_bitacora(): void
+    {
+        // El estacionamiento no escribía NADA en auditoría: un vehículo entraba y salía sin dejar
+        // rastro fuera de su propia fila.
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
+
+        $estadia = app(VehiculosFijos::class)->registrar('AB123CD', DatosVehiculo::CARRO, null);
+        app(VehiculosFijos::class)->sacar($estadia, conductorNombre: 'Luis');
+
+        $this->assertDatabaseHas('bitacora', ['accion' => Auditoria::ANOTO_VEHICULO, 'sobre' => 'AB123CD']);
+        $this->assertDatabaseHas('bitacora', ['accion' => Auditoria::SACO_VEHICULO, 'sobre' => 'AB123CD']);
+    }
+
+    #[Test]
+    public function el_historial_de_una_placa_trae_todas_sus_estadias(): void
+    {
+        // La pregunta que la lista de «dentro» no puede responder: ¿qué ha hecho este carro?
+        $ana = Persona::create(['cedula' => '1111111', 'tipo' => Persona::TRABAJADOR, 'nombre' => 'ANA', 'activo' => true]);
+
+        $primera = app(VehiculosFijos::class)->registrar('AB123CD', DatosVehiculo::CARRO, null, conductorCedula: '1111111');
+        app(VehiculosFijos::class)->sacar($primera, conductorNombre: 'Luis');
+        app(VehiculosFijos::class)->registrar('AB123CD', DatosVehiculo::CARRO, null);
+        app(VehiculosFijos::class)->registrar('ZZ999ZZ', DatosVehiculo::MOTO, null);
+
+        // Se busca por un trozo, y con guiones y minúsculas: como lo teclea el guardia.
+        $historial = app(Estacionamiento::class)->historialDePlaca('ab-123');
+
+        $this->assertCount(2, $historial, 'Solo las de esa placa, las dos.');
+        $this->assertTrue($historial->first()->dentro, 'La última sigue dentro.');
+        $this->assertFalse($historial->last()->dentro);
+        $this->assertSame('LUIS', mb_strtoupper((string) $historial->last()->salioCon));
+        $this->assertSame($ana->nombre, $historial->last()->entroCon);
+    }
 
     #[Test]
     public function anota_un_vehiculo_fijo_en_un_puesto_libre(): void

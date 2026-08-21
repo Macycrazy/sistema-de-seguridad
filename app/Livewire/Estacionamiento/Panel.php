@@ -30,6 +30,9 @@ class Panel extends Component
     /** Si se muestra el registro del día (entradas y salidas), aparte de lo que hay dentro. */
     public bool $verHistorial = false;
 
+    /** El día que se mira en el movimiento (Y-m-d). Empieza en hoy. */
+    public string $fechaHistorial = '';
+
     /** Si se muestra el reporte de pernoctas por noche (histórico). Plegado. */
     public bool $verReporte = false;
 
@@ -86,6 +89,9 @@ class Panel extends Component
     {
         // Por omisión, el reporte mira la noche de anoche: la que casi siempre se quiere revisar.
         $this->fechaReporte = CarbonImmutable::yesterday()->format('Y-m-d');
+
+        // El movimiento, en cambio, empieza en hoy: lo que se mira cien veces al día.
+        $this->fechaHistorial = CarbonImmutable::today()->format('Y-m-d');
     }
 
     /** Todo lo que hay dentro ahora. Se calcula una vez por render y de aquí sale lo demás. */
@@ -130,11 +136,65 @@ class Panel extends Component
         ];
     }
 
-    /** El registro de vehículos del día: entradas y salidas. Solo si se pidió verlo. */
+    /** El registro de vehículos del día elegido: entradas y salidas. Solo si se pidió verlo. */
     #[Computed]
     public function historial(): Collection
     {
-        return app(Estacionamiento::class)->delDia(CarbonImmutable::today());
+        return app(Estacionamiento::class)->delDia($this->diaHistorial());
+    }
+
+    /**
+     * El día que se está mirando en el movimiento; si el campo trae basura, hoy.
+     *
+     * El campo es un «date» del navegador, pero llega por la red como texto y puede venir
+     * cualquier cosa. Caer a hoy es preferible a reventar la pantalla del guardia.
+     */
+    public function diaHistorial(): CarbonImmutable
+    {
+        try {
+            return CarbonImmutable::parse($this->fechaHistorial)->startOfDay();
+        } catch (\Throwable) {
+            return CarbonImmutable::today();
+        }
+    }
+
+    /** Si el movimiento que se ve es el de hoy: cambia lo que se dice cuando no hay nada. */
+    public function historialEsHoy(): bool
+    {
+        return $this->diaHistorial()->isSameDay(CarbonImmutable::today());
+    }
+
+    public function updatedBusqueda(): void
+    {
+        unset($this->historialDePlaca);
+    }
+
+    public function updatedFechaHistorial(): void
+    {
+        unset($this->historial);
+    }
+
+    /** Volver al movimiento de hoy de un toque, sin pelear con el calendario. */
+    public function verHistorialDeHoy(): void
+    {
+        $this->fechaHistorial = CarbonImmutable::today()->format('Y-m-d');
+        unset($this->historial);
+    }
+
+    /**
+     * El historial de la placa buscada: todas sus estadías, no solo la de ahora.
+     *
+     * Solo se consulta cuando hay algo tecleado. Responde lo que la lista de «dentro» no puede:
+     * cuántas veces ha estado ese vehículo, quién se lo llevó la última vez y quién lo dejó salir.
+     */
+    #[Computed]
+    public function historialDePlaca(): Collection
+    {
+        if (trim($this->busqueda) === '') {
+            return collect();
+        }
+
+        return app(Estacionamiento::class)->historialDePlaca($this->busqueda);
     }
 
     /** Los que pernoctan: siguen dentro y entraron antes de hoy. */
@@ -405,7 +465,7 @@ class Panel extends Component
         unset(
             $this->dentro, $this->vehiculos, $this->resumen, $this->historial, $this->pernoctan,
             $this->opcionesPorVehiculo, $this->fijos, $this->puestosLibresFijo,
-            $this->flota, $this->flotaDisponible,
+            $this->flota, $this->flotaDisponible, $this->historialDePlaca,
         );
     }
 

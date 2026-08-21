@@ -4,6 +4,7 @@ namespace App\Services\Estacionamiento;
 
 use App\Models\Persona;
 use App\Models\VehiculoFijo;
+use App\Services\Auditoria\Auditoria;
 use App\Services\DatosVehiculo;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -60,6 +61,18 @@ class VehiculosFijos
             ]);
         }
 
+        // Un vehículo no puede estar dentro dos veces. Pasaba con el doble toque y, sobre todo,
+        // ahora que se puede anotar desde dos sitios —la puerta y el estacionamiento—: el mismo
+        // carro quedaba con dos estadías abiertas, ocupando dos plazas y contando doble en el
+        // aforo, y al sacarlo se cerraba una sola.
+        $yaEstaDentro = VehiculoFijo::query()->abiertos()->where('placa', $placa)->exists();
+
+        if ($yaEstaDentro) {
+            throw ValidationException::withMessages([
+                'placaFija' => "El vehículo {$placa} ya está dentro: hay que marcarle la salida antes de volver a anotarlo.",
+            ]);
+        }
+
         // El puesto es OPCIONAL: en la puerta del estacionamiento se anota el vehículo al entrar,
         // y quién está adentro le pone la plaza después, cuando ve dónde quedó. Si se pone, tiene
         // que estar libre y admitir el tipo; sin puesto, entra igual y queda «sin plaza» hasta que
@@ -76,7 +89,7 @@ class VehiculosFijos
 
         [$conductorId, $conductorNombreFinal] = $this->conductor($conductorCedula, $conductorNombre, 'conductorFija');
 
-        return VehiculoFijo::create([
+        $estadia = VehiculoFijo::create([
             'flota_id' => $flotaId,
             'puesto_id' => $puestoId,
             'placa' => $placa,
@@ -87,18 +100,31 @@ class VehiculosFijos
             'conductor_id' => $conductorId,
             'conductor_nombre' => $conductorNombreFinal,
             'entro_en' => now(),
-            'usuario_id' => $usuarioId,
+            'usuario_id' => $usuarioId ?? auth()->id(),
         ]);
+
+        app(Auditoria::class)->anotoVehiculo($estadia);
+
+        return $estadia;
     }
 
     /**
      * Le marca la salida y anota quién se lo lleva —que puede ser otro—. Libera el puesto. No se
      * borra: queda en la bitácora.
      *
+     * Se guardan DOS personas distintas y hacen falta las dos: a quién se le entregó el vehículo
+     * (el conductor, un dato que teclea el guardia) y desde qué cuenta se dio por entregado (el
+     * usuario). La entrada ya guardaba su usuario; la salida no guardaba ninguno, así que de un
+     * vehículo que se fue sin deber irse no quedaba constancia de quién lo dejó salir.
+     *
      * @throws ValidationException
      */
-    public function sacar(VehiculoFijo $fijo, ?string $conductorCedula = null, ?string $conductorNombre = null): void
-    {
+    public function sacar(
+        VehiculoFijo $fijo,
+        ?string $conductorCedula = null,
+        ?string $conductorNombre = null,
+        ?int $usuarioId = null,
+    ): void {
         if ($fijo->salio_en !== null) {
             return;
         }
@@ -109,7 +135,10 @@ class VehiculosFijos
             'salio_en' => now(),
             'salida_conductor_id' => $conductorId,
             'salida_conductor_nombre' => $conductorNombreFinal,
+            'salida_usuario_id' => $usuarioId ?? auth()->id(),
         ]);
+
+        app(Auditoria::class)->sacoVehiculo($fijo);
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Services\Estacionamiento;
 
 use App\Models\Puesto;
+use App\Models\User;
 use App\Models\VehiculoFijo;
 use App\Services\Alertas\UmbralesDeAlerta;
 use App\Services\DatosVehiculo;
@@ -228,7 +229,7 @@ final class Estacionamiento
         $hasta = $fecha->endOfDay();
 
         $estadias = VehiculoFijo::query()
-            ->with('puesto')
+            ->with(['puesto', 'usuario', 'salidaUsuario'])
             ->where(fn ($q) => $q->whereBetween('entro_en', [$desde, $hasta])->orWhereBetween('salio_en', [$desde, $hasta]))
             ->get();
 
@@ -236,7 +237,10 @@ final class Estacionamiento
         $filas = collect();
 
         foreach ($estadias as $e) {
-            $base = fn (bool $esEntrada, $cuando, ?string $conductor) => (object) [
+            // «Conductor» es a quién se le entregó el vehículo; «registradoPor», desde qué cuenta
+            // se anotó el movimiento. Los dos, y separados: en una salida que no debió pasar, el
+            // primero dice quién se lo llevó y el segundo quién lo dejó salir.
+            $base = fn (bool $esEntrada, $cuando, ?string $conductor, ?User $usuario) => (object) [
                 'esEntrada' => $esEntrada,
                 'placa' => $e->placa,
                 'tipo_vehiculo' => $e->tipo_vehiculo,
@@ -244,16 +248,17 @@ final class Estacionamiento
                 'color' => $e->color,
                 'puesto' => $e->puesto?->codigo,
                 'conductor' => $conductor,
+                'registradoPor' => $usuario?->nombre ?? $usuario?->usuario,
                 'ocurrio_en' => CarbonImmutable::parse($cuando),
                 'vehiculo' => DatosVehiculo::desde($e->tipo_vehiculo, $e->marca, null, $e->color, $e->placa),
             ];
 
             if ($e->entro_en >= $desde && $e->entro_en <= $hasta) {
-                $filas->push($base(true, $e->entro_en, $e->conductor_nombre));
+                $filas->push($base(true, $e->entro_en, $e->conductor_nombre, $e->usuario));
             }
 
             if ($e->salio_en !== null && $e->salio_en >= $desde && $e->salio_en <= $hasta) {
-                $filas->push($base(false, $e->salio_en, $e->salida_conductor_nombre));
+                $filas->push($base(false, $e->salio_en, $e->salida_conductor_nombre, $e->salidaUsuario));
             }
         }
 
@@ -264,6 +269,53 @@ final class Estacionamiento
     public function desde(string $ocurrioEn): CarbonImmutable
     {
         return CarbonImmutable::parse($ocurrioEn);
+    }
+
+    /**
+     * Todo lo que ha hecho una placa: cada vez que entró, cuándo salió, con quién y en qué puesto.
+     *
+     * Es la pregunta que el registro del día no puede responder —«¿qué ha pasado con este carro?»,
+     * «¿cuántas veces ha estado aquí?», «¿quién se lo llevó la última vez?»— y la que se hace
+     * cuando algo va mal con un vehículo concreto.
+     *
+     * Se busca por trozo de placa y no por la placa entera, igual que la búsqueda de arriba: el
+     * guardia teclea lo que recuerda o lo que alcanzó a ver. La aguja se limpia como se limpian
+     * las placas al guardarlas, así que da igual escribirla con guiones, espacios o en minúscula.
+     *
+     * @return Collection<int, object>
+     */
+    public function historialDePlaca(string $aguja, int $limite = 50): Collection
+    {
+        $aguja = mb_strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $aguja) ?? '');
+
+        if ($aguja === '') {
+            return collect();
+        }
+
+        return VehiculoFijo::query()
+            ->with(['puesto', 'usuario', 'salidaUsuario'])
+            ->where('placa', 'like', '%'.$aguja.'%')
+            // Por id además de por hora: dos estadías del mismo vehículo pueden empezar en el
+            // mismo segundo, y ahí la hora empata pero el id no.
+            ->orderByDesc('entro_en')
+            ->orderByDesc('id')
+            ->limit($limite)
+            ->get()
+            ->map(fn (VehiculoFijo $e) => (object) [
+                'placa' => $e->placa,
+                'tipo_vehiculo' => $e->tipo_vehiculo,
+                'marca' => $e->marca,
+                'color' => $e->color,
+                'puesto' => $e->puesto?->codigo,
+                'entro_en' => CarbonImmutable::parse($e->entro_en),
+                'entroCon' => $e->conductor_nombre,
+                'entroPor' => $e->usuario?->nombre ?? $e->usuario?->usuario,
+                // Sigue dentro mientras no tenga salida: la estadía está abierta.
+                'salio_en' => $e->salio_en === null ? null : CarbonImmutable::parse($e->salio_en),
+                'salioCon' => $e->salida_conductor_nombre,
+                'salioPor' => $e->salidaUsuario?->nombre ?? $e->salidaUsuario?->usuario,
+                'dentro' => $e->salio_en === null,
+            ]);
     }
 
     /** Cuánto lleva dentro, dicho corto: «3 h 20 min», «45 min». */

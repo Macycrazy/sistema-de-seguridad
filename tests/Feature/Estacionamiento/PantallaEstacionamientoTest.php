@@ -72,6 +72,63 @@ class PantallaEstacionamientoTest extends TestCase
     }
 
     #[Test]
+    public function el_movimiento_muestra_el_dia_que_se_elige_y_no_solo_hoy(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
+
+        $anteayer = CarbonImmutable::today()->subDays(2);
+        $this->estadia('VIE123', [
+            'entro_en' => $anteayer->setTime(8, 0),
+            'salio_en' => $anteayer->setTime(17, 0),
+            'conductor_nombre' => 'ANA PÉREZ',
+            'salida_conductor_nombre' => 'LUIS GÓMEZ',
+        ]);
+
+        $panel = Livewire::test(Panel::class)->set('verHistorial', true);
+
+        // Hoy no pasó nada: el vehículo de anteayer no tiene por qué salir.
+        $panel->assertDontSee('VIE123');
+
+        // Al elegir su día aparecen sus dos asientos, cada uno con quien lo movió.
+        $panel->set('fechaHistorial', $anteayer->format('Y-m-d'))
+            ->assertSee('VIE123')
+            ->assertSee('ANA PÉREZ')
+            ->assertSee('LUIS GÓMEZ');
+    }
+
+    #[Test]
+    public function una_fecha_ilegible_en_el_movimiento_cae_a_hoy_sin_reventar(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
+        $this->estadia('HOY123', ['salio_en' => CarbonImmutable::now()->subMinutes(10)]);
+
+        Livewire::test(Panel::class)
+            ->set('verHistorial', true)
+            ->set('fechaHistorial', 'no-es-una-fecha')
+            ->assertOk()
+            ->assertSee('HOY123');
+    }
+
+    #[Test]
+    public function al_buscar_una_placa_sale_su_historial_y_no_solo_si_esta_dentro(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
+
+        // Una estadía ya cerrada: no está dentro, así que sin historial no se vería en ninguna parte.
+        $this->estadia('VIE123', [
+            'entro_en' => CarbonImmutable::today()->subDays(3)->setTime(8, 0),
+            'salio_en' => CarbonImmutable::today()->subDays(3)->setTime(17, 0),
+            'salida_conductor_nombre' => 'LUIS GÓMEZ',
+        ]);
+
+        Livewire::test(Panel::class)
+            ->set('busqueda', 'vie')
+            ->assertSee('Historial')
+            ->assertSee('VIE123')
+            ->assertSee('LUIS GÓMEZ');
+    }
+
+    #[Test]
     public function buscar_por_placa_deja_solo_la_que_coincide(): void
     {
         $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));

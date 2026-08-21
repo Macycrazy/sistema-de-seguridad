@@ -5,6 +5,7 @@ namespace App\Services\Auditoria;
 use App\Models\Bitacora;
 use App\Models\Persona;
 use App\Models\User;
+use App\Models\VehiculoFijo;
 
 /**
  * Escribe la bitácora de auditoría. Un solo sitio por donde se anota, con un vocabulario cerrado
@@ -61,6 +62,12 @@ class Auditoria
 
     public const RESPALDO = 'respaldo';
 
+    // El estacionamiento: un vehículo que entra y, sobre todo, uno que sale. Hasta ahora no dejaba
+    // ningún rastro —se sabía a quién se le entregó el carro, pero no quién lo dejó salir—.
+    public const ANOTO_VEHICULO = 'anoto-vehiculo';
+
+    public const SACO_VEHICULO = 'saco-vehiculo';
+
     /** La acción, en frase, para la pantalla. */
     public const ETIQUETAS = [
         self::INGRESO_CORRECTO => 'Entró al sistema',
@@ -85,6 +92,8 @@ class Auditoria
         self::CAMBIO_ORGANIGRAMA => 'Cambió el organigrama',
         self::DEPURO_DATOS => 'Depuró datos',
         self::RESPALDO => 'Respaldo',
+        self::ANOTO_VEHICULO => 'Anotó un vehículo',
+        self::SACO_VEHICULO => 'Sacó un vehículo',
     ];
 
     /**
@@ -240,6 +249,26 @@ class Auditoria
     public function depuroDatos(string $detalle): void
     {
         $this->anota(self::DEPURO_DATOS, $detalle);
+    }
+
+    /** Entró un vehículo al estacionamiento. «Sobre» es la placa: por ahí se busca. */
+    public function anotoVehiculo(VehiculoFijo $estadia): void
+    {
+        $this->anota(
+            self::ANOTO_VEHICULO,
+            $estadia->placa,
+            trim($estadia->etiquetaTipo().' · '.($estadia->conductor_nombre ?: 'sin conductor anotado')),
+        );
+    }
+
+    /** Salió un vehículo. A quién se le entregó va en el detalle; quién lo dejó salir, en el usuario. */
+    public function sacoVehiculo(VehiculoFijo $estadia): void
+    {
+        $this->anota(
+            self::SACO_VEHICULO,
+            $estadia->placa,
+            'Se lo llevó: '.($estadia->salida_conductor_nombre ?: 'sin conductor anotado'),
+        );
     }
 
     public function respaldo(string $detalle): void
