@@ -455,7 +455,7 @@ class RegistroDelDiaTest extends TestCase
 
         $this->assertSame(
             ['Fecha', 'Hora', 'Documento', 'Apellidos', 'Nombres', 'Ente',
-                'Dependencia', 'Tipo', 'Movimiento', 'Vehículo', 'Registrado por'],
+                'Dependencia', 'Tipo', 'Movimiento', 'Cómo', 'Registrado por'],
             $export->headings(),
         );
 

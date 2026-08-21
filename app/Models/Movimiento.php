@@ -98,12 +98,16 @@ class Movimiento extends Model
         'placa',
         // La plaza a la que se asignó el vehículo al entrar, si se asignó. Opcional.
         'puesto_id',
+        // Si al marcar se dijo que iba a pie. Nulo en los asientos de antes de la columna: de
+        // aquellos no se sabe. Ver la migración 2026_08_24_120000.
+        'a_pie',
     ];
 
     protected function casts(): array
     {
         return [
             'ocurrio_en' => 'datetime',
+            'a_pie' => 'boolean',
         ];
     }
 

@@ -191,6 +191,7 @@ class Marcaje
         ?int $usuarioId = null,
         ?string $motivo = null,
         ?string $piso = null,
+        ?bool $aPie = null,
     ): Movimiento {
         if (! in_array($tipo, [Movimiento::ENTRADA, Movimiento::SALIDA], true)) {
             throw ValidationException::withMessages([
@@ -207,7 +208,7 @@ class Marcaje
         // El piso del invitado se normaliza antes de la transacción, que es donde se guarda.
         $piso = Persona::normalizarPiso($piso);
 
-        return DB::transaction(function () use ($persona, $tipo, $usuarioId, $motivo, $piso) {
+        return DB::transaction(function () use ($persona, $tipo, $usuarioId, $motivo, $piso, $aPie) {
             // Doble pulsación del botón, o el lector de carnets leyendo dos veces el mismo
             // carnet: se devuelve el asiento que ya existe en vez de crear otro igual.
             // Como los movimientos no se borran, un duplicado se quedaría en el histórico
@@ -241,6 +242,9 @@ class Marcaje
                 'motivo' => $persona->esInvitado() ? $persona->motivo : null,
                 // El piso sí lo llevan los dos: el suyo si labora aquí, aquel al que va si visita.
                 'piso' => $persona->piso,
+                // Si se dijo que iba a pie. Nulo cuando quien llama no lo sabe —una carga, un
+                // comando—: ausencia de dato no es «vino caminando», y el registro lo distingue.
+                'a_pie' => $aPie,
             ]);
         });
     }

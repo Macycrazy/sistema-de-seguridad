@@ -846,6 +846,10 @@ class Marcar extends Component
                 motivo: $persona->esInvitado() ? $this->motivo : null,
                 // Al trabajador no se le pregunta: su piso ya está en la ficha.
                 piso: $persona->esInvitado() ? $this->piso : null,
+                // Lo que el vigilante eligió en «¿Cómo entra?» / «¿Cómo sale?». Se guarda para que
+                // el registro pueda decir «a pie» en vez de un guion, que no se lee como una
+                // respuesta sino como que falta algo.
+                aPie: $this->vaAPie($tipo),
             );
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
@@ -883,6 +887,14 @@ class Marcar extends Component
 
         $this->limpiar();
         $this->confirmacion = $confirmacion;
+    }
+
+    /** Si lo elegido en pantalla dice que va a pie: sin vehículo en este sentido. */
+    private function vaAPie(string $tipo): bool
+    {
+        return $tipo === Movimiento::ENTRADA
+            ? $this->vehiculoEntrada === self::VEHICULO_A_PIE
+            : $this->vehiculosSalida === [] && $this->otroVehiculoSalida === '';
     }
 
     /**

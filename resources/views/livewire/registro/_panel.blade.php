@@ -75,13 +75,17 @@
                             <span class="block font-mono text-xs text-slate-500">
                                 {{ $movimiento->fecha() }} · {{ $movimiento->hora() }}
                             </span>
-                            {{-- Con qué vehículo se hizo, para saber quién movió ese vehículo. --}}
+                            {{-- Cómo se hizo: con qué vehículo, o a pie si así se marcó. --}}
                             @foreach ($movimiento->vehiculos as $vehiculo)
                                 <span class="mt-1 flex items-center gap-1.5">
                                     <x-etiqueta :tipo="$vehiculo->tipo" tamano="chico" />
                                     <span class="font-mono text-xs font-semibold tracking-wider text-slate-700">{{ $vehiculo->placa }}</span>
                                 </span>
                             @endforeach
+
+                            @if (! $movimiento->tieneVehiculo() && $movimiento->aPie === true)
+                                <span class="mt-1 block font-mono text-[10px] uppercase tracking-widest text-slate-400">A pie</span>
+                            @endif
                         </span>
                         <x-etiqueta :tipo="$movimiento->sentido->value" />
                     </li>

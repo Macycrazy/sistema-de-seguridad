@@ -28,6 +28,8 @@ final readonly class Movimiento
 
     /**
      * @param  list<DatosVehiculo>  $vehiculos
+     * @param  bool|null  $aPie  Lo que se dijo al marcar. Nulo = no se anotó, que NO es lo mismo
+     *                           que haber venido caminando.
      */
     public function __construct(
         public string $id,
@@ -36,6 +38,7 @@ final readonly class Movimiento
         public CarbonImmutable $ocurrioEn,
         public string $registradoPor,
         array $vehiculos = [],
+        public ?bool $aPie = null,
     ) {
         // Los vacíos son «no trajo vehículo», no un vehículo: se caen aquí y así nadie más tiene
         // que acordarse de comprobarlo.
@@ -52,6 +55,22 @@ final readonly class Movimiento
     public function vehiculo(): ?DatosVehiculo
     {
         return $this->vehiculos[0] ?? null;
+    }
+
+    /**
+     * Cómo se hizo: «A pie», las placas, o nada si no se anotó.
+     *
+     * Los tres casos son distintos y se distinguen a propósito. Un guion no se lee como «vino
+     * caminando» —se lee como que falta algo—, y decir «a pie» de un asiento donde nadie anotó
+     * nada sería afirmar algo que no consta.
+     */
+    public function comoFue(): ?string
+    {
+        if ($this->tieneVehiculo()) {
+            return $this->vehiculosComoTexto();
+        }
+
+        return $this->aPie === true ? 'A pie' : null;
     }
 
     /** Todos, dichos de corrido: «AB123CD, XY987ZW». Para el Excel y los sitios de una línea. */

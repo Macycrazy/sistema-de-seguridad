@@ -162,7 +162,7 @@
                                 <th scope="col" class="w-28 px-4 py-3 font-semibold">Ente</th>
                                 <th scope="col" class="w-36 px-4 py-3 font-semibold">Tipo</th>
                                 <th scope="col" class="w-32 px-4 py-3 font-semibold">Mov.</th>
-                                <th scope="col" class="w-40 px-4 py-3 font-semibold">Vehículo</th>
+                                <th scope="col" class="w-40 px-4 py-3 font-semibold">Cómo</th>
                             </tr>
                         </thead>
 
@@ -208,7 +208,21 @@
                                                 <span class="truncate font-mono text-xs font-semibold tracking-wider text-slate-700">{{ $vehiculo->placa }}</span>
                                             </span>
                                         @empty
-                                            <span class="text-slate-300">—</span>
+                                            {{-- Dicho con todas las letras. Un guion no se lee como
+                                                 «vino caminando», se lee como que falta algo; y de
+                                                 los asientos donde nadie anotó nada no consta que
+                                                 viniera a pie, así que ahí sigue el guion. --}}
+                                            @if ($movimiento->aPie === true)
+                                                <span class="flex items-center gap-1.5 text-slate-600">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                                         stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 shrink-0 text-slate-400">
+                                                        <circle cx="12" cy="4.5" r="2"/><path d="M10 21l1.5-5-2.5-2.5V9l3-1.5 2.5 3 2.5 1"/><path d="M9 12.5 7 15m6.5 1L15 21"/>
+                                                    </svg>
+                                                    A pie
+                                                </span>
+                                            @else
+                                                <span class="text-slate-300" title="No se anotó cómo llegó.">—</span>
+                                            @endif
                                         @endforelse
                                     </td>
                                 </tr>

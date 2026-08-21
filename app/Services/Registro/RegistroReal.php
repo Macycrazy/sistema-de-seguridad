@@ -147,6 +147,7 @@ final class RegistroReal implements FuenteDelRegistro
             // Quién lo anotó. Nulo mientras haya movimientos de antes del ingreso con usuario.
             registradoPor: $movimiento->usuario?->nombre ?? $movimiento->usuario?->usuario ?? '—',
             vehiculos: $vehiculos,
+            aPie: $movimiento->a_pie,
         );
     }
 

@@ -320,6 +320,54 @@ class RegistroRealTest extends TestCase
     }
 
     #[Test]
+    public function el_registro_distingue_ir_a_pie_de_no_haberlo_anotado(): void
+    {
+        // Son tres cosas distintas y la pantalla tiene que decirlas: con vehículo, a pie, y «no
+        // consta». Un guion no se lee como «vino caminando», se lee como que falta algo.
+        $ana = $this->trabajador();
+
+        MovimientoModel::create([
+            'persona_id' => $ana->id,
+            'tipo' => MovimientoModel::ENTRADA,
+            'ocurrio_en' => CarbonImmutable::today()->setTime(8, 0),
+            'a_pie' => true,
+        ]);
+
+        MovimientoModel::create([
+            'persona_id' => $ana->id,
+            'tipo' => MovimientoModel::SALIDA,
+            'ocurrio_en' => CarbonImmutable::today()->setTime(12, 0),
+            // Sin a_pie: un asiento de antes de la columna, del que no se sabe.
+        ]);
+
+        $movimientos = $this->fuente->movimientosDelDia(CarbonImmutable::today())
+            ->sortBy(fn ($m) => $m->ocurrioEn)
+            ->values();
+
+        $this->assertSame('A pie', $movimientos[0]->comoFue());
+        $this->assertNull($movimientos[1]->comoFue(), 'De ese no consta cómo fue.');
+    }
+
+    #[Test]
+    public function el_vehiculo_manda_sobre_la_marca_de_a_pie(): void
+    {
+        // Si acabó habiendo vehículo, eso es lo que pasó, diga lo que diga la casilla.
+        $ana = $this->trabajador();
+        $this->anotar($ana, MovimientoModel::ENTRADA, CarbonImmutable::today()->setTime(8, 0));
+
+        VehiculoFijo::create([
+            'placa' => 'AB123CD',
+            'tipo_vehiculo' => 'carro',
+            'entro_en' => CarbonImmutable::today()->setTime(8, 1),
+            'conductor_id' => $ana->id,
+        ]);
+
+        $movimiento = $this->fuente->movimientosDelDia(CarbonImmutable::today())->first();
+
+        $this->assertStringContainsString('AB123CD', (string) $movimiento->comoFue());
+    }
+
+    #[Test]
     public function una_entrada_a_pie_no_se_queda_con_el_carro_de_la_entrada_anterior(): void
     {
         // El caso: llegar en carro, salir a pie a almorzar y volver caminando. La segunda entrada

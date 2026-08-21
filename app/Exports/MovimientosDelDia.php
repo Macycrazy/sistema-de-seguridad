@@ -34,10 +34,10 @@ class MovimientosDelDia implements FromCollection, ShouldAutoSize, WithHeadings,
             $m->persona->dependencia ?? '',
             $m->persona->tipo->etiqueta(),
             $m->sentido->etiqueta(),
-            // Vacío y NO «a pie»: el vehículo sale ahora del estacionamiento, y que nadie anotara
-            // uno no prueba que la persona llegara caminando —pudo venir en el carro que anotó
-            // otro—. Afirmarlo en una columna del reporte sería inventarlo.
-            $m->vehiculosComoTexto(),
+            // «A pie» solo cuando se marcó como tal; si nadie anotó nada, va vacío. Que no haya
+            // vehículo no prueba que la persona llegara caminando —pudo venir en el carro que
+            // anotó otro—, y afirmarlo en una columna del reporte sería inventarlo.
+            $m->comoFue() ?? '',
             $m->registradoPor,
         ]);
     }
@@ -52,7 +52,7 @@ class MovimientosDelDia implements FromCollection, ShouldAutoSize, WithHeadings,
     {
         return [
             'Fecha', 'Hora', 'Documento', 'Apellidos', 'Nombres', 'Ente',
-            'Dependencia', 'Tipo', 'Movimiento', 'Vehículo', 'Registrado por',
+            'Dependencia', 'Tipo', 'Movimiento', 'Cómo', 'Registrado por',
         ];
     }
 
