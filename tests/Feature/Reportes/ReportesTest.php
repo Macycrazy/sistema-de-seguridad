@@ -5,6 +5,7 @@ namespace Tests\Feature\Reportes;
 use App\Models\Departamento;
 use App\Models\Movimiento;
 use App\Models\Persona;
+use App\Models\VehiculoFijo;
 use App\Services\Reportes\Reportes;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -157,21 +158,26 @@ class ReportesTest extends TestCase
     }
 
     #[Test]
-    public function por_vehiculo_separa_carro_moto_y_a_pie(): void
+    public function los_vehiculos_que_entraron_se_cuentan_del_estacionamiento_y_no_de_la_puerta(): void
     {
+        // La puerta marca personas y ya no congela vehículos: si esto contara asientos, daría
+        // cero por muchos carros que hubieran entrado.
         $ana = $this->persona('1');
-        Movimiento::create(['persona_id' => $ana->id, 'tipo' => Movimiento::ENTRADA, 'ocurrio_en' => '2026-08-10 08:00', 'tipo_vehiculo' => 'carro', 'placa' => 'AAA111']);
-        Movimiento::create(['persona_id' => $ana->id, 'tipo' => Movimiento::ENTRADA, 'ocurrio_en' => '2026-08-11 08:00', 'tipo_vehiculo' => 'moto', 'placa' => 'BBB222']);
-        $this->entrada($ana, '2026-08-12 08:00');   // a pie
+        $this->entrada($ana, '2026-08-12 08:00');
 
-        $porVehiculo = app(Reportes::class)->porVehiculo(
+        VehiculoFijo::create(['placa' => 'AAA111', 'tipo_vehiculo' => 'carro', 'entro_en' => '2026-08-10 08:00', 'conductor_id' => $ana->id]);
+        VehiculoFijo::create(['placa' => 'BBB222', 'tipo_vehiculo' => 'moto', 'entro_en' => '2026-08-11 08:00']);
+        VehiculoFijo::create(['placa' => 'CCC333', 'tipo_vehiculo' => 'carro', 'entro_en' => '2026-09-15 08:00']);   // fuera del tramo
+
+        $vehiculos = app(Reportes::class)->vehiculosQueEntraron(
             CarbonImmutable::parse('2026-08-01'),
             CarbonImmutable::parse('2026-08-31'),
         );
 
-        $this->assertSame(1, $porVehiculo['carro']);
-        $this->assertSame(1, $porVehiculo['moto']);
-        $this->assertSame(1, $porVehiculo['aPie']);
+        $this->assertSame(1, $vehiculos['carro']);
+        $this->assertSame(1, $vehiculos['moto']);
+        $this->assertSame(2, $vehiculos['total']);
+        $this->assertSame(1, $vehiculos['conConductor']);
     }
 
     #[Test]

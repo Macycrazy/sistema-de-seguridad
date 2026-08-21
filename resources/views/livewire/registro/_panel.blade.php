@@ -75,13 +75,13 @@
                             <span class="block font-mono text-xs text-slate-500">
                                 {{ $movimiento->fecha() }} · {{ $movimiento->hora() }}
                             </span>
-                            {{-- Con qué vehículo se hizo, para saber de quién es ese vehículo. --}}
-                            @if ($movimiento->tieneVehiculo())
+                            {{-- Con qué vehículo se hizo, para saber quién movió ese vehículo. --}}
+                            @foreach ($movimiento->vehiculos as $vehiculo)
                                 <span class="mt-1 flex items-center gap-1.5">
-                                    <x-etiqueta :tipo="$movimiento->vehiculo->tipo" tamano="chico" />
-                                    <span class="font-mono text-xs font-semibold tracking-wider text-slate-700">{{ $movimiento->vehiculo->placa }}</span>
+                                    <x-etiqueta :tipo="$vehiculo->tipo" tamano="chico" />
+                                    <span class="font-mono text-xs font-semibold tracking-wider text-slate-700">{{ $vehiculo->placa }}</span>
                                 </span>
-                            @endif
+                            @endforeach
                         </span>
                         <x-etiqueta :tipo="$movimiento->sentido->value" />
                     </li>

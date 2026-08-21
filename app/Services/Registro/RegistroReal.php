@@ -5,6 +5,7 @@ namespace App\Services\Registro;
 use App\Models\Movimiento as MovimientoModel;
 use App\Models\Persona as PersonaModel;
 use App\Services\DatosVehiculo;
+use App\Services\Estacionamiento\VehiculosPorMovimiento;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -44,7 +45,7 @@ final class RegistroReal implements FuenteDelRegistro
             ->orderByDesc('ocurrio_en')
             ->orderByDesc('id')
             ->get()
-            ->map(fn (MovimientoModel $m) => $this->aMovimiento($m));
+            ->pipe(fn (Collection $movimientos) => $this->aMovimientos($movimientos));
     }
 
     public function dentroEn(CarbonImmutable $fecha): int
@@ -98,7 +99,7 @@ final class RegistroReal implements FuenteDelRegistro
             ->orderByDesc('ocurrio_en')
             ->orderByDesc('id')
             ->get()
-            ->map(fn (MovimientoModel $m) => $this->aMovimiento($m));
+            ->pipe(fn (Collection $movimientos) => $this->aMovimientos($movimientos));
     }
 
     public function persona(string $personaId): ?Persona
@@ -108,8 +109,36 @@ final class RegistroReal implements FuenteDelRegistro
         return $persona ? $this->aPersona($persona) : null;
     }
 
-    private function aMovimiento(MovimientoModel $movimiento): Movimiento
+    /**
+     * Un lote de asientos, con sus vehículos resueltos de una vez.
+     *
+     * El vehículo ya no vive en el asiento, sino en las estadías del estacionamiento, así que hay
+     * que ir a buscarlo. Se hace para todo el lote y no fila por fila: el registro pinta 25 por
+     * página y el histórico de una persona, todas las suyas.
+     *
+     * @param  Collection<int, MovimientoModel>  $movimientos
+     * @return Collection<int, Movimiento>
+     */
+    private function aMovimientos(Collection $movimientos): Collection
     {
+        $vehiculos = app(VehiculosPorMovimiento::class)->mapa($movimientos);
+
+        return $movimientos->map(fn (MovimientoModel $m) => $this->aMovimiento($m, $vehiculos));
+    }
+
+    /** @param  array<string, list<DatosVehiculo>>  $mapaDeVehiculos */
+    private function aMovimiento(MovimientoModel $movimiento, array $mapaDeVehiculos = []): Movimiento
+    {
+        // Los asientos viejos traen su vehículo congelado encima, de cuando la puerta los
+        // manejaba; los de ahora lo sacan del estacionamiento. Van los dos: si algún día se
+        // vuelve a congelar en el asiento, esto sigue diciendo la verdad sin tocarlo.
+        $congelado = DatosVehiculo::desdeModelo($movimiento);
+
+        $vehiculos = array_merge(
+            $congelado->vacio() ? [] : [$congelado],
+            VehiculosPorMovimiento::de($mapaDeVehiculos, $movimiento),
+        );
+
         return new Movimiento(
             id: (string) $movimiento->id,
             persona: $this->aPersona($movimiento->persona),
@@ -117,8 +146,7 @@ final class RegistroReal implements FuenteDelRegistro
             ocurrioEn: CarbonImmutable::parse($movimiento->ocurrio_en),
             // Quién lo anotó. Nulo mientras haya movimientos de antes del ingreso con usuario.
             registradoPor: $movimiento->usuario?->nombre ?? $movimiento->usuario?->usuario ?? '—',
-            // El vehículo congelado en el asiento, tal cual estaba ese día.
-            vehiculo: DatosVehiculo::desdeModelo($movimiento),
+            vehiculos: $vehiculos,
         );
     }
 

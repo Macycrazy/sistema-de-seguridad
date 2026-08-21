@@ -134,11 +134,11 @@ class Panel extends Component
         return app(Reportes::class)->porDepartamento($this->tramo()['desde'], $this->tramo()['hasta']);
     }
 
-    /** @return array{carro:int, moto:int, aPie:int} */
+    /** @return array{carro:int, moto:int, total:int, conConductor:int} */
     #[Computed]
-    public function porVehiculo(): array
+    public function vehiculos(): array
     {
-        return app(Reportes::class)->porVehiculo($this->tramo()['desde'], $this->tramo()['hasta']);
+        return app(Reportes::class)->vehiculosQueEntraron($this->tramo()['desde'], $this->tramo()['hasta']);
     }
 
     /** La franja pico dicha en horas, «8:00 am – 8:59 am». Nula si el tramo está vacío. */

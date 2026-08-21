@@ -199,15 +199,17 @@
                                     <td class="px-4 py-3"><x-etiqueta :tipo="$movimiento->persona->tipo->value" /></td>
                                     <td class="px-4 py-3"><x-etiqueta :tipo="$movimiento->sentido->value" /></td>
                                     <td class="px-4 py-3">
-                                        {{-- Con qué vehículo: así el vehículo del registro tiene dueño. --}}
-                                        @if ($movimiento->tieneVehiculo())
+                                        {{-- Con qué vehículo entró —o con cuál se fue—: sale del
+                                             estacionamiento, buscando lo que ESTA persona movió en
+                                             ESTE sentido. Quien movió dos ese día ve los dos. --}}
+                                        @forelse ($movimiento->vehiculos as $vehiculo)
                                             <span class="flex items-center gap-1.5">
-                                                <x-etiqueta :tipo="$movimiento->vehiculo->tipo" tamano="chico" />
-                                                <span class="truncate font-mono text-xs font-semibold tracking-wider text-slate-700">{{ $movimiento->vehiculo->placa }}</span>
+                                                <x-etiqueta :tipo="$vehiculo->tipo" tamano="chico" />
+                                                <span class="truncate font-mono text-xs font-semibold tracking-wider text-slate-700">{{ $vehiculo->placa }}</span>
                                             </span>
-                                        @else
+                                        @empty
                                             <span class="text-slate-300">—</span>
-                                        @endif
+                                        @endforelse
                                     </td>
                                 </tr>
                             @endforeach

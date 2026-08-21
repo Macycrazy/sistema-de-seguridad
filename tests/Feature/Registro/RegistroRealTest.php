@@ -5,6 +5,7 @@ namespace Tests\Feature\Registro;
 use App\Models\Movimiento as MovimientoModel;
 use App\Models\Persona as PersonaModel;
 use App\Models\User;
+use App\Models\VehiculoFijo;
 use App\Services\Marcaje;
 use App\Services\Registro\Ente;
 use App\Services\Registro\RegistroReal;
@@ -275,9 +276,10 @@ class RegistroRealTest extends TestCase
     }
 
     #[Test]
-    public function el_movimiento_trae_el_vehiculo_con_que_se_hizo(): void
+    public function el_movimiento_viejo_conserva_el_vehiculo_congelado_en_el_asiento(): void
     {
-        // Sin esto, un vehículo en el registro no tiene dueño: no se sabe quién entró en él.
+        // De cuando la puerta manejaba vehículos. Ya no se escriben así, pero los que hay en el
+        // histórico tienen que seguir viéndose.
         $ana = $this->trabajador();
         MovimientoModel::create([
             'persona_id' => $ana->id,
@@ -291,8 +293,62 @@ class RegistroRealTest extends TestCase
         $mov = $this->fuente->movimientosDelDia(CarbonImmutable::today())->first();
 
         $this->assertTrue($mov->tieneVehiculo());
-        $this->assertSame('AB123CD', $mov->vehiculo->placa);
-        $this->assertSame('carro', $mov->vehiculo->tipo);
+        $this->assertSame('AB123CD', $mov->vehiculo()->placa);
+        $this->assertSame('carro', $mov->vehiculo()->tipo);
+    }
+
+    #[Test]
+    public function el_movimiento_trae_el_vehiculo_que_esa_persona_movio_en_el_estacionamiento(): void
+    {
+        // El vehículo ya no vive en el asiento: se anota como estadía en el estacionamiento. El
+        // registro lo va a buscar para que el vehículo vuelva a tener dueño.
+        $ana = $this->trabajador();
+        $this->anotar($ana, MovimientoModel::ENTRADA, CarbonImmutable::today()->setTime(8, 0));
+
+        VehiculoFijo::create([
+            'placa' => 'AB123CD',
+            'tipo_vehiculo' => 'carro',
+            'marca' => 'Toyota',
+            'entro_en' => CarbonImmutable::today()->setTime(8, 2),
+            'conductor_id' => $ana->id,
+        ]);
+
+        $mov = $this->fuente->movimientosDelDia(CarbonImmutable::today())->first();
+
+        $this->assertTrue($mov->tieneVehiculo());
+        $this->assertSame('AB123CD', $mov->vehiculo()->placa);
+    }
+
+    #[Test]
+    public function quien_entro_con_un_vehiculo_y_quien_salio_con_el_cargan_cada_uno_con_lo_suyo(): void
+    {
+        // Es el caso que hay que poder ver: un carro entra con uno y se lo lleva otro. La entrada
+        // es de quien lo metió y la salida de quien se lo llevó; ninguno carga con la del otro.
+        $ana = $this->trabajador(['cedula' => '1111111', 'nombre' => 'ANA PÉREZ']);
+        $luis = $this->trabajador(['cedula' => '2222222', 'nombre' => 'LUIS GÓMEZ']);
+
+        $this->anotar($ana, MovimientoModel::ENTRADA, CarbonImmutable::today()->setTime(8, 0));
+        $this->anotar($luis, MovimientoModel::ENTRADA, CarbonImmutable::today()->setTime(9, 0));
+        $this->anotar($luis, MovimientoModel::SALIDA, CarbonImmutable::today()->setTime(17, 0));
+
+        VehiculoFijo::create([
+            'placa' => 'AB123CD',
+            'tipo_vehiculo' => 'carro',
+            'entro_en' => CarbonImmutable::today()->setTime(8, 1),
+            'conductor_id' => $ana->id,
+            'salio_en' => CarbonImmutable::today()->setTime(17, 1),
+            'salida_conductor_id' => $luis->id,
+        ]);
+
+        $movimientos = $this->fuente->movimientosDelDia(CarbonImmutable::today());
+
+        $entradaDeAna = $movimientos->first(fn ($m) => $m->persona->id === (string) $ana->id);
+        $entradaDeLuis = $movimientos->first(fn ($m) => $m->persona->id === (string) $luis->id && $m->esEntrada());
+        $salidaDeLuis = $movimientos->first(fn ($m) => $m->persona->id === (string) $luis->id && ! $m->esEntrada());
+
+        $this->assertSame('AB123CD', $entradaDeAna->vehiculo()->placa, 'Ana metió el carro.');
+        $this->assertFalse($entradaDeLuis->tieneVehiculo(), 'Luis llegó sin carro.');
+        $this->assertSame('AB123CD', $salidaDeLuis->vehiculo()->placa, 'Luis se llevó el carro.');
     }
 
     #[Test]

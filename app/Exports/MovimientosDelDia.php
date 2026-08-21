@@ -34,7 +34,10 @@ class MovimientosDelDia implements FromCollection, ShouldAutoSize, WithHeadings,
             $m->persona->dependencia ?? '',
             $m->persona->tipo->etiqueta(),
             $m->sentido->etiqueta(),
-            $m->tieneVehiculo() ? $m->vehiculo->descripcion() : 'A pie',
+            // Vacío y NO «a pie»: el vehículo sale ahora del estacionamiento, y que nadie anotara
+            // uno no prueba que la persona llegara caminando —pudo venir en el carro que anotó
+            // otro—. Afirmarlo en una columna del reporte sería inventarlo.
+            $m->vehiculosComoTexto(),
             $m->registradoPor,
         ]);
     }

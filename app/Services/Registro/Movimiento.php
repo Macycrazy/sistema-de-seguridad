@@ -13,21 +13,51 @@ use Carbon\CarbonImmutable;
  */
 final readonly class Movimiento
 {
+    /**
+     * Con qué vehículo se hizo ESTE movimiento. Vacío = a pie.
+     *
+     * Es una lista y no un vehículo suelto porque el dato ya no vive en el asiento: sale de las
+     * estadías del estacionamiento (ver App\Services\Estacionamiento\VehiculosPorMovimiento), y
+     * quien movió dos vehículos el mismo día tiene dos —raro, pero ocultarle uno al guardia sería
+     * peor que enseñar los dos—. Los asientos viejos, de cuando la puerta congelaba el vehículo
+     * encima, siguen trayendo el suyo.
+     *
+     * @var list<DatosVehiculo>
+     */
+    public array $vehiculos;
+
+    /**
+     * @param  list<DatosVehiculo>  $vehiculos
+     */
     public function __construct(
         public string $id,
         public Persona $persona,
         public Sentido $sentido,
         public CarbonImmutable $ocurrioEn,
         public string $registradoPor,
-        // Con qué vehículo se hizo ESTE movimiento, congelado tal cual estaba ese día. Nulo o vacío
-        // = a pie. Sin esto, saber a quién pertenece un vehículo en el registro era imposible.
-        public ?DatosVehiculo $vehiculo = null,
-    ) {}
+        array $vehiculos = [],
+    ) {
+        // Los vacíos son «no trajo vehículo», no un vehículo: se caen aquí y así nadie más tiene
+        // que acordarse de comprobarlo.
+        $this->vehiculos = array_values(array_filter($vehiculos, fn (DatosVehiculo $v) => ! $v->vacio()));
+    }
 
     /** Se hizo con vehículo (no a pie). */
     public function tieneVehiculo(): bool
     {
-        return $this->vehiculo !== null && ! $this->vehiculo->vacio();
+        return $this->vehiculos !== [];
+    }
+
+    /** El vehículo, para cuando solo cabe uno (una celda estrecha, una columna del Excel). */
+    public function vehiculo(): ?DatosVehiculo
+    {
+        return $this->vehiculos[0] ?? null;
+    }
+
+    /** Todos, dichos de corrido: «AB123CD, XY987ZW». Para el Excel y los sitios de una línea. */
+    public function vehiculosComoTexto(): string
+    {
+        return implode(', ', array_map(fn (DatosVehiculo $v) => $v->descripcion(), $this->vehiculos));
     }
 
     public function hora(): string

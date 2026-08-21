@@ -134,21 +134,35 @@
             </x-tarjeta>
         </div>
 
-        {{-- CÓMO SE ENTRÓ --}}
+        {{-- VEHÍCULOS QUE ENTRARON. Se cuentan las estadías del estacionamiento, no los asientos
+             de la puerta: ahí es donde vive el vehículo desde que la puerta marca solo personas.
+             Ya no se dice «a pie» —que nadie anotara un vehículo no prueba que se llegara
+             caminando— sino cuántos de ellos se pudieron atribuir a una persona. --}}
         @php
-            $veh = $this->porVehiculo;
-            $totalVeh = max(1, $veh['carro'] + $veh['moto'] + $veh['aPie']);
+            $veh = $this->vehiculos;
         @endphp
-        <x-tarjeta titulo="Cómo se entró" class="mt-4">
+        <x-tarjeta titulo="Vehículos que entraron" class="mt-4">
             <div class="grid grid-cols-3 gap-4 text-center">
-                @foreach ([['En carro', $veh['carro']], ['En moto', $veh['moto']], ['A pie', $veh['aPie']]] as [$rotulo, $n])
+                @foreach ([['En carro', $veh['carro']], ['En moto', $veh['moto']], ['Total', $veh['total']]] as [$rotulo, $n])
                     <div>
                         <p class="text-2xl font-bold tabular-nums text-slate-900">{{ number_format($n) }}</p>
                         <p class="font-mono text-[11px] uppercase tracking-widest text-slate-500">{{ $rotulo }}</p>
-                        <p class="text-xs text-slate-400">{{ round($n / $totalVeh * 100) }}%</p>
+                        @if ($rotulo !== 'Total')
+                            <p class="text-xs text-slate-400">{{ $veh['total'] > 0 ? round($n / $veh['total'] * 100) : 0 }}%</p>
+                        @endif
                     </div>
                 @endforeach
             </div>
+
+            <p class="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
+                @if ($veh['total'] === 0)
+                    En este tramo no se anotó ningún vehículo.
+                @else
+                    <b class="tabular-nums text-slate-700">{{ $veh['conConductor'] }}</b> de
+                    <b class="tabular-nums text-slate-700">{{ $veh['total'] }}</b> con conductor identificado:
+                    de esos se sabe quién entró y quién salió con el vehículo, y salen en el registro de esa persona.
+                @endif
+            </p>
         </x-tarjeta>
 
         {{-- POR UNIDAD --}}

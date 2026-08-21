@@ -4,6 +4,8 @@ namespace App\Services\Reportes;
 
 use App\Models\Movimiento;
 use App\Models\Persona;
+use App\Models\VehiculoFijo;
+use App\Services\DatosVehiculo;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -188,23 +190,39 @@ final class Reportes
     }
 
     /**
-     * Cómo se entró en el tramo: en carro, en moto o a pie.
+     * Los vehículos que entraron en el tramo: cuántos carros, cuántas motos.
      *
-     * Se mira el vehículo congelado en cada entrada. Sin tipo_vehiculo, se entró caminando.
+     * Antes esto contaba el vehículo congelado en cada entrada de persona y decía además cuántos
+     * habían entrado «a pie». Dejó de valer cuando la puerta pasó a marcar solo personas: los
+     * asientos ya no llevan vehículo, así que el reporte contaba cero carros, cero motos y a todo
+     * el mundo caminando. Un reporte vacío se nota; uno que dice «100% a pie» se cree.
      *
-     * @return array{carro:int, moto:int, aPie:int}
+     * Ahora se cuentan las ESTADÍAS del estacionamiento, que es donde el vehículo vive de verdad.
+     * Y ya no se habla de «a pie»: que nadie anotara un vehículo no prueba que la persona llegara
+     * caminando —pudo venir en el carro que anotó otro—, y eso no hay manera de saberlo.
+     *
+     * @return array{carro:int, moto:int, total:int, conConductor:int}
      */
-    public function porVehiculo(CarbonImmutable $desde, CarbonImmutable $hasta): array
+    public function vehiculosQueEntraron(CarbonImmutable $desde, CarbonImmutable $hasta): array
     {
-        $conteo = $this->entradasEntre($desde, $hasta)
-            ->selectRaw("coalesce(tipo_vehiculo, 'a-pie') as t, count(*) as n")
-            ->groupByRaw('coalesce(tipo_vehiculo, \'a-pie\')')
+        $estadias = VehiculoFijo::query()
+            ->whereBetween('entro_en', [$desde->startOfDay(), $hasta->endOfDay()]);
+
+        $conteo = (clone $estadias)
+            ->selectRaw('tipo_vehiculo as t, count(*) as n')
+            ->groupBy('tipo_vehiculo')
             ->pluck('n', 't');
 
+        $carro = (int) ($conteo[DatosVehiculo::CARRO] ?? 0);
+        $moto = (int) ($conteo[DatosVehiculo::MOTO] ?? 0);
+
         return [
-            'carro' => (int) ($conteo['carro'] ?? 0),
-            'moto' => (int) ($conteo['moto'] ?? 0),
-            'aPie' => (int) ($conteo['a-pie'] ?? 0),
+            'carro' => $carro,
+            'moto' => $moto,
+            'total' => $carro + $moto,
+            // Con conductor identificado: mide cuánto se está usando el enlace con las personas,
+            // que es lo que permite saber quién entró y quién salió con cada vehículo.
+            'conConductor' => (clone $estadias)->whereNotNull('conductor_id')->count(),
         ];
     }
 
