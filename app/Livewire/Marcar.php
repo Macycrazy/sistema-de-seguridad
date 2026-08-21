@@ -110,7 +110,16 @@ class Marcar extends Component
     public string $tipoNuevo = DatosVehiculo::CARRO;
 
     /**
-     * Los vehículos suyos que se lleva al salir: los ids de sus estadías abiertas.
+     * El vehículo de otro que se está eligiendo en el desplegable, antes de añadirlo.
+     *
+     * Se llega en el carro propio y se sale en la moto de un compañero más de lo que parece, y
+     * hay que poder anotarlo aquí: si no, la estadía se queda abierta y ese vehículo figura
+     * dentro sin estar.
+     */
+    public string $otroVehiculoSalida = '';
+
+    /**
+     * Los vehículos que se lleva al salir: los ids de las estadías abiertas.
      *
      * Empieza VACÍO a propósito, aunque tenga el carro dentro. Se sale a pie muchas veces al día
      * —el almuerzo, un trámite— y marcarle el carro por omisión cerraría estadías de vehículos
@@ -371,7 +380,7 @@ class Marcar extends Component
             $this->avisoInvitado = true;
             unset(
                 $this->persona, $this->sugerido, $this->esperaHasta, $this->esperaSalidaHasta,
-                $this->motivoEspera, $this->susVehiculos, $this->susVehiculosDentro,
+                $this->motivoEspera, $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
             );
 
             return;
@@ -381,11 +390,11 @@ class Marcar extends Component
         $this->invitadoNuevo = false;
 
         // Los vehículos son de quien acaba de aparecer, no de quien estaba antes.
-        $this->reset(['vehiculoEntrada', 'placaNueva', 'tipoNuevo', 'vehiculosSalida']);
+        $this->reset(['vehiculoEntrada', 'placaNueva', 'tipoNuevo', 'vehiculosSalida', 'otroVehiculoSalida']);
 
         unset(
             $this->persona, $this->sugerido, $this->esperaHasta, $this->esperaSalidaHasta,
-            $this->motivoEspera, $this->susVehiculos, $this->susVehiculosDentro,
+            $this->motivoEspera, $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
         );
 
         // Que el vigilante haya sacado la ficha de esta cédula queda anotado. Con dedup: el tecleo
@@ -600,11 +609,11 @@ class Marcar extends Component
 
         // Lo elegido era de la persona anterior: el carro de uno no puede quedarse marcado
         // cuando en pantalla ya hay otro.
-        $this->reset(['vehiculoEntrada', 'placaNueva', 'tipoNuevo', 'vehiculosSalida']);
+        $this->reset(['vehiculoEntrada', 'placaNueva', 'tipoNuevo', 'vehiculosSalida', 'otroVehiculoSalida']);
 
         unset(
             $this->persona, $this->sugerido, $this->esperaHasta, $this->esperaSalidaHasta,
-            $this->motivoEspera, $this->susVehiculos, $this->susVehiculosDentro,
+            $this->motivoEspera, $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
         );
     }
 
@@ -672,10 +681,56 @@ class Marcar extends Component
         $this->resetValidation();
     }
 
+    /**
+     * Los demás vehículos que están dentro, para el desplegable de «otro vehículo».
+     *
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function otrosVehiculosDentro(): array
+    {
+        $persona = $this->persona();
+
+        if (! $persona) {
+            return [];
+        }
+
+        return app(VehiculoEnLaPuerta::class)->otrosDentro($persona)
+            ->mapWithKeys(fn ($estadia) => [
+                (string) $estadia->id => trim(
+                    $estadia->placa
+                    .' · '.$estadia->etiquetaTipo()
+                    .($estadia->puesto ? ' · '.$estadia->puesto->codigo : '')
+                    .($estadia->flota_id ? ' · empresa' : '')
+                ),
+            ])
+            ->all();
+    }
+
+    /** Añadir a la salida un vehículo que no es suyo: de la empresa o de otra persona. */
+    public function llevarseOtro(): void
+    {
+        $this->resetValidation();
+
+        if ($this->otroVehiculoSalida === '') {
+            return;
+        }
+
+        $id = (int) $this->otroVehiculoSalida;
+
+        if (! in_array($id, $this->vehiculosSalida, true)) {
+            $this->vehiculosSalida[] = $id;
+        }
+
+        $this->otroVehiculoSalida = '';
+        unset($this->otrosVehiculosDentro);
+    }
+
     /** Sale a pie: deja sin marcar todos sus vehículos, que se quedan dentro. */
     public function salirAPie(): void
     {
         $this->vehiculosSalida = [];
+        $this->otroVehiculoSalida = '';
         $this->resetValidation();
     }
 
@@ -820,7 +875,7 @@ class Marcar extends Component
         $this->reset([
             'cedula', 'nacionalidad', 'personaId', 'invitadoNuevo', 'avisoInvitado', 'nombre',
             'motivo', 'piso', 'nivel', 'pisoAMano', 'confirmacion',
-            'vehiculoEntrada', 'placaNueva', 'tipoNuevo', 'vehiculosSalida',
+            'vehiculoEntrada', 'placaNueva', 'tipoNuevo', 'vehiculosSalida', 'otroVehiculoSalida',
         ]);
         $this->resetValidation();
 
@@ -830,7 +885,7 @@ class Marcar extends Component
         unset(
             $this->persona, $this->sugerido, $this->esperaHasta,
             $this->esperaSalidaHasta, $this->dentro, $this->dentroPorTipo,
-            $this->susVehiculos, $this->susVehiculosDentro,
+            $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
         );
     }
 

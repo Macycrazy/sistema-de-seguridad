@@ -4,6 +4,7 @@ namespace App\Services\Estacionamiento;
 
 use App\Models\Persona;
 use App\Models\Vehiculo;
+use App\Models\VehiculoDeFlota;
 use App\Models\VehiculoFijo;
 use App\Services\DatosVehiculo;
 use Illuminate\Support\Collection;
@@ -38,11 +39,7 @@ final class VehiculoEnLaPuerta
     }
 
     /**
-     * Los vehículos que están DENTRO y que metió esta persona: lo que se le puede ofrecer al salir.
-     *
-     * Se ofrece solo lo que está dentro, que es la regla: no se puede sacar un vehículo que no
-     * está. Y solo lo suyo, porque es lo que se marca de un toque; para llevarse el carro de otro
-     * está la pantalla del estacionamiento, donde se anota a quién se le entrega.
+     * Los vehículos que están DENTRO y que metió esta persona: los que se le ofrecen de un toque.
      *
      * @return Collection<int, VehiculoFijo>
      */
@@ -53,6 +50,29 @@ final class VehiculoEnLaPuerta
             ->where('conductor_id', $persona->id)
             ->orderByDesc('entro_en')
             ->orderByDesc('id')
+            ->get();
+    }
+
+    /**
+     * Los demás vehículos que están dentro: los de la empresa y los de otra gente.
+     *
+     * Porque se sale en lo de otro más de lo que parece —se llega en el carro propio y se sale en
+     * la moto de un compañero, o se saca uno de la flota para un trámite— y eso también hay que
+     * poder anotarlo en la puerta. Van aparte de los suyos y no de un toque: son muchos, y elegir
+     * el vehículo de otro no debería ser tan fácil como equivocarse.
+     *
+     * La regla no cambia: solo lo que ESTÁ dentro. Y sacarlo así deja mejor rastro que hoy —queda
+     * la persona que se lo llevó, no un nombre tecleado a mano en otra pantalla.
+     *
+     * @return Collection<int, VehiculoFijo>
+     */
+    public function otrosDentro(Persona $persona): Collection
+    {
+        return VehiculoFijo::query()
+            ->abiertos()
+            ->with(['puesto', 'flota'])
+            ->where(fn ($q) => $q->whereNull('conductor_id')->orWhere('conductor_id', '!=', $persona->id))
+            ->orderBy('placa')
             ->get();
     }
 
@@ -79,16 +99,25 @@ final class VehiculoEnLaPuerta
             ]);
         }
 
+        // Si la placa está en el catálogo de la empresa, la estadía queda enlazada a ella sola:
+        // el guardia no tiene por qué saber cuáles son de flota y cuáles no.
+        $deLaFlota = VehiculoDeFlota::query()->activos()->where('placa', $placaLimpia)->first();
+
         $estadia = app(VehiculosFijos::class)->registrar(
             placa: $placaLimpia,
-            tipoVehiculo: $tipo ?? DatosVehiculo::CARRO,
+            tipoVehiculo: $tipo ?? $deLaFlota?->tipo_vehiculo ?? DatosVehiculo::CARRO,
             puestoId: null,
-            marca: $marca,
-            color: $color,
+            marca: $marca ?? $deLaFlota?->marca,
+            color: $color ?? $deLaFlota?->color,
             conductorCedula: $persona->cedula,
+            flotaId: $deLaFlota?->id,
         );
 
-        $this->recordar($persona, $placaLimpia, $tipo, $marca, $color);
+        // Un vehículo de la empresa NO se guarda en la ficha de quien lo condujo: no es suyo, y
+        // aparecería como propio la próxima vez que se le marque.
+        if ($deLaFlota === null) {
+            $this->recordar($persona, $placaLimpia, $tipo, $marca, $color);
+        }
 
         return $estadia;
     }

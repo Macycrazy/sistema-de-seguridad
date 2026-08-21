@@ -577,7 +577,7 @@
                     </div>
                 @endif
 
-                @if ($puedeSalir && $this->susVehiculosDentro->isNotEmpty())
+                @if ($puedeSalir && ($this->susVehiculosDentro->isNotEmpty() || $this->otrosVehiculosDentro !== []))
                     <div class="mt-5 border-t border-slate-100 pt-5">
                         <p class="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">
                             ¿Cómo sale?
@@ -612,10 +612,45 @@
                                     @endif
                                 </button>
                             @endforeach
+
+                            {{-- Los que no son suyos y ya se añadieron: se ven igual que los demás
+                                 y se quitan tocándolos, para que no haya que recordar de dónde
+                                 salió cada uno. --}}
+                            @foreach ($vehiculosSalida as $elegido)
+                                @if (isset($this->otrosVehiculosDentro[(string) $elegido]))
+                                    <button type="button" wire:click="alternarVehiculoSalida({{ $elegido }})"
+                                            class="flex items-center gap-2 rounded border border-parte1 bg-parte1-suave px-3 py-2 text-sm font-semibold text-parte1 transition">
+                                        <span class="font-mono tracking-wider">{{ $this->otrosVehiculosDentro[(string) $elegido] }}</span>
+                                        <span aria-hidden="true">✕</span>
+                                    </button>
+                                @endif
+                            @endforeach
                         </div>
 
+                        {{-- Un vehículo que no es suyo: de la empresa, o el de un compañero. Se
+                             llega en lo propio y se sale en lo de otro más de lo que parece, y si
+                             no se puede anotar aquí, esa estadía se queda abierta y el vehículo
+                             figura dentro sin estar.
+
+                             Va en un desplegable y no en botones: son muchos, y llevarse el
+                             vehículo de otro no debería costar lo mismo que equivocarse. --}}
+                        @if ($this->otrosVehiculosDentro !== [])
+                            <div class="mt-3 flex flex-wrap items-end gap-3">
+                                <div class="w-full sm:w-80">
+                                    <x-selector etiqueta="…o se lleva otro que está dentro"
+                                                nombre="otroVehiculoSalida"
+                                                wire:model="otroVehiculoSalida"
+                                                :opciones="['' => 'Elegir vehículo…'] + $this->otrosVehiculosDentro" />
+                                </div>
+                                <div class="pb-1.5">
+                                    <x-boton type="button" variante="secundario" tamano="chico"
+                                             wire:click="llevarseOtro">Añadir</x-boton>
+                                </div>
+                            </div>
+                        @endif
+
                         <p class="mt-2 text-xs text-slate-500">
-                            «A pie» deja su vehículo dentro, anotado.
+                            «A pie» deja su vehículo dentro, anotado. Solo se puede salir con un vehículo que esté dentro.
                         </p>
 
                         @error('vehiculoSalida')
@@ -801,8 +836,9 @@
             </p>
 
             <p class="mt-3 rounded-lg bg-slate-100 px-3 py-2.5 text-sm text-slate-600">
-                Al <b>salir</b> solo se ofrecen los vehículos que están dentro a su nombre. Si sale «a pie»,
-                su carro se queda dentro y sigue anotado.
+                Al <b>salir</b>, los suyos salen de un toque; si se lleva el de un compañero o uno de la
+                empresa, elígelo en «se lleva otro que está dentro». Solo se puede sacar lo que está dentro.
+                Si sale «a pie», su carro se queda anotado.
             </p>
 
             <x-boton type="button" x-on:click="ayuda = false" class="mt-6 w-full">Entendido</x-boton>

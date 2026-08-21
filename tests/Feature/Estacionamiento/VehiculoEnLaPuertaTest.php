@@ -6,6 +6,7 @@ use App\Livewire\Marcar;
 use App\Models\Movimiento;
 use App\Models\Persona;
 use App\Models\Vehiculo;
+use App\Models\VehiculoDeFlota;
 use App\Models\VehiculoFijo;
 use App\Services\DatosVehiculo;
 use App\Services\Estacionamiento\Estacionamiento;
@@ -246,6 +247,67 @@ class VehiculoEnLaPuertaTest extends TestCase
             ->call('alternarVehiculoSalida', $estadia->id)
             ->call('marcarSalida')
             ->assertHasErrors('vehiculoSalida');
+    }
+
+    #[Test]
+    public function se_puede_salir_con_el_vehiculo_de_un_companero(): void
+    {
+        // Pasa de verdad: se llega en el carro propio y se sale en la moto de un compañero. Si no
+        // se pudiera anotar aquí, esa moto se quedaría figurando dentro sin estar.
+        $ana = $this->trabajador();
+        $luis = $this->trabajador(['cedula' => '87654321', 'nombre' => 'LUIS GÓMEZ']);
+
+        $moto = VehiculoFijo::create([
+            'placa' => 'MOTO123',
+            'tipo_vehiculo' => DatosVehiculo::MOTO,
+            'entro_en' => now()->subHours(2),
+            'conductor_id' => $luis->id,
+        ]);
+
+        app(Marcaje::class)->registrar($ana, Movimiento::ENTRADA);
+        $this->travel(Marcaje::MINUTOS_ENTRE_ENTRADA_Y_SALIDA)->minutes();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSee('MOTO123')                       // sale entre los que están dentro
+            ->set('otroVehiculoSalida', (string) $moto->id)
+            ->call('llevarseOtro')
+            ->assertSet('vehiculosSalida', [$moto->id])
+            ->call('marcarSalida')
+            ->assertHasNoErrors();
+
+        $moto->refresh();
+
+        $this->assertNotNull($moto->salio_en);
+        $this->assertSame($ana->id, $moto->salida_conductor_id, 'Se la llevó Ana, no Luis.');
+    }
+
+    #[Test]
+    public function entrar_con_un_vehiculo_de_la_empresa_lo_enlaza_a_la_flota_y_no_a_su_ficha(): void
+    {
+        // Un carro de la empresa no es suyo: no puede quedarse en su ficha como propio.
+        $ana = $this->trabajador();
+
+        VehiculoDeFlota::create([
+            'placa' => 'EMP001',
+            'tipo_vehiculo' => DatosVehiculo::CARRO,
+            'marca' => 'Toyota',
+        ]);
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->call('elegirVehiculo', Marcar::VEHICULO_OTRO)
+            ->set('placaNueva', 'emp001')
+            ->call('marcarEntrada')
+            ->assertHasNoErrors();
+
+        $estadia = VehiculoFijo::where('placa', 'EMP001')->firstOrFail();
+
+        $this->assertNotNull($estadia->flota_id, 'Debería quedar enlazada al catálogo de la empresa.');
+        $this->assertSame($ana->id, $estadia->conductor_id);
+        $this->assertDatabaseMissing('vehiculos', ['persona_id' => $ana->id, 'placa' => 'EMP001']);
     }
 
     #[Test]
