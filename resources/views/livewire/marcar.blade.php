@@ -568,6 +568,13 @@
                                             wire:model.live="vehiculoEntrada"
                                             :opciones="['' => 'Ninguno'] + $this->flotaParaEntrar" />
                             </div>
+                        @elseif ($this->hayFlotaCargada)
+                            {{-- Que no haya ninguno para traer no es lo mismo que no haber flota:
+                                 a media mañana están todos aquí. Sin decirlo, la pantalla no
+                                 enseña nada y parece que lo de la empresa no funciona. --}}
+                            <p class="mt-3 text-xs text-slate-500">
+                                Todos los vehículos de la empresa están dentro ahora mismo.
+                            </p>
                         @endif
 
                         {{-- Solo cuando hace falta teclear. La primera vez se teclea; a partir de

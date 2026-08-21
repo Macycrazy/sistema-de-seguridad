@@ -386,6 +386,41 @@ class VehiculoEnLaPuertaTest extends TestCase
     }
 
     #[Test]
+    public function si_toda_la_flota_esta_dentro_la_puerta_lo_dice_en_vez_de_callarse(): void
+    {
+        // «No hay ninguno para traer» y «no hay flota» se ven igual —la pantalla no enseña nada—
+        // y no son lo mismo: a media mañana están todos aquí.
+        $this->trabajador();
+        $flota = VehiculoDeFlota::create(['placa' => 'EMP001', 'tipo_vehiculo' => DatosVehiculo::CARRO]);
+
+        VehiculoFijo::create([
+            'placa' => 'EMP001',
+            'tipo_vehiculo' => DatosVehiculo::CARRO,
+            'flota_id' => $flota->id,
+            'entro_en' => now()->subDay(),
+        ]);
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertSee('Todos los vehículos de la empresa están dentro');
+    }
+
+    #[Test]
+    public function sin_flota_cargada_la_puerta_no_dice_nada_de_la_empresa(): void
+    {
+        // Ni el desplegable ni el aviso: sin catálogo no hay nada que decir. (El texto de la
+        // ayuda sí la menciona siempre, y por eso se buscan las frases del bloque.)
+        $this->trabajador();
+
+        Livewire::test(Marcar::class)
+            ->set('cedula', '12345678')
+            ->call('buscar')
+            ->assertDontSee('Todos los vehículos de la empresa')
+            ->assertDontSee('vehiculoDeLaEmpresa');   // el id del desplegable: no se ha pintado
+    }
+
+    #[Test]
     public function el_mismo_vehiculo_no_puede_entrar_dos_veces(): void
     {
         $ana = $this->trabajador();

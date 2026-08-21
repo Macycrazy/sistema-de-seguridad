@@ -392,7 +392,7 @@ class Marcar extends Component
             unset(
                 $this->persona, $this->sugerido, $this->esperaHasta, $this->esperaSalidaHasta,
                 $this->motivoEspera, $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
-                $this->flotaParaEntrar,
+                $this->flotaParaEntrar, $this->hayFlotaCargada,
             );
 
             return;
@@ -407,7 +407,7 @@ class Marcar extends Component
         unset(
             $this->persona, $this->sugerido, $this->esperaHasta, $this->esperaSalidaHasta,
             $this->motivoEspera, $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
-            $this->flotaParaEntrar,
+            $this->flotaParaEntrar, $this->hayFlotaCargada,
         );
 
         // Que el vigilante haya sacado la ficha de esta cédula queda anotado. Con dedup: el tecleo
@@ -627,7 +627,7 @@ class Marcar extends Component
         unset(
             $this->persona, $this->sugerido, $this->esperaHasta, $this->esperaSalidaHasta,
             $this->motivoEspera, $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
-            $this->flotaParaEntrar,
+            $this->flotaParaEntrar, $this->hayFlotaCargada,
         );
     }
 
@@ -697,6 +697,19 @@ class Marcar extends Component
         return app(Flota::class)->disponibles()
             ->mapWithKeys(fn (VehiculoDeFlota $v) => [self::PREFIJO_FLOTA.$v->id => $v->descripcion()])
             ->all();
+    }
+
+    /**
+     * Si la empresa tiene vehículos cargados, aunque ahora mismo no se pueda traer ninguno.
+     *
+     * Sirve para distinguir dos silencios que se ven igual y no lo son: que no haya catálogo —hay
+     * que cargarlo en Estacionamiento— y que estén todos dentro, que es lo normal a media mañana.
+     * Sin decirlo, la pantalla simplemente no enseña nada y parece que lo de la flota no va.
+     */
+    #[Computed]
+    public function hayFlotaCargada(): bool
+    {
+        return VehiculoDeFlota::query()->activos()->exists();
     }
 
     /** Elegir con qué entra: a pie, uno de los suyos, u «otro» para teclear una placa. */
@@ -932,7 +945,7 @@ class Marcar extends Component
             $this->persona, $this->sugerido, $this->esperaHasta,
             $this->esperaSalidaHasta, $this->dentro, $this->dentroPorTipo,
             $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
-            $this->flotaParaEntrar,
+            $this->flotaParaEntrar, $this->hayFlotaCargada,
         );
     }
 
