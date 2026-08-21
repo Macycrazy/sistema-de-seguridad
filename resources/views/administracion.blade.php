@@ -4,7 +4,17 @@
 @section('seccion', 'Administración')
 
 @section('contenido')
-    <h1 class="text-3xl font-bold tracking-tight">Administración</h1>
+    <div class="flex items-center gap-2.5">
+        <h1 class="text-3xl font-bold tracking-tight">Administración</h1>
+        <x-ayuda
+            titulo="Administración"
+            que="El sitio único desde donde se configura y se gestiona todo. Cada tarjeta abre un módulo, y cada módulo tiene su propia ayuda («?»)."
+            :pasos="[
+                'Solo ves las tarjetas de lo que <b>tu rol</b> puede administrar.',
+                'Entra a cada módulo y toca su «?» para saber qué hace.',
+                'Lo de todos los días (marcar, estacionamiento) está en el menú de arriba, no aquí.',
+            ]" />
+    </div>
     <p class="mt-1 text-sm text-slate-500">Todo lo que se configura y se gestiona, en un solo sitio.</p>
 
     @php
