@@ -81,7 +81,7 @@ class UmbralesDeAlerta
         return $this->valor('alerta_aforo_moto');
     }
 
-    /** Horas que un vehículo de la empresa puede llevar fuera antes de avisar. 0 = no se avisa. */
+    /** Horas fuera a partir de las cuales el aviso de la flota pasa a urgente. 0 = no se avisa. */
     public function horasFlotaFuera(): int
     {
         return $this->valor('alerta_horas_flota_fuera');

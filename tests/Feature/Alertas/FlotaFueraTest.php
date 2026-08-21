@@ -67,12 +67,26 @@ class FlotaFueraTest extends TestCase
     }
 
     #[Test]
-    public function no_avisa_del_que_salio_hace_un_rato(): void
+    public function avisa_desde_que_sale_aunque_acabe_de_salir(): void
     {
-        // El plazo por omisión son 8 horas: un trámite de la mañana no es una alerta.
+        // Un vehículo de la empresa circulando por ahí es algo que se quiere SABER, aunque sea
+        // normal y aunque vuelva en una hora.
+        $this->estadia($this->flota(), '5 minutes');
+
+        $alertas = $this->deFlota();
+
+        $this->assertCount(1, $alertas);
+        $this->assertFalse($alertas[0]->esUrgente(), 'Recién salido no es urgente, es un aviso.');
+        $this->assertStringContainsString('está fuera', $alertas[0]->titulo);
+    }
+
+    #[Test]
+    public function dentro_del_plazo_es_aviso_y_no_urgente(): void
+    {
+        // El plazo por omisión son 8 horas: hasta ahí es un trámite largo.
         $this->estadia($this->flota(), '2 hours');
 
-        $this->assertCount(0, $this->deFlota());
+        $this->assertFalse($this->deFlota()[0]->esUrgente());
     }
 
     #[Test]
@@ -86,11 +100,14 @@ class FlotaFueraTest extends TestCase
     }
 
     #[Test]
-    public function al_doble_del_plazo_pasa_a_urgente(): void
+    public function pasado_el_plazo_pasa_a_urgente(): void
     {
-        $this->estadia($this->flota(), '20 hours');
+        $this->estadia($this->flota(), '10 hours');
 
-        $this->assertTrue($this->deFlota()[0]->esUrgente());
+        $alerta = $this->deFlota()[0];
+
+        $this->assertTrue($alerta->esUrgente());
+        $this->assertStringContainsString('más de las 8 h previstas', $alerta->detalle);
     }
 
     #[Test]

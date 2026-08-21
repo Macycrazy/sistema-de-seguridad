@@ -22,7 +22,7 @@ use Illuminate\Support\Collection;
  *                     olvido de marcar la salida; a veces, alguien que de verdad sigue ahí).
  *   · aforo         — más gente dentro a la vez de la que el aforo configurado admite.
  *   · estacionamiento — lo mismo con los vehículos, por total y por tipo.
- *   · flota fuera   — un vehículo de la empresa que salió y no ha vuelto.
+ *   · flota fuera   — un vehículo de la empresa que está fuera, desde que sale; urgente si tarda.
  *
  * Los umbrales salen todos de UmbralesDeAlerta, ajustables desde Ajustes; en 0 se apagan.
  */
@@ -110,29 +110,28 @@ final class Alertas
             }
         }
 
-        // FLOTA FUERA — un vehículo de la empresa que salió y no ha vuelto. Sale para un trámite y
-        // vuelve; si no vuelve, alguien tiene que enterarse sin ir a mirarlo uno por uno.
+        // FLOTA FUERA — todo vehículo de la empresa que está fuera, desde que sale.
+        //
+        // Se avisa en cuanto sale y no al pasar un plazo: un vehículo de la empresa circulando por
+        // ahí es algo que se quiere SABER, aunque sea normal y aunque vuelva en una hora. El plazo
+        // no decide si se avisa, sino cuándo el aviso pasa a urgente: hasta ahí es un trámite
+        // largo; a partir de ahí, algo que mirar.
         $horasFuera = $this->umbrales->horasFlotaFuera();
 
         if ($horasFuera > 0) {
-            $limiteFuera = $ahora->subHours($horasFuera);
-
             foreach ($this->flota->fuera() as $vehiculo) {
-                if ($vehiculo->salio_en->greaterThanOrEqualTo($limiteFuera)) {
-                    continue;
-                }
-
-                $llevaHoras = (int) $vehiculo->salio_en->diffInHours($ahora);
+                $minutos = (int) $vehiculo->salio_en->diffInMinutes($ahora);
+                $llevaHoras = intdiv($minutos, 60);
                 $quien = $vehiculo->seLoLlevo ?: 'sin conductor anotado';
 
                 $alertas->push(new Alerta(
                     tipo: Alerta::FLOTA_FUERA,
-                    // Pasado el doble del plazo ya no es que se haya alargado el trámite.
-                    severidad: $llevaHoras >= $horasFuera * 2 ? Alerta::URGENTE : Alerta::AVISO,
-                    titulo: $vehiculo->placa.' lleva '.$llevaHoras.' h fuera',
+                    severidad: $llevaHoras >= $horasFuera ? Alerta::URGENTE : Alerta::AVISO,
+                    titulo: $vehiculo->placa.' está fuera'.($llevaHoras > 0 ? ' · '.$llevaHoras.' h' : ''),
                     detalle: 'Vehículo de la empresa ('.$vehiculo->descripcion.'). Se lo llevó '.$quien
                         .' el '.$vehiculo->salio_en->translatedFormat('D d M \a \l\a\s g:i a')
-                        .($vehiculo->loDejoSalir ? ', anotado por '.$vehiculo->loDejoSalir : '').'.',
+                        .($vehiculo->loDejoSalir ? ', anotado por '.$vehiculo->loDejoSalir : '').'.'
+                        .($llevaHoras >= $horasFuera ? ' Lleva fuera más de las '.$horasFuera.' h previstas.' : ''),
                     desde: $vehiculo->salio_en,
                 ));
             }
