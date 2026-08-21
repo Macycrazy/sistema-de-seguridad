@@ -74,7 +74,8 @@
                  clara y entera—; solo una guía fina de enfoque. Vertical y alto (ocupa casi toda la
                  pantalla del teléfono), con el mensaje sobre un degradado suave abajo. --}}
             <div x-show="abierto" x-cloak>
-                <div class="relative w-full overflow-hidden rounded-xl bg-slate-100"
+                <div class="relative w-full overflow-hidden rounded-xl bg-slate-100 cursor-pointer"
+                     x-on:click="enfocar($event)"
                      style="aspect-ratio: 3 / 4; max-height: 78vh">
                     <video x-ref="video" playsinline muted
                            class="absolute inset-0 h-full w-full object-cover"></video>
@@ -82,6 +83,20 @@
 
                     {{-- Guía de enfoque suave: un marco claro y fino, sin oscurecer nada. --}}
                     <div class="pointer-events-none absolute inset-4 rounded-2xl border-2 border-white/70"></div>
+
+                    {{-- Cuadro de enfoque animado tipo cámara --}}
+                    <div x-show="mostrandoCuadro"
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 scale-150"
+                         x-transition:enter-end="opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-300"
+                         x-transition:leave-start="opacity-100"
+                         x-transition:leave-end="opacity-0"
+                         :style="{ top: topCuadro, left: leftCuadro }"
+                         x-cloak
+                         class="pointer-events-none absolute h-12 w-12 border-2 border-yellow-400 rounded-lg select-none z-10">
+                        <div class="absolute inset-4 border border-yellow-400/40 rounded-full"></div>
+                    </div>
 
                     <p x-text="mensaje"
                        class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-4 pb-4 pt-12
