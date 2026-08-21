@@ -147,7 +147,11 @@
                          min-w: en un teléfono los anchos fijos no caben y la columna «Persona»
                          se aplastaba a cero —el ente se corría a su sitio y el encabezado se
                          encimaba—. Con un ancho mínimo, el contenedor desplaza en vez de aplastar. --}}
-                    <table class="w-full min-w-[40rem] table-fixed text-sm">
+                    {{-- El ancho mínimo solo desde tableta. En el teléfono la tabla se ajusta a
+                         lo que hay: forzarle 40rem con las columnas de ancho fijo dejaba a
+                         «Persona» un dedo de sitio —el nombre no se veía y los encabezados se
+                         montaban unos encima de otros—. --}}
+                    <table class="w-full table-fixed text-sm sm:min-w-[44rem]">
                         <caption class="sr-only">
                             Movimientos del {{ $this->diaElegido()->format('d/m/Y') }}, del más reciente al más antiguo.
                         </caption>
@@ -157,12 +161,14 @@
                              cabecera azul de la página. --}}
                         <thead class="bg-white sm:sticky sm:top-0 sm:z-10">
                             <tr class="border-b border-slate-200 text-left font-mono text-xs uppercase tracking-widest text-slate-500">
-                                <th scope="col" class="w-20 px-4 py-3 font-semibold">Hora</th>
-                                <th scope="col" class="px-4 py-3 font-semibold">Persona</th>
-                                <th scope="col" class="w-28 px-4 py-3 font-semibold">Ente</th>
-                                <th scope="col" class="w-36 px-4 py-3 font-semibold">Tipo</th>
-                                <th scope="col" class="w-32 px-4 py-3 font-semibold">Mov.</th>
-                                <th scope="col" class="w-40 px-4 py-3 font-semibold">Cómo</th>
+                                <th scope="col" class="w-14 px-2 py-3 font-semibold sm:w-20 sm:px-4">Hora</th>
+                                <th scope="col" class="px-2 py-3 font-semibold sm:px-4">Persona</th>
+                                {{-- Ente y Tipo se van del teléfono: el ente pasa debajo del
+                                     nombre y el tipo ya se ve en la etiqueta del panel. --}}
+                                <th scope="col" class="hidden w-28 px-4 py-3 font-semibold sm:table-cell">Ente</th>
+                                <th scope="col" class="hidden w-36 px-4 py-3 font-semibold sm:table-cell">Tipo</th>
+                                <th scope="col" class="w-24 px-2 py-3 font-semibold sm:w-32 sm:px-4">Mov.</th>
+                                <th scope="col" class="w-24 px-2 py-3 font-semibold sm:w-40 sm:px-4">Cómo</th>
                             </tr>
                         </thead>
 
@@ -173,32 +179,42 @@
                                     wire:click="abrirPanel('{{ $movimiento->persona->id }}')"
                                     class="cursor-pointer hover:bg-slate-50 has-[:focus-visible]:bg-slate-50"
                                 >
-                                    <td class="px-4 py-3 font-mono tabular-nums text-slate-500">{{ $movimiento->hora() }}</td>
+                                    <td class="px-2 py-3 font-mono text-xs tabular-nums text-slate-500 sm:px-4 sm:text-sm">{{ $movimiento->hora() }}</td>
 
                                     {{-- El botón no es decorativo: la fila entera responde al
                                          ratón, pero sin un control de verdad no había forma de
                                          llegar aquí con el teclado ni de anunciarlo. El .stop
                                          evita que la acción se dispare dos veces. --}}
-                                    <td class="px-4 py-3">
+                                    <td class="min-w-0 px-2 py-3 sm:px-4">
                                         <button
                                             type="button"
                                             wire:click.stop="abrirPanel('{{ $movimiento->persona->id }}')"
                                             title="{{ $movimiento->persona->nombre() }}"
-                                            class="block w-full truncate rounded text-left font-medium
+                                            class="block w-full rounded text-left font-medium
                                                    focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900
                                                    focus-visible:ring-offset-2"
                                         >
                                             <span class="sr-only">Ver el histórico de</span>
-                                            {{ $movimiento->persona->nombre() }}
+                                            <span class="block truncate">{{ $movimiento->persona->nombre() }}</span>
+
+                                            {{-- En el teléfono, el ente y el tipo van debajo del
+                                                 nombre: sus columnas no caben, pero el dato sí
+                                                 hace falta. --}}
+                                            <span class="mt-0.5 flex items-center gap-1.5 sm:hidden">
+                                                <x-etiqueta :tipo="$movimiento->persona->tipo->value" tamano="chico" />
+                                                <span class="truncate font-mono text-[10px] uppercase tracking-widest text-slate-400">
+                                                    {{ $movimiento->persona->ente?->etiqueta() ?? '—' }}
+                                                </span>
+                                            </span>
                                         </button>
                                     </td>
 
-                                    <td class="truncate px-4 py-3 font-mono text-xs text-slate-500">
+                                    <td class="hidden truncate px-4 py-3 font-mono text-xs text-slate-500 sm:table-cell">
                                         {{ $movimiento->persona->ente?->etiqueta() ?? '—' }}
                                     </td>
-                                    <td class="px-4 py-3"><x-etiqueta :tipo="$movimiento->persona->tipo->value" /></td>
-                                    <td class="px-4 py-3"><x-etiqueta :tipo="$movimiento->sentido->value" /></td>
-                                    <td class="px-4 py-3">
+                                    <td class="hidden px-4 py-3 sm:table-cell"><x-etiqueta :tipo="$movimiento->persona->tipo->value" /></td>
+                                    <td class="px-2 py-3 sm:px-4"><x-etiqueta :tipo="$movimiento->sentido->value" /></td>
+                                    <td class="px-2 py-3 sm:px-4">
                                         {{-- Con qué vehículo entró —o con cuál se fue—: sale del
                                              estacionamiento, buscando lo que ESTA persona movió en
                                              ESTE sentido. Quien movió dos ese día ve los dos. --}}

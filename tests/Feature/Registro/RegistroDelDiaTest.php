@@ -508,4 +508,23 @@ class RegistroDelDiaTest extends TestCase
             $this->assertNotContains($prohibido, $metodos);
         }
     }
+
+    #[Test]
+    public function en_el_telefono_el_nombre_no_pierde_su_sitio_por_las_columnas_de_ancho_fijo(): void
+    {
+        /*
+         * La tabla es de ancho fijo y las columnas con medida propia sumaban casi los 40rem del
+         * mínimo, así que a «Persona» le quedaba un dedo: el nombre no se veía y los encabezados
+         * se montaban unos encima de otros.
+         *
+         * Se mira el marcado y no el aspecto —no hay navegador aquí— pero fija las dos decisiones
+         * que lo arreglan: el mínimo solo desde tableta, y las columnas que sobran fuera del
+         * teléfono con su dato debajo del nombre.
+         */
+        $html = Livewire::test(RegistroDelDia::class)->html();
+
+        $this->assertStringContainsString('sm:min-w-[44rem]', $html);
+        $this->assertStringNotContainsString('min-w-[40rem]', $html);
+        $this->assertStringContainsString('hidden w-28 px-4 py-3 font-semibold sm:table-cell', $html);
+    }
 }
