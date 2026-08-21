@@ -18,46 +18,110 @@ document.addEventListener('alpine:init', () => {
         mostrandoCuadro: false,
         topCuadro: '0px',
         leftCuadro: '0px',
+        soportaLinterna: false,
+        linternaEncendida: false,
+        soportaZoom: false,
+        zoomMin: 1,
+        zoomMax: 1,
+        zoomActual: 1,
+        camaras: [],
+        camaraActivaId: null,
 
-        async abrir() {
+        async abrir(deviceId = null) {
             this.abierto = true;
             this.mensaje = 'Apunta al QR del carnet…';
 
             try {
-                // Pedimos cámara trasera con alta resolución (Full HD ideal, o lo que soporte)
-                this.stream = await navigator.mediaDevices.getUserMedia({
+                // Cargar lista de cámaras si aún no la tenemos
+                if (this.camaras.length === 0) {
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    this.camaras = devices.filter(d => d.kind === 'videoinput');
+                }
+
+                let constraints = {
                     video: { 
-                        facingMode: 'environment',
                         width: { ideal: 1920 },
                         height: { ideal: 1080 }
                     },
                     audio: false,
-                });
-                
+                };
+
+                // Si pedimos una cámara específica (al rotar), la usamos. Si no, intentamos la trasera por defecto.
+                if (deviceId) {
+                    constraints.video.deviceId = { exact: deviceId };
+                } else {
+                    constraints.video.facingMode = 'environment';
+                }
+
+                this.stream = await navigator.mediaDevices.getUserMedia(constraints);
                 this.$refs.video.srcObject = this.stream;
                 await this.$refs.video.play();
                 
-                // Intentar aplicar un ligero zoom nativo para ver "más de cerca"
+                // Actualizar ID de la cámara actual
                 const track = this.stream.getVideoTracks()[0];
+                this.camaraActivaId = track.getSettings().deviceId;
+
+                // Revisar capacidades (Linterna y Zoom)
                 if (track && typeof track.getCapabilities === 'function') {
                     const capabilities = track.getCapabilities();
+                    
+                    // LINTERNA
+                    this.soportaLinterna = !!capabilities.torch;
+                    this.linternaEncendida = false;
+
+                    // ZOOM
                     if (capabilities.zoom) {
-                        // Tratar de hacer un zoom de 2x (o el máximo si es menor)
-                        let targetZoom = 2.0;
-                        if (targetZoom > capabilities.zoom.max) targetZoom = capabilities.zoom.max;
-                        if (targetZoom < capabilities.zoom.min) targetZoom = capabilities.zoom.min;
+                        this.soportaZoom = true;
+                        this.zoomMin = capabilities.zoom.min || 1;
+                        this.zoomMax = capabilities.zoom.max || 5;
+                        // Intentar hacer zoom ligero inicial
+                        this.zoomActual = Math.min(this.zoomMin + (this.zoomMax - this.zoomMin) * 0.2, 2.0);
+                        if (this.zoomActual > this.zoomMax) this.zoomActual = this.zoomMax;
+                        if (this.zoomActual < this.zoomMin) this.zoomActual = this.zoomMin;
                         
                         try {
-                            await track.applyConstraints({ advanced: [{ zoom: targetZoom }] });
-                        } catch (e) { console.log("No se pudo aplicar zoom nativo"); }
+                            await track.applyConstraints({ advanced: [{ zoom: this.zoomActual }] });
+                        } catch (e) {}
+                    } else {
+                        this.soportaZoom = false;
                     }
                 }
 
                 this.buscar();
             } catch (e) {
                 this.mensaje = 'No se pudo abrir la cámara: ' + (e.message || e.name) +
-                    '. La cámara solo funciona por HTTPS.';
+                    '. Revisa los permisos o usa HTTPS.';
             }
+        },
+
+        async toggleLinterna() {
+            if (!this.stream || !this.soportaLinterna) return;
+            const track = this.stream.getVideoTracks()[0];
+            this.linternaEncendida = !this.linternaEncendida;
+            try {
+                await track.applyConstraints({ advanced: [{ torch: this.linternaEncendida }] });
+            } catch (e) {
+                console.error("Error con linterna", e);
+            }
+        },
+
+        async aplicarZoomManual() {
+            if (!this.stream || !this.soportaZoom) return;
+            const track = this.stream.getVideoTracks()[0];
+            try {
+                await track.applyConstraints({ advanced: [{ zoom: parseFloat(this.zoomActual) }] });
+            } catch (e) {}
+        },
+
+        async cambiarCamara() {
+            if (this.camaras.length < 2) return;
+            let idx = this.camaras.findIndex(c => c.deviceId === this.camaraActivaId);
+            idx = (idx + 1) % this.camaras.length;
+            const nuevaCamara = this.camaras[idx].deviceId;
+            
+            // Cerrar stream actual y reabrir con la nueva
+            this.cerrar(false); // false para no cerrar la UI
+            await this.abrir(nuevaCamara);
         },
 
         async enfocar(e) {
@@ -181,9 +245,25 @@ document.addEventListener('alpine:init', () => {
                     }
 
                     if (qrEncontrado) {
+                        // 1. Reproducir Beep
+                        try {
+                            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                            const osc = ctx.createOscillator();
+                            osc.type = 'sine';
+                            osc.frequency.setValueAtTime(880, ctx.currentTime);
+                            osc.connect(ctx.destination);
+                            osc.start();
+                            osc.stop(ctx.currentTime + 0.1);
+                        } catch(e) {}
+
+                        // 2. Vibrar
+                        if (window.navigator.vibrate) {
+                            window.navigator.vibrate([200]);
+                        }
+
                         this.mensaje = 'Carnet leído, verificando…';
                         wire.carnetEscaneado(qrEncontrado);
-                        this.cerrar();
+                        this.cerrar(true);
                         return;
                     }
                 }
@@ -199,9 +279,11 @@ document.addEventListener('alpine:init', () => {
             tick();
         },
 
-        cerrar() {
-            this.abierto = false;
-            this.mostrandoCuadro = false;
+        cerrar(cerrarUi = true) {
+            if (cerrarUi) {
+                this.abierto = false;
+                this.mostrandoCuadro = false;
+            }
             if (this.raf) cancelAnimationFrame(this.raf);
             if (this.stream) {
                 this.stream.getTracks().forEach((t) => t.stop());

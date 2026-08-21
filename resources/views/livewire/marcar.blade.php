@@ -81,10 +81,61 @@
                            class="absolute inset-0 h-full w-full object-cover"></video>
                     <canvas x-ref="canvas" class="hidden"></canvas>
 
-                    {{-- Guía de enfoque suave: un marco claro y fino, sin oscurecer nada. --}}
-                    <div class="pointer-events-none absolute inset-4 rounded-2xl border-2 border-white/70"></div>
+                    <style>
+                        @keyframes laser {
+                            0% { top: -2px; opacity: 0; }
+                            10% { opacity: 1; }
+                            90% { opacity: 1; }
+                            100% { top: 100%; opacity: 0; }
+                        }
+                    </style>
 
-                    {{-- Cuadro de enfoque animado tipo cámara --}}
+                    {{-- Barra de herramientas (Flash, Zoom, Cambiar cámara) --}}
+                    <div class="absolute inset-x-0 top-0 z-20 flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent p-4">
+                        {{-- Zoom Slider --}}
+                        <div x-show="soportaZoom" class="flex items-center gap-2" x-cloak>
+                            <span class="font-mono text-[0.625rem] font-bold uppercase tracking-widest text-white shadow-black drop-shadow-md">Zoom</span>
+                            <input type="range" x-model="zoomActual" :min="zoomMin" :max="zoomMax" step="0.1"
+                                   @input="aplicarZoomManual"
+                                   class="w-24 accent-parte1">
+                        </div>
+
+                        <div class="ml-auto flex items-center gap-3">
+                            {{-- Botón Linterna --}}
+                            <button type="button" x-show="soportaLinterna" @click="toggleLinterna()" x-cloak
+                                    class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md transition hover:bg-black/60"
+                                    :class="linternaEncendida ? '!bg-yellow-400 !text-black shadow-[0_0_15px_rgba(250,204,21,0.5)]' : ''">
+                                {{-- SVG linterna apagada --}}
+                                <svg x-show="!linternaEncendida" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                {{-- SVG linterna encendida --}}
+                                <svg x-show="linternaEncendida" class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                            </button>
+
+                            {{-- Botón Cambiar Cámara --}}
+                            <button type="button" x-show="camaras.length > 1" @click="cambiarCamara()" x-cloak
+                                    class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md transition hover:bg-black/60">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- Diseño de Escáner Láser Tecnológico --}}
+                    <div class="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center overflow-hidden">
+                        {{-- El shadow con 9999px oscurece todo alrededor del cuadro central --}}
+                        <div class="relative h-60 w-60 rounded-xl border border-white/20 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
+                            {{-- Esquinas de mira --}}
+                            <div class="absolute -left-1 -top-1 h-8 w-8 border-l-4 border-t-4 border-parte1 rounded-tl-lg"></div>
+                            <div class="absolute -right-1 -top-1 h-8 w-8 border-r-4 border-t-4 border-parte1 rounded-tr-lg"></div>
+                            <div class="absolute -bottom-1 -left-1 h-8 w-8 border-b-4 border-l-4 border-parte1 rounded-bl-lg"></div>
+                            <div class="absolute -bottom-1 -right-1 h-8 w-8 border-b-4 border-r-4 border-parte1 rounded-br-lg"></div>
+                            
+                            {{-- Línea láser animada --}}
+                            <div class="absolute left-0 w-full h-[2px] bg-red-500 shadow-[0_0_12px_3px_rgba(239,68,68,0.8)]"
+                                 style="animation: laser 2.5s ease-in-out infinite;"></div>
+                        </div>
+                    </div>
+
+                    {{-- Cuadro de enfoque animado tipo cámara al tocar --}}
                     <div x-show="mostrandoCuadro"
                          x-transition:enter="transition ease-out duration-200"
                          x-transition:enter-start="opacity-0 scale-150"
@@ -94,12 +145,12 @@
                          x-transition:leave-end="opacity-0"
                          :style="{ top: topCuadro, left: leftCuadro }"
                          x-cloak
-                         class="pointer-events-none absolute h-12 w-12 border-2 border-yellow-400 rounded-lg select-none z-10">
+                         class="pointer-events-none absolute h-12 w-12 border-2 border-yellow-400 rounded-lg select-none z-30">
                         <div class="absolute inset-4 border border-yellow-400/40 rounded-full"></div>
                     </div>
 
                     <p x-text="mensaje"
-                       class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-4 pb-4 pt-12
+                       class="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/80 to-transparent px-4 pb-4 pt-12
                               text-center font-mono text-sm font-semibold uppercase tracking-widest text-white"></p>
                 </div>
 
