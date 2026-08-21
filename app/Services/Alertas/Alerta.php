@@ -18,6 +18,9 @@ final class Alerta
 
     public const PERMANENCIA = 'permanencia';
 
+    /** Un vehículo de la empresa que salió y no ha vuelto. */
+    public const FLOTA_FUERA = 'flota-fuera';
+
     /** Dos gravedades: «aviso» conviene mirarlo; «urgente» pide actuar ya. */
     public const AVISO = 'aviso';
 

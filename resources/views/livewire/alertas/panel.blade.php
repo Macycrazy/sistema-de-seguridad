@@ -48,6 +48,7 @@
                                 @switch($alerta->tipo)
                                     @case(\App\Services\Alertas\Alerta::AFORO) Aforo @break
                                     @case(\App\Services\Alertas\Alerta::ESTACIONAMIENTO) Estacionamiento @break
+                                    @case(\App\Services\Alertas\Alerta::FLOTA_FUERA) Vehículo de la empresa @break
                                     @default Permanencia
                                 @endswitch
                             </span>

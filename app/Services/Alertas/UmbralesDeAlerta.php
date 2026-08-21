@@ -46,6 +46,11 @@ class UmbralesDeAlerta
             'Cuántas motos caben, aparte de los carros. En 0 no se avisa por motos.',
             0, 0, 9999, 'motos',
         ],
+        'alerta_horas_flota_fuera' => [
+            'Vehículo de la empresa sin volver',
+            'Horas que un vehículo de la empresa puede llevar fuera antes de que se avise. Se cuenta desde que se le marcó la salida. En 0 el aviso queda desactivado.',
+            8, 0, 720, 'horas',
+        ],
     ];
 
     /** @var array<string, int>|null Los valores de la base, leídos una sola vez. */
@@ -74,6 +79,12 @@ class UmbralesDeAlerta
     public function aforoMotos(): int
     {
         return $this->valor('alerta_aforo_moto');
+    }
+
+    /** Horas que un vehículo de la empresa puede llevar fuera antes de avisar. 0 = no se avisa. */
+    public function horasFlotaFuera(): int
+    {
+        return $this->valor('alerta_horas_flota_fuera');
     }
 
     /**

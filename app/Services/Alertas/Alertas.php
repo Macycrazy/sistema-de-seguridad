@@ -5,6 +5,7 @@ namespace App\Services\Alertas;
 use App\Models\Movimiento;
 use App\Models\Persona;
 use App\Services\Estacionamiento\Estacionamiento;
+use App\Services\Estacionamiento\Flota;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -15,19 +16,22 @@ use Illuminate\Support\Collection;
  * solo detecta y devuelve. Se calcula sobre quién está dentro en este momento, que es una sola
  * consulta, así que sirve tanto para pintar la pantalla como para el número del menú.
  *
- * Dos alertas por ahora, las dos derivables del registro sin inventar datos:
+ * Las alertas, todas derivables de lo que ya está guardado y sin inventar datos:
  *
- *   · permanencia — quien lleva demasiadas horas dentro sin marcar salida (casi siempre, un
- *                   olvido de marcar la salida; a veces, alguien que de verdad sigue ahí).
- *   · aforo       — más gente dentro a la vez de la que el aforo configurado admite.
+ *   · permanencia   — quien lleva demasiadas horas dentro sin marcar salida (casi siempre, un
+ *                     olvido de marcar la salida; a veces, alguien que de verdad sigue ahí).
+ *   · aforo         — más gente dentro a la vez de la que el aforo configurado admite.
+ *   · estacionamiento — lo mismo con los vehículos, por total y por tipo.
+ *   · flota fuera   — un vehículo de la empresa que salió y no ha vuelto.
  *
- * Los umbrales de las dos salen de UmbralesDeAlerta, ajustables desde Ajustes.
+ * Los umbrales salen todos de UmbralesDeAlerta, ajustables desde Ajustes; en 0 se apagan.
  */
 final class Alertas
 {
     public function __construct(
         private UmbralesDeAlerta $umbrales,
         private Estacionamiento $estacionamiento,
+        private Flota $flota,
     ) {}
 
     /**
@@ -102,6 +106,34 @@ final class Alertas
                     personaId: $fila['persona_id'],
                     personaNombre: $persona?->nombre,
                     desde: $fila['desde'],
+                ));
+            }
+        }
+
+        // FLOTA FUERA — un vehículo de la empresa que salió y no ha vuelto. Sale para un trámite y
+        // vuelve; si no vuelve, alguien tiene que enterarse sin ir a mirarlo uno por uno.
+        $horasFuera = $this->umbrales->horasFlotaFuera();
+
+        if ($horasFuera > 0) {
+            $limiteFuera = $ahora->subHours($horasFuera);
+
+            foreach ($this->flota->fuera() as $vehiculo) {
+                if ($vehiculo->salio_en->greaterThanOrEqualTo($limiteFuera)) {
+                    continue;
+                }
+
+                $llevaHoras = (int) $vehiculo->salio_en->diffInHours($ahora);
+                $quien = $vehiculo->seLoLlevo ?: 'sin conductor anotado';
+
+                $alertas->push(new Alerta(
+                    tipo: Alerta::FLOTA_FUERA,
+                    // Pasado el doble del plazo ya no es que se haya alargado el trámite.
+                    severidad: $llevaHoras >= $horasFuera * 2 ? Alerta::URGENTE : Alerta::AVISO,
+                    titulo: $vehiculo->placa.' lleva '.$llevaHoras.' h fuera',
+                    detalle: 'Vehículo de la empresa ('.$vehiculo->descripcion.'). Se lo llevó '.$quien
+                        .' el '.$vehiculo->salio_en->translatedFormat('D d M \a \l\a\s g:i a')
+                        .($vehiculo->loDejoSalir ? ', anotado por '.$vehiculo->loDejoSalir : '').'.',
+                    desde: $vehiculo->salio_en,
                 ));
             }
         }

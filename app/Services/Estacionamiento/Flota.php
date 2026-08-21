@@ -5,6 +5,7 @@ namespace App\Services\Estacionamiento;
 use App\Models\VehiculoDeFlota;
 use App\Models\VehiculoFijo;
 use App\Services\DatosVehiculo;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -36,6 +37,59 @@ class Flota
             ->when($dentro !== [], fn ($q) => $q->whereNotIn('id', $dentro))
             ->orderBy('placa')
             ->get();
+    }
+
+    /**
+     * Los vehículos de la empresa que salieron y no han vuelto, del que lleva más fuera al que
+     * menos: con quién se lo llevó, quién lo dejó salir y desde cuándo.
+     *
+     * Un vehículo de la empresa que sale para un trámite vuelve. Si no vuelve, alguien tiene que
+     * enterarse sin ir a mirarlo vehículo por vehículo, que es lo que no se hace nunca.
+     *
+     * Se salta los que NUNCA han entrado: están en el catálogo pero no han pisado el sitio, así
+     * que no se han «ido» a ninguna parte —avisar de ellos sería ruido desde el día que se cargan.
+     *
+     * @return Collection<int, object>
+     */
+    public function fuera(): Collection
+    {
+        $activos = VehiculoDeFlota::query()->activos()->get()->keyBy('id');
+
+        if ($activos->isEmpty()) {
+            return collect();
+        }
+
+        // La flota de una empresa cabe de sobra en memoria: se agrupa aquí y no en SQL, que además
+        // se dice distinto en Postgres y en SQLite.
+        $porVehiculo = VehiculoFijo::query()
+            ->whereIn('flota_id', $activos->keys())
+            ->with('salidaUsuario')
+            ->orderByDesc('entro_en')
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy('flota_id');
+
+        return $activos
+            ->map(function (VehiculoDeFlota $vehiculo) use ($porVehiculo) {
+                $ultima = ($porVehiculo->get($vehiculo->id) ?? collect())->first();
+
+                // Nunca estuvo aquí, o está aquí ahora: en ninguno de los dos casos falta.
+                if ($ultima === null || $ultima->salio_en === null) {
+                    return null;
+                }
+
+                return (object) [
+                    'placa' => $vehiculo->placa,
+                    'descripcion' => $vehiculo->descripcion(),
+                    'tipo_vehiculo' => $vehiculo->tipo_vehiculo,
+                    'salio_en' => CarbonImmutable::parse($ultima->salio_en),
+                    'seLoLlevo' => $ultima->salida_conductor_nombre,
+                    'loDejoSalir' => $ultima->salidaUsuario?->nombre ?? $ultima->salidaUsuario?->usuario,
+                ];
+            })
+            ->filter()
+            ->sortBy('salio_en')
+            ->values();
     }
 
     /**
