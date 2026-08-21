@@ -3,6 +3,7 @@
 namespace App\Livewire\Roles;
 
 use App\Services\Auditoria\Auditoria;
+use App\Services\GestionDeRoles;
 use App\Services\Permisos;
 use App\Usuarios\Permiso;
 use App\Usuarios\Rol;
@@ -25,8 +26,21 @@ class PermisosPorRol extends Component
     /** @var array<string, array<string, bool>>  [rol][permiso] => marcada */
     public array $matriz = [];
 
-    /** No es propiedad de Livewire: al ser protegida no viaja al navegador. */
+    /** El formulario de alta/edición de un rol. Empieza cerrado: la pantalla se abre para marcar. */
+    public bool $gestionandoRol = false;
+
+    /** Slug del rol que se está editando; null cuando el formulario es un alta nueva. */
+    public ?string $rolEditando = null;
+
+    public string $nombreRol = '';
+
+    /** Nivel del rol nuevo (1/2/3). Llega como texto desde el select. */
+    public string $nivelRol = '1';
+
+    /** No son propiedades de Livewire: al ser protegidas no viajan al navegador. */
     protected Permisos $permisos;
+
+    protected GestionDeRoles $gestionRoles;
 
     public string $confirmacion = '';
 
@@ -37,6 +51,7 @@ class PermisosPorRol extends Component
         Gate::authorize('gestionar-permisos');
 
         $this->permisos = app(Permisos::class);
+        $this->gestionRoles = app(GestionDeRoles::class);
     }
 
     public function mount(): void
@@ -139,6 +154,104 @@ class PermisosPorRol extends Component
         $this->leerDeLaBase();
 
         $this->confirmacion = 'Permisos devueltos a como venían de fábrica.';
+    }
+
+    /**
+     * Los niveles que se le pueden dar a un rol nuevo, con a qué base equivale cada uno.
+     *
+     * @return array<int, string>
+     */
+    public function niveles(): array
+    {
+        return [
+            1 => 'Nivel 1 · como Vigilante',
+            2 => 'Nivel 2 · como Supervisor',
+            3 => 'Nivel 3 · como Administrador',
+        ];
+    }
+
+    public function abrirNuevoRol(): void
+    {
+        $this->reset('rolEditando', 'nombreRol', 'confirmacion');
+        $this->nivelRol = '1';
+        $this->resetErrorBag();
+        $this->gestionandoRol = true;
+    }
+
+    public function abrirEdicionRol(string $slug): void
+    {
+        $rol = Rol::desde($slug);
+
+        if ($rol === null || $rol->esBase()) {
+            return;
+        }
+
+        $this->rolEditando = $rol->value;
+        $this->nombreRol = $rol->nombre;
+        $this->nivelRol = (string) $rol->nivel;
+        $this->reset('confirmacion');
+        $this->resetErrorBag();
+        $this->gestionandoRol = true;
+    }
+
+    public function cancelarRol(): void
+    {
+        $this->reset('rolEditando', 'nombreRol', 'gestionandoRol');
+        $this->nivelRol = '1';
+        $this->resetErrorBag();
+    }
+
+    public function guardarRol(): void
+    {
+        $this->resetErrorBag();
+        $this->confirmacion = '';
+
+        try {
+            if ($this->rolEditando === null) {
+                $rol = $this->gestionRoles->crear($this->nombreRol, (int) $this->nivelRol, auth()->user());
+                $mensaje = "Rol «{$rol->nombre}» creado. Márcale abajo lo que puede hacer.";
+            } else {
+                $rol = Rol::desde($this->rolEditando);
+
+                if ($rol === null) {
+                    return;
+                }
+
+                $this->gestionRoles->editar($rol, $this->nombreRol, (int) $this->nivelRol, auth()->user());
+                $mensaje = 'Rol actualizado.';
+            }
+        } catch (ValidationException $e) {
+            $this->setErrorBag($e->validator->errors());
+
+            return;
+        }
+
+        $this->cancelarRol();
+        $this->leerDeLaBase();
+        $this->confirmacion = $mensaje;
+    }
+
+    public function eliminarRol(string $slug): void
+    {
+        $this->resetErrorBag();
+        $this->confirmacion = '';
+
+        $rol = Rol::desde($slug);
+
+        if ($rol === null) {
+            return;
+        }
+
+        try {
+            $this->gestionRoles->eliminar($rol, auth()->user());
+        } catch (ValidationException $e) {
+            $this->setErrorBag($e->validator->errors());
+
+            return;
+        }
+
+        $this->leerDeLaBase();
+        $this->confirmacion = 'Rol borrado.';
     }
 
     public function render()

@@ -100,7 +100,7 @@ class GestionDePermisosTest extends TestCase
             ->set('matriz.administrador.gestionar-permisos', false)
             ->call('guardar');
 
-        $this->assertTrue($this->permisos()->tiene(Rol::ADMINISTRADOR, Permiso::GESTIONAR_PERMISOS));
+        $this->assertTrue($this->permisos()->tiene(Rol::administrador(), Permiso::GESTIONAR_PERMISOS));
 
         $this->actingAs($administrador->fresh());
         $this->get('/roles')->assertOk();
@@ -117,8 +117,8 @@ class GestionDePermisosTest extends TestCase
             ->set('matriz.vigilante.gestionar-permisos', true)
             ->call('guardar');
 
-        $this->assertFalse($this->permisos()->tiene(Rol::SUPERVISOR, Permiso::GESTIONAR_PERMISOS));
-        $this->assertFalse($this->permisos()->tiene(Rol::VIGILANTE, Permiso::GESTIONAR_PERMISOS));
+        $this->assertFalse($this->permisos()->tiene(Rol::supervisor(), Permiso::GESTIONAR_PERMISOS));
+        $this->assertFalse($this->permisos()->tiene(Rol::vigilante(), Permiso::GESTIONAR_PERMISOS));
 
         $this->actingAs(User::factory()->supervisor()->create());
         $this->get('/roles')->assertForbidden();
@@ -148,7 +148,7 @@ class GestionDePermisosTest extends TestCase
         Livewire::test(ListaDeUsuarios::class)
             ->set('usuario', 'colado')
             ->set('nombre', 'El Colado')
-            ->set('rol', Rol::ADMINISTRADOR->value)
+            ->set('rol', Rol::administrador()->value)
             ->set('clave', 'la-que-yo-quiera')
             ->call('crear')
             ->assertHasErrors('rol');
@@ -168,8 +168,8 @@ class GestionDePermisosTest extends TestCase
             ->call('restablecer')
             ->assertHasNoErrors();
 
-        $this->assertTrue($this->permisos()->tiene(Rol::SUPERVISOR, Permiso::VER_REGISTRO));
-        $this->assertFalse($this->permisos()->tiene(Rol::VIGILANTE, Permiso::VER_AUDITORIA));
+        $this->assertTrue($this->permisos()->tiene(Rol::supervisor(), Permiso::VER_REGISTRO));
+        $this->assertFalse($this->permisos()->tiene(Rol::vigilante(), Permiso::VER_AUDITORIA));
     }
 
     /** Por Livewire puede llegar cualquier clave en la matriz; a la base solo entran las del enum. */
@@ -193,6 +193,6 @@ class GestionDePermisosTest extends TestCase
 
         $this->expectException(ValidationException::class);
 
-        $this->permisos()->guardar(Rol::VIGILANTE, Permiso::cases(), $supervisor);
+        $this->permisos()->guardar(Rol::vigilante(), Permiso::cases(), $supervisor);
     }
 }

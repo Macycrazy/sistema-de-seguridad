@@ -21,7 +21,7 @@ class AuditoriaTest extends TestCase
     #[Test]
     public function anota_con_el_usuario_de_la_sesion(): void
     {
-        $admin = User::factory()->create(['rol' => Rol::ADMINISTRADOR]);
+        $admin = User::factory()->create(['rol' => Rol::administrador()]);
         $this->actingAs($admin);
 
         app(Auditoria::class)->anota(Auditoria::CAMBIO_PERMISOS);
@@ -43,10 +43,10 @@ class AuditoriaTest extends TestCase
     #[Test]
     public function crear_un_usuario_deja_rastro(): void
     {
-        $admin = User::factory()->create(['rol' => Rol::ADMINISTRADOR]);
+        $admin = User::factory()->create(['rol' => Rol::administrador()]);
         $this->actingAs($admin);
 
-        app(GestionDeUsuarios::class)->crear('nuevo', 'Persona Nueva', null, Rol::VIGILANTE, 'clave1234', $admin);
+        app(GestionDeUsuarios::class)->crear('nuevo', 'Persona Nueva', null, Rol::vigilante(), 'clave1234', $admin);
 
         $this->assertDatabaseHas('bitacora', [
             'usuario_id' => $admin->id,
@@ -58,7 +58,7 @@ class AuditoriaTest extends TestCase
     #[Test]
     public function exportar_el_registro_deja_rastro(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
 
         Livewire::test(RegistroDelDia::class)->call('exportar');
 
@@ -68,7 +68,7 @@ class AuditoriaTest extends TestCase
     #[Test]
     public function consultar_el_historico_de_una_persona_deja_rastro(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
         $persona = Persona::create(['cedula' => '12345678', 'tipo' => Persona::TRABAJADOR, 'nombre' => 'ANA PÉREZ', 'activo' => true]);
 
         Livewire::test(RegistroDelDia::class)->call('abrirPanel', (string) $persona->id);

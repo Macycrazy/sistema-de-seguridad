@@ -18,17 +18,17 @@ class PantallaAjustesTest extends TestCase
     #[Test]
     public function solo_quien_tiene_el_permiso_abre_la_pantalla(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::SUPERVISOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::supervisor()]));
         $this->get(route('ajustes'))->assertForbidden();
 
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
         $this->get(route('ajustes'))->assertOk();
     }
 
     #[Test]
     public function guardar_ajusta_los_plazos(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
 
         Livewire::test(ListaDeTiempos::class)
             ->set('valores.minutos_entre_salida_y_entrada', 25)
@@ -41,7 +41,7 @@ class PantallaAjustesTest extends TestCase
     #[Test]
     public function un_valor_absurdo_muestra_el_error_y_no_lo_guarda(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
 
         Livewire::test(ListaDeTiempos::class)
             ->set('valores.segundos_antiduplicado', 99999)

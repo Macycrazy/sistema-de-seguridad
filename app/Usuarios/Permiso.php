@@ -179,14 +179,14 @@ enum Permiso: string
     {
         return match ($this) {
             // El vigilante la necesita para comprobar que quien tiene delante es quien dice ser.
-            self::VER_FOTO => [Rol::VIGILANTE, Rol::SUPERVISOR, Rol::ADMINISTRADOR],
+            self::VER_FOTO => [Rol::vigilante(), Rol::supervisor(), Rol::administrador()],
 
             self::VER_REGISTRO,
             self::EXPORTAR_REGISTRO,
             self::VER_VISITAS,
             self::GESTIONAR_VISITAS,
             self::VER_USUARIOS,
-            self::GESTIONAR_USUARIOS => [Rol::SUPERVISOR, Rol::ADMINISTRADOR],
+            self::GESTIONAR_USUARIOS => [Rol::supervisor(), Rol::administrador()],
 
             self::VER_AUDITORIA,
             self::VER_PERSONAL,
@@ -200,7 +200,7 @@ enum Permiso: string
             self::VER_AJUSTES,
             self::GESTIONAR_AJUSTES,
             self::GESTIONAR_RESPALDOS,
-            self::GESTIONAR_PERMISOS => [Rol::ADMINISTRADOR],
+            self::GESTIONAR_PERMISOS => [Rol::administrador()],
         };
     }
 }

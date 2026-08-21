@@ -41,13 +41,13 @@ class UsuariosSeeder extends Seeder
         }
 
         $usuarios = [
-            ['usuario' => 'vigilante', 'nombre' => 'Ana Rodríguez Peña', 'cedula' => '10000001', 'rol' => Rol::VIGILANTE, 'activo' => true],
-            ['usuario' => 'supervisor', 'nombre' => 'Luis Hernández Mora', 'cedula' => '10000002', 'rol' => Rol::SUPERVISOR, 'activo' => true],
-            ['usuario' => 'admin', 'nombre' => 'Carmen Díaz Silva', 'cedula' => '10000003', 'rol' => Rol::ADMINISTRADOR, 'activo' => true],
+            ['usuario' => 'vigilante', 'nombre' => 'Ana Rodríguez Peña', 'cedula' => '10000001', 'rol' => Rol::vigilante(), 'activo' => true],
+            ['usuario' => 'supervisor', 'nombre' => 'Luis Hernández Mora', 'cedula' => '10000002', 'rol' => Rol::supervisor(), 'activo' => true],
+            ['usuario' => 'admin', 'nombre' => 'Carmen Díaz Silva', 'cedula' => '10000003', 'rol' => Rol::administrador(), 'activo' => true],
 
             // Desactivado a propósito, igual que el trabajador de cédula 99999999: para
             // comprobar a mano que el sistema no lo deja entrar.
-            ['usuario' => 'exvigilante', 'nombre' => 'José Martínez Rojas', 'cedula' => '10000004', 'rol' => Rol::VIGILANTE, 'activo' => false],
+            ['usuario' => 'exvigilante', 'nombre' => 'José Martínez Rojas', 'cedula' => '10000004', 'rol' => Rol::vigilante(), 'activo' => false],
         ];
 
         foreach ($usuarios as $usuario) {

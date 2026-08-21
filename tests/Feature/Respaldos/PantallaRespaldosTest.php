@@ -31,10 +31,10 @@ class PantallaRespaldosTest extends TestCase
     #[Test]
     public function solo_el_administrador_entra(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::SUPERVISOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::supervisor()]));
         $this->get(route('respaldos'))->assertForbidden();
 
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
         $this->get(route('respaldos'))->assertOk();
     }
 
@@ -43,7 +43,7 @@ class PantallaRespaldosTest extends TestCase
     {
         Storage::fake('local');
         $this->servicioFalso();
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
 
         Livewire::test(Panel::class)
             ->call('crear')

@@ -30,7 +30,7 @@ class CrearUsuarioComandoTest extends TestCase
 
         $creada = User::where('usuario', 'jefa')->firstOrFail();
 
-        $this->assertSame(Rol::ADMINISTRADOR, $creada->rol);
+        $this->assertSame(Rol::administrador(), $creada->rol);
         $this->assertSame('12345678', $creada->cedula);
         $this->assertTrue($creada->activo);
         $this->assertTrue(Hash::check('la-primera-de-todas', $creada->password));

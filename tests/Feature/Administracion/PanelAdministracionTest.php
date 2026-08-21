@@ -15,14 +15,14 @@ class PanelAdministracionTest extends TestCase
     #[Test]
     public function el_vigilante_no_ve_el_panel(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::VIGILANTE]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
         $this->get(route('administracion'))->assertForbidden();
     }
 
     #[Test]
     public function el_administrador_ve_todas_las_tarjetas(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::ADMINISTRADOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
 
         $this->get(route('administracion'))
             ->assertOk()
@@ -40,7 +40,7 @@ class PanelAdministracionTest extends TestCase
     {
         // El supervisor tiene «gestionar-usuarios», así que el panel se abre, pero solo con su
         // tarjeta: nada de Ajustes, Roles ni Auditoría.
-        $this->actingAs(User::factory()->create(['rol' => Rol::SUPERVISOR]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::supervisor()]));
 
         $this->get(route('administracion'))
             ->assertOk()

@@ -47,6 +47,8 @@ class Auditoria
 
     public const CAMBIO_PERMISOS = 'cambio-permisos';
 
+    public const CAMBIO_ROLES = 'cambio-roles';
+
     public const CAMBIO_REGLAS = 'cambio-reglas';
 
     public const CAMBIO_OFICINAS = 'cambio-oficinas';
@@ -76,6 +78,7 @@ class Auditoria
         self::CAMBIO_ROL => 'Cambió un rol',
         self::CAMBIO_CLAVE => 'Cambió una clave',
         self::CAMBIO_PERMISOS => 'Cambió permisos',
+        self::CAMBIO_ROLES => 'Cambió los roles',
         self::CAMBIO_REGLAS => 'Cambió las reglas de tiempo',
         self::CAMBIO_OFICINAS => 'Cambió las oficinas',
         self::CARGO_PERSONAL => 'Cargó personal',
@@ -207,6 +210,11 @@ class Auditoria
     public function cambioPermisos(): void
     {
         $this->anota(self::CAMBIO_PERMISOS);
+    }
+
+    public function cambioRoles(string $detalle): void
+    {
+        $this->anota(self::CAMBIO_ROLES, null, $detalle);
     }
 
     public function cambioReglas(): void

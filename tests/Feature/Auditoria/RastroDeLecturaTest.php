@@ -25,7 +25,7 @@ class RastroDeLecturaTest extends TestCase
     #[Test]
     public function entrar_bien_deja_rastro_a_nombre_de_quien_entro(): void
     {
-        $usuario = User::factory()->create(['usuario' => 'ana', 'rol' => Rol::SUPERVISOR]);
+        $usuario = User::factory()->create(['usuario' => 'ana', 'rol' => Rol::supervisor()]);
 
         Livewire::test(Ingresar::class)
             ->set('usuario', 'ana')

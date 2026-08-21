@@ -29,61 +29,61 @@ class PermisosTest extends TestCase
     {
         return [
             // El inicio del vigilante es marcar: al no ver el registro, «/» lo redirige (302) ahí.
-            'vigilante · inicio' => [Rol::VIGILANTE, '/', 302],
-            'vigilante · marcar' => [Rol::VIGILANTE, '/marcar', 200],
-            'vigilante · estacionamiento' => [Rol::VIGILANTE, '/estacionamiento', 200],
-            'vigilante · su clave' => [Rol::VIGILANTE, '/clave', 200],
-            'vigilante · registro' => [Rol::VIGILANTE, '/registro', 403],
-            'vigilante · reportes' => [Rol::VIGILANTE, '/reportes', 403],
-            'vigilante · alertas' => [Rol::VIGILANTE, '/alertas', 403],
-            'vigilante · administracion' => [Rol::VIGILANTE, '/administracion', 403],
-            'vigilante · respaldos' => [Rol::VIGILANTE, '/respaldos', 403],
-            'vigilante · asociacion' => [Rol::VIGILANTE, '/asociacion', 403],
-            'vigilante · trabajadores' => [Rol::VIGILANTE, '/trabajadores', 403],
-            'vigilante · organigrama' => [Rol::VIGILANTE, '/organigrama', 403],
-            'vigilante · visitas' => [Rol::VIGILANTE, '/visitas', 403],
-            'vigilante · edificio' => [Rol::VIGILANTE, '/edificio', 403],
-            'vigilante · auditoria' => [Rol::VIGILANTE, '/auditoria', 403],
-            'vigilante · ajustes' => [Rol::VIGILANTE, '/ajustes', 403],
-            'vigilante · usuarios' => [Rol::VIGILANTE, '/usuarios', 403],
-            'vigilante · roles' => [Rol::VIGILANTE, '/roles', 403],
+            'vigilante · inicio' => [Rol::vigilante(), '/', 302],
+            'vigilante · marcar' => [Rol::vigilante(), '/marcar', 200],
+            'vigilante · estacionamiento' => [Rol::vigilante(), '/estacionamiento', 200],
+            'vigilante · su clave' => [Rol::vigilante(), '/clave', 200],
+            'vigilante · registro' => [Rol::vigilante(), '/registro', 403],
+            'vigilante · reportes' => [Rol::vigilante(), '/reportes', 403],
+            'vigilante · alertas' => [Rol::vigilante(), '/alertas', 403],
+            'vigilante · administracion' => [Rol::vigilante(), '/administracion', 403],
+            'vigilante · respaldos' => [Rol::vigilante(), '/respaldos', 403],
+            'vigilante · asociacion' => [Rol::vigilante(), '/asociacion', 403],
+            'vigilante · trabajadores' => [Rol::vigilante(), '/trabajadores', 403],
+            'vigilante · organigrama' => [Rol::vigilante(), '/organigrama', 403],
+            'vigilante · visitas' => [Rol::vigilante(), '/visitas', 403],
+            'vigilante · edificio' => [Rol::vigilante(), '/edificio', 403],
+            'vigilante · auditoria' => [Rol::vigilante(), '/auditoria', 403],
+            'vigilante · ajustes' => [Rol::vigilante(), '/ajustes', 403],
+            'vigilante · usuarios' => [Rol::vigilante(), '/usuarios', 403],
+            'vigilante · roles' => [Rol::vigilante(), '/roles', 403],
 
-            'supervisor · inicio' => [Rol::SUPERVISOR, '/', 200],
-            'supervisor · marcar' => [Rol::SUPERVISOR, '/marcar', 200],
-            'supervisor · su clave' => [Rol::SUPERVISOR, '/clave', 200],
-            'supervisor · registro' => [Rol::SUPERVISOR, '/registro', 200],
-            'supervisor · reportes' => [Rol::SUPERVISOR, '/reportes', 200],
-            'supervisor · alertas' => [Rol::SUPERVISOR, '/alertas', 200],
-            'supervisor · administracion' => [Rol::SUPERVISOR, '/administracion', 200],
-            'supervisor · respaldos' => [Rol::SUPERVISOR, '/respaldos', 403],
-            'supervisor · asociacion' => [Rol::SUPERVISOR, '/asociacion', 403],
-            'supervisor · trabajadores' => [Rol::SUPERVISOR, '/trabajadores', 403],
-            'supervisor · organigrama' => [Rol::SUPERVISOR, '/organigrama', 403],
-            'supervisor · visitas' => [Rol::SUPERVISOR, '/visitas', 200],
-            'supervisor · edificio' => [Rol::SUPERVISOR, '/edificio', 403],
-            'supervisor · auditoria' => [Rol::SUPERVISOR, '/auditoria', 403],
-            'supervisor · ajustes' => [Rol::SUPERVISOR, '/ajustes', 403],
-            'supervisor · usuarios' => [Rol::SUPERVISOR, '/usuarios', 200],
-            'supervisor · roles' => [Rol::SUPERVISOR, '/roles', 403],
+            'supervisor · inicio' => [Rol::supervisor(), '/', 200],
+            'supervisor · marcar' => [Rol::supervisor(), '/marcar', 200],
+            'supervisor · su clave' => [Rol::supervisor(), '/clave', 200],
+            'supervisor · registro' => [Rol::supervisor(), '/registro', 200],
+            'supervisor · reportes' => [Rol::supervisor(), '/reportes', 200],
+            'supervisor · alertas' => [Rol::supervisor(), '/alertas', 200],
+            'supervisor · administracion' => [Rol::supervisor(), '/administracion', 200],
+            'supervisor · respaldos' => [Rol::supervisor(), '/respaldos', 403],
+            'supervisor · asociacion' => [Rol::supervisor(), '/asociacion', 403],
+            'supervisor · trabajadores' => [Rol::supervisor(), '/trabajadores', 403],
+            'supervisor · organigrama' => [Rol::supervisor(), '/organigrama', 403],
+            'supervisor · visitas' => [Rol::supervisor(), '/visitas', 200],
+            'supervisor · edificio' => [Rol::supervisor(), '/edificio', 403],
+            'supervisor · auditoria' => [Rol::supervisor(), '/auditoria', 403],
+            'supervisor · ajustes' => [Rol::supervisor(), '/ajustes', 403],
+            'supervisor · usuarios' => [Rol::supervisor(), '/usuarios', 200],
+            'supervisor · roles' => [Rol::supervisor(), '/roles', 403],
 
-            'administrador · inicio' => [Rol::ADMINISTRADOR, '/', 200],
-            'administrador · marcar' => [Rol::ADMINISTRADOR, '/marcar', 200],
-            'administrador · estacionamiento' => [Rol::ADMINISTRADOR, '/estacionamiento', 200],
-            'administrador · su clave' => [Rol::ADMINISTRADOR, '/clave', 200],
-            'administrador · registro' => [Rol::ADMINISTRADOR, '/registro', 200],
-            'administrador · reportes' => [Rol::ADMINISTRADOR, '/reportes', 200],
-            'administrador · alertas' => [Rol::ADMINISTRADOR, '/alertas', 200],
-            'administrador · administracion' => [Rol::ADMINISTRADOR, '/administracion', 200],
-            'administrador · respaldos' => [Rol::ADMINISTRADOR, '/respaldos', 200],
-            'administrador · asociacion' => [Rol::ADMINISTRADOR, '/asociacion', 200],
-            'administrador · trabajadores' => [Rol::ADMINISTRADOR, '/trabajadores', 200],
-            'administrador · organigrama' => [Rol::ADMINISTRADOR, '/organigrama', 200],
-            'administrador · visitas' => [Rol::ADMINISTRADOR, '/visitas', 200],
-            'administrador · edificio' => [Rol::ADMINISTRADOR, '/edificio', 200],
-            'administrador · auditoria' => [Rol::ADMINISTRADOR, '/auditoria', 200],
-            'administrador · ajustes' => [Rol::ADMINISTRADOR, '/ajustes', 200],
-            'administrador · usuarios' => [Rol::ADMINISTRADOR, '/usuarios', 200],
-            'administrador · roles' => [Rol::ADMINISTRADOR, '/roles', 200],
+            'administrador · inicio' => [Rol::administrador(), '/', 200],
+            'administrador · marcar' => [Rol::administrador(), '/marcar', 200],
+            'administrador · estacionamiento' => [Rol::administrador(), '/estacionamiento', 200],
+            'administrador · su clave' => [Rol::administrador(), '/clave', 200],
+            'administrador · registro' => [Rol::administrador(), '/registro', 200],
+            'administrador · reportes' => [Rol::administrador(), '/reportes', 200],
+            'administrador · alertas' => [Rol::administrador(), '/alertas', 200],
+            'administrador · administracion' => [Rol::administrador(), '/administracion', 200],
+            'administrador · respaldos' => [Rol::administrador(), '/respaldos', 200],
+            'administrador · asociacion' => [Rol::administrador(), '/asociacion', 200],
+            'administrador · trabajadores' => [Rol::administrador(), '/trabajadores', 200],
+            'administrador · organigrama' => [Rol::administrador(), '/organigrama', 200],
+            'administrador · visitas' => [Rol::administrador(), '/visitas', 200],
+            'administrador · edificio' => [Rol::administrador(), '/edificio', 200],
+            'administrador · auditoria' => [Rol::administrador(), '/auditoria', 200],
+            'administrador · ajustes' => [Rol::administrador(), '/ajustes', 200],
+            'administrador · usuarios' => [Rol::administrador(), '/usuarios', 200],
+            'administrador · roles' => [Rol::administrador(), '/roles', 200],
         ];
     }
 
@@ -99,35 +99,35 @@ class PermisosTest extends TestCase
     public static function permisos(): array
     {
         return [
-            'vigilante · ver-registro' => [Rol::VIGILANTE, 'ver-registro', false],
-            'vigilante · exportar-registro' => [Rol::VIGILANTE, 'exportar-registro', false],
-            'vigilante · gestionar-usuarios' => [Rol::VIGILANTE, 'gestionar-usuarios', false],
-            'vigilante · gestionar-personal' => [Rol::VIGILANTE, 'gestionar-personal', false],
-            'vigilante · gestionar-edificio' => [Rol::VIGILANTE, 'gestionar-edificio', false],
-            'vigilante · gestionar-ajustes' => [Rol::VIGILANTE, 'gestionar-ajustes', false],
-            'vigilante · ver-auditoria' => [Rol::VIGILANTE, 'ver-auditoria', false],
-            'vigilante · gestionar-permisos' => [Rol::VIGILANTE, 'gestionar-permisos', false],
-            'vigilante · ver-foto' => [Rol::VIGILANTE, 'ver-foto', true],
+            'vigilante · ver-registro' => [Rol::vigilante(), 'ver-registro', false],
+            'vigilante · exportar-registro' => [Rol::vigilante(), 'exportar-registro', false],
+            'vigilante · gestionar-usuarios' => [Rol::vigilante(), 'gestionar-usuarios', false],
+            'vigilante · gestionar-personal' => [Rol::vigilante(), 'gestionar-personal', false],
+            'vigilante · gestionar-edificio' => [Rol::vigilante(), 'gestionar-edificio', false],
+            'vigilante · gestionar-ajustes' => [Rol::vigilante(), 'gestionar-ajustes', false],
+            'vigilante · ver-auditoria' => [Rol::vigilante(), 'ver-auditoria', false],
+            'vigilante · gestionar-permisos' => [Rol::vigilante(), 'gestionar-permisos', false],
+            'vigilante · ver-foto' => [Rol::vigilante(), 'ver-foto', true],
 
-            'supervisor · ver-registro' => [Rol::SUPERVISOR, 'ver-registro', true],
-            'supervisor · exportar-registro' => [Rol::SUPERVISOR, 'exportar-registro', true],
-            'supervisor · gestionar-usuarios' => [Rol::SUPERVISOR, 'gestionar-usuarios', true],
-            'supervisor · gestionar-personal' => [Rol::SUPERVISOR, 'gestionar-personal', false],
-            'supervisor · gestionar-edificio' => [Rol::SUPERVISOR, 'gestionar-edificio', false],
-            'supervisor · gestionar-ajustes' => [Rol::SUPERVISOR, 'gestionar-ajustes', false],
-            'supervisor · ver-auditoria' => [Rol::SUPERVISOR, 'ver-auditoria', false],
-            'supervisor · gestionar-permisos' => [Rol::SUPERVISOR, 'gestionar-permisos', false],
-            'supervisor · ver-foto' => [Rol::SUPERVISOR, 'ver-foto', true],
+            'supervisor · ver-registro' => [Rol::supervisor(), 'ver-registro', true],
+            'supervisor · exportar-registro' => [Rol::supervisor(), 'exportar-registro', true],
+            'supervisor · gestionar-usuarios' => [Rol::supervisor(), 'gestionar-usuarios', true],
+            'supervisor · gestionar-personal' => [Rol::supervisor(), 'gestionar-personal', false],
+            'supervisor · gestionar-edificio' => [Rol::supervisor(), 'gestionar-edificio', false],
+            'supervisor · gestionar-ajustes' => [Rol::supervisor(), 'gestionar-ajustes', false],
+            'supervisor · ver-auditoria' => [Rol::supervisor(), 'ver-auditoria', false],
+            'supervisor · gestionar-permisos' => [Rol::supervisor(), 'gestionar-permisos', false],
+            'supervisor · ver-foto' => [Rol::supervisor(), 'ver-foto', true],
 
-            'administrador · ver-registro' => [Rol::ADMINISTRADOR, 'ver-registro', true],
-            'administrador · exportar-registro' => [Rol::ADMINISTRADOR, 'exportar-registro', true],
-            'administrador · gestionar-usuarios' => [Rol::ADMINISTRADOR, 'gestionar-usuarios', true],
-            'administrador · gestionar-personal' => [Rol::ADMINISTRADOR, 'gestionar-personal', true],
-            'administrador · gestionar-edificio' => [Rol::ADMINISTRADOR, 'gestionar-edificio', true],
-            'administrador · gestionar-ajustes' => [Rol::ADMINISTRADOR, 'gestionar-ajustes', true],
-            'administrador · ver-auditoria' => [Rol::ADMINISTRADOR, 'ver-auditoria', true],
-            'administrador · gestionar-permisos' => [Rol::ADMINISTRADOR, 'gestionar-permisos', true],
-            'administrador · ver-foto' => [Rol::ADMINISTRADOR, 'ver-foto', true],
+            'administrador · ver-registro' => [Rol::administrador(), 'ver-registro', true],
+            'administrador · exportar-registro' => [Rol::administrador(), 'exportar-registro', true],
+            'administrador · gestionar-usuarios' => [Rol::administrador(), 'gestionar-usuarios', true],
+            'administrador · gestionar-personal' => [Rol::administrador(), 'gestionar-personal', true],
+            'administrador · gestionar-edificio' => [Rol::administrador(), 'gestionar-edificio', true],
+            'administrador · gestionar-ajustes' => [Rol::administrador(), 'gestionar-ajustes', true],
+            'administrador · ver-auditoria' => [Rol::administrador(), 'ver-auditoria', true],
+            'administrador · gestionar-permisos' => [Rol::administrador(), 'gestionar-permisos', true],
+            'administrador · ver-foto' => [Rol::administrador(), 'ver-foto', true],
         ];
     }
 
@@ -147,7 +147,7 @@ class PermisosTest extends TestCase
     #[Test]
     public function el_vigilante_no_entra_al_registro_ni_hablandole_a_livewire(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::VIGILANTE]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
 
         Livewire::test(RegistroDelDia::class)->assertForbidden();
     }
@@ -175,7 +175,7 @@ class PermisosTest extends TestCase
 
         $componente = Livewire::test(RegistroDelDia::class)->assertOk();
 
-        $usuario->update(['rol' => Rol::VIGILANTE]);
+        $usuario->update(['rol' => Rol::vigilante()]);
 
         $componente->call('verHoy')->assertForbidden();
     }
@@ -195,7 +195,7 @@ class PermisosTest extends TestCase
             ->assertOk();
 
         $this->assertFalse(
-            Gate::forUser(User::factory()->create(['rol' => Rol::VIGILANTE]))->allows('exportar-registro'),
+            Gate::forUser(User::factory()->create(['rol' => Rol::vigilante()]))->allows('exportar-registro'),
         );
     }
 
@@ -203,7 +203,7 @@ class PermisosTest extends TestCase
     #[Test]
     public function la_foto_la_ve_tambien_el_vigilante(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::VIGILANTE]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
 
         $persona = Persona::create([
             'cedula' => '12345678',
