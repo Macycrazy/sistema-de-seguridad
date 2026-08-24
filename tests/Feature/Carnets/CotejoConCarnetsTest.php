@@ -90,17 +90,42 @@ class CotejoConCarnetsTest extends TestCase
     }
 
     #[Test]
-    public function quien_esta_desactivado_aqui_cuenta_como_que_falta(): void
+    public function quien_esta_desactivado_aqui_no_falta_sino_que_hay_que_reactivarlo(): void
     {
-        // Está activo en carnets pero aquí desactivado: en la puerta no se le puede marcar, que es
-        // el problema que se busca.
+        // Tampoco puede marcar, que es el problema. Pero su ficha existe con su histórico: crearla
+        // otra vez encima pisaría su piso, su ente y su dependencia con lo que diga el carnets.
         $this->aqui('11111111', 'ANA PÉREZ', activo: false);
 
         $this->carnetsResponde([['cedula' => '11111111', 'nombre' => 'ANA PÉREZ']]);
 
         $resultado = app(CotejoConCarnets::class)->comparar();
 
-        $this->assertCount(1, $resultado['faltan']);
+        $this->assertCount(0, $resultado['faltan'], 'No hay que crearla: ya está.');
+        $this->assertCount(1, $resultado['desactivados']);
+        $this->assertSame('11111111', $resultado['desactivados'][0]->cedula);
+    }
+
+    #[Test]
+    public function reactivar_desde_la_pantalla_conserva_su_ficha(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
+
+        $ana = $this->aqui('11111111', 'ANA PÉREZ', activo: false);
+        $ana->update(['piso' => '4-1', 'dependencia' => 'LO QUE TENÍA']);
+
+        $this->carnetsResponde([['cedula' => '11111111', 'nombre' => 'ANA PÉREZ', 'gerencia' => 'OTRA COSA']]);
+
+        Livewire::test(ListaDeTrabajadores::class)
+            ->call('cotejarConCarnets')
+            ->assertSee('desactivados aquí, activos en carnets')
+            ->call('reactivarDelPadron', '11111111')
+            ->assertHasNoErrors();
+
+        $ana->refresh();
+
+        $this->assertTrue((bool) $ana->activo);
+        $this->assertSame('4-1', $ana->piso, 'Reactivar no pisa lo que ya tenía.');
+        $this->assertSame('LO QUE TENÍA', $ana->dependencia);
     }
 
     #[Test]

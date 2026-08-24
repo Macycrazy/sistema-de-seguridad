@@ -67,6 +67,18 @@ class CotejarPadron extends Command
 
         $this->newLine();
 
+        // Existen aquí pero desactivados: tampoco pueden marcar, pero se reactivan, no se cargan.
+        if ($resultado['desactivados']->isNotEmpty()) {
+            $this->warn($resultado['desactivados']->count().' persona(s) están desactivadas aquí y activas en carnets:');
+            $this->line('  <fg=gray>Se reactivan desde Trabajadores: su ficha y su histórico ya están.</>');
+
+            foreach ($resultado['desactivados'] as $persona) {
+                $this->line(sprintf('  %-12s %s', $persona->cedula, mb_substr((string) $persona->nombre, 0, 38)));
+            }
+
+            $this->newLine();
+        }
+
         // El carnets es solo del CIIP: de los otros dos entes no está nadie allá, y es lo normal.
         if ($resultado['otrosEntes'] > 0) {
             $this->line('  <fg=gray>'.$resultado['otrosEntes'].' de Marca País y VENAPP quedan fuera: el carnets es solo del CIIP.</>');

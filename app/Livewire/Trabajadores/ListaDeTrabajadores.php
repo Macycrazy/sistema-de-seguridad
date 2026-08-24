@@ -399,10 +399,14 @@ class ListaDeTrabajadores extends Component
         }
 
         $faltan = $this->cotejo['faltan']->count();
+        $desactivados = $this->cotejo['desactivados']->count();
 
-        $this->aviso = $faltan === 0
-            ? 'Todo el personal activo del carnets está cargado aquí.'
-            : $faltan.' persona(s) están en carnets y no aquí.';
+        $this->aviso = match (true) {
+            $faltan > 0 && $desactivados > 0 => $faltan.' sin cargar y '.$desactivados.' desactivados que en carnets siguen activos.',
+            $faltan > 0 => $faltan.' persona(s) están en carnets y no aquí.',
+            $desactivados > 0 => $desactivados.' persona(s) están desactivadas aquí y activas en carnets.',
+            default => 'Todo el personal activo del carnets está cargado y activo aquí.',
+        };
     }
 
     /**
@@ -438,6 +442,30 @@ class ListaDeTrabajadores extends Component
         $this->aviso = $ficha['nombre'].' cargado desde el carnets.';
 
         // Se rehace el cotejo para que esa persona desaparezca de la lista.
+        $this->cotejo = app(CotejoConCarnets::class)->comparar();
+    }
+
+    /**
+     * Reactiva a alguien que ya está aquí pero desactivado, y en carnets sigue activo.
+     *
+     * No es lo mismo que cargarlo: su ficha existe, con su histórico y sus datos. Crearla otra vez
+     * encima pisaría lo que tenga —el piso, el ente, la dependencia— con lo que diga el carnets.
+     */
+    public function reactivarDelPadron(string $cedula): void
+    {
+        Gate::authorize('gestionar-personal');
+
+        $persona = Persona::where('cedula', Persona::normalizarCedula($cedula))->first();
+
+        if (! $persona) {
+            $this->aviso = 'Esa persona ya no está: vuelve a comparar.';
+
+            return;
+        }
+
+        $this->gestion->reactivar($persona);
+        $this->aviso = $persona->nombre.' reactivado. Su histórico se conserva.';
+
         $this->cotejo = app(CotejoConCarnets::class)->comparar();
     }
 

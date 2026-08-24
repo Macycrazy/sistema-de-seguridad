@@ -74,6 +74,7 @@
             $faltan = $cotejo['faltan'];
             $sobran = $cotejo['sobran'];
             $sinEnte = $cotejo['sinEnte'];
+            $desactivados = $cotejo['desactivados'];
         @endphp
 
         <div class="mt-4 rounded border border-slate-200 bg-white p-4 shadow-sm">
@@ -124,6 +125,35 @@
                 </div>
             @endif
 
+            {{-- Están aquí pero desactivados, y en carnets siguen activos. NO se cargan: su
+                 ficha existe con su histórico, y crearla otra vez encima pisaría lo que tenga. --}}
+            @if ($desactivados->isNotEmpty())
+                <div class="mt-4 border-t border-slate-100 pt-3">
+                    <p class="font-semibold text-slate-900">
+                        {{ $desactivados->count() }} desactivados aquí, activos en carnets
+                    </p>
+                    <p class="mt-0.5 text-xs text-slate-500">
+                        Tampoco pueden marcar. Se reactivan, no se vuelven a cargar: su ficha y su histórico ya están.
+                    </p>
+
+                    <ul class="mt-2 divide-y divide-slate-100 text-sm">
+                        @foreach ($desactivados as $persona)
+                            <li class="flex flex-wrap items-center justify-between gap-2 py-2" wire:key="desact-{{ $persona->id }}">
+                                <span class="min-w-0">
+                                    <span class="block truncate font-medium text-slate-800">{{ $persona->nombre }}</span>
+                                    <span class="font-mono text-xs text-slate-500">{{ $persona->cedula }}</span>
+                                </span>
+
+                                @can('gestionar-personal')
+                                    <button type="button" wire:click="reactivarDelPadron('{{ $persona->cedula }}')"
+                                            class="shrink-0 text-sm font-semibold text-parte3 hover:underline">Reactivar</button>
+                                @endcan
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             {{-- Sin ente no se puede juzgar: podrían ser del CIIP y faltarles el carnet, o de
                  otro ente y estar bien. Se dicen para que alguien les ponga el ente. --}}
             @if ($sinEnte->isNotEmpty())
@@ -155,7 +185,7 @@
                 </div>
             @endif
 
-            @if ($faltan->isEmpty() && $sobran->isEmpty() && $sinEnte->isEmpty())
+            @if ($faltan->isEmpty() && $sobran->isEmpty() && $sinEnte->isEmpty() && $desactivados->isEmpty())
                 <p class="mt-3 text-sm font-medium text-parte1">Las dos listas dicen lo mismo.</p>
             @endif
         </div>

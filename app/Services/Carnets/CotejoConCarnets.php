@@ -34,6 +34,7 @@ final class CotejoConCarnets
      *     disponible: bool,
      *     faltan: Collection<int, array{cedula:string, nombre:string, gerencia:?string}>,
      *     sobran: Collection<int, Persona>,
+     *     desactivados: Collection<int, Persona>,
      *     sinEnte: Collection<int, Persona>,
      *     otrosEntes: int,
      *     coinciden: int,
@@ -65,12 +66,15 @@ final class CotejoConCarnets
             return $this->vacio(false);
         }
 
-        $aqui = Persona::query()
+        // Todos, activos y desactivados: quien está aquí desactivado NO falta —su ficha existe con
+        // su histórico—, y decir que falta llevaría a crearla otra vez encima y pisar lo que tenga.
+        $todos = Persona::query()
             ->where('tipo', Persona::TRABAJADOR)
-            ->where('activo', true)
             ->orderBy('nombre')
             ->get()
             ->keyBy(fn (Persona $persona) => (string) $persona->cedula);
+
+        $aqui = $todos->filter(fn (Persona $persona) => (bool) $persona->activo);
 
         // Solo del CIIP se puede decir «no está en carnets»: el carnets es suyo. De los otros dos
         // entes no está nadie allá, y eso es lo normal, no un problema.
@@ -81,9 +85,15 @@ final class CotejoConCarnets
         return [
             'disponible' => true,
 
-            // Están activos en carnets y aquí no: son los que se van a plantar en la puerta.
+            // Activos en carnets y aquí NO EXISTEN: hay que darlos de alta.
             'faltan' => $enCarnets
-                ->reject(fn ($ficha, $cedula) => $aqui->has((string) $cedula))
+                ->reject(fn ($ficha, $cedula) => $todos->has((string) $cedula))
+                ->values(),
+
+            // Existen aquí pero desactivados, y en carnets siguen activos: tampoco pueden marcar,
+            // pero se reactivan —no se crean otra vez, que pisaría su ficha—.
+            'desactivados' => $todos
+                ->filter(fn (Persona $persona, $cedula) => ! $persona->activo && $enCarnets->has((string) $cedula))
                 ->values(),
 
             // Del CIIP, activos aquí y ya no en carnets: se fueron, o cambiaron de estatus allá.
@@ -112,6 +122,7 @@ final class CotejoConCarnets
             'faltan' => collect(),
             'sobran' => collect(),
             'sinEnte' => collect(),
+            'desactivados' => collect(),
             'otrosEntes' => 0,
             'coinciden' => 0,
             'enCarnets' => 0,
