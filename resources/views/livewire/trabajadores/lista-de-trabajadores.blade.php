@@ -70,7 +70,11 @@
          dan de alta allá, aquí nadie lo carga, y el día que llega se planta en la puerta y no
          aparece. Esto lo saca antes de que pase. --}}
     @if ($cotejo && $cotejo['disponible'])
-        @php $faltan = $cotejo['faltan']; $sobran = $cotejo['sobran']; @endphp
+        @php
+            $faltan = $cotejo['faltan'];
+            $sobran = $cotejo['sobran'];
+            $sinEnte = $cotejo['sinEnte'];
+        @endphp
 
         <div class="mt-4 rounded border border-slate-200 bg-white p-4 shadow-sm">
             <p class="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">
@@ -81,6 +85,15 @@
                 aquí <b class="tabular-nums">{{ $cotejo['aqui'] }}</b> ·
                 coinciden <b class="tabular-nums">{{ $cotejo['coinciden'] }}</b>
             </p>
+
+            {{-- El carnets es solo del CIIP: de Marca País y VENAPP no está nadie allá, y eso es
+                 lo normal. Decirlo evita que el número de «coinciden» parezca malo. --}}
+            @if ($cotejo['otrosEntes'] > 0)
+                <p class="mt-1 text-xs text-slate-500">
+                    {{ $cotejo['otrosEntes'] }} de Marca País y VENAPP quedan fuera de la comparación:
+                    el sistema de carnets es solo del CIIP.
+                </p>
+            @endif
 
             @if ($faltan->isNotEmpty())
                 <div class="mt-4">
@@ -111,10 +124,26 @@
                 </div>
             @endif
 
+            {{-- Sin ente no se puede juzgar: podrían ser del CIIP y faltarles el carnet, o de
+                 otro ente y estar bien. Se dicen para que alguien les ponga el ente. --}}
+            @if ($sinEnte->isNotEmpty())
+                <div class="mt-4 border-t border-slate-100 pt-3">
+                    <p class="font-semibold text-slate-900">
+                        {{ $sinEnte->count() }} sin ente asignado, y sin carnet
+                    </p>
+                    <p class="mt-0.5 text-xs text-slate-500">
+                        No se puede saber si les falta el carnet o es que no son del CIIP. Ponles el ente y vuelve a comparar.
+                    </p>
+                    <p class="mt-2 text-sm text-slate-600">
+                        {{ $sinEnte->take(15)->pluck('nombre')->implode(' · ') }}@if ($sinEnte->count() > 15) … y {{ $sinEnte->count() - 15 }} más @endif
+                    </p>
+                </div>
+            @endif
+
             @if ($sobran->isNotEmpty())
                 <div class="mt-4 border-t border-slate-100 pt-3">
                     <p class="font-semibold text-slate-900">
-                        {{ $sobran->count() }} activos aquí y ya no en carnets
+                        {{ $sobran->count() }} del CIIP activos aquí y ya no en carnets
                     </p>
                     <p class="mt-0.5 text-xs text-slate-500">
                         Puede que se hayan ido. Desactivarlos conserva su histórico; borrarlos, no.
@@ -126,7 +155,7 @@
                 </div>
             @endif
 
-            @if ($faltan->isEmpty() && $sobran->isEmpty())
+            @if ($faltan->isEmpty() && $sobran->isEmpty() && $sinEnte->isEmpty())
                 <p class="mt-3 text-sm font-medium text-parte1">Las dos listas dicen lo mismo.</p>
             @endif
         </div>

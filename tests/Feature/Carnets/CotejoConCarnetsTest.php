@@ -45,12 +45,13 @@ class CotejoConCarnetsTest extends TestCase
         ]);
     }
 
-    private function aqui(string $cedula, string $nombre, bool $activo = true): Persona
+    private function aqui(string $cedula, string $nombre, bool $activo = true, ?string $ente = 'ciip'): Persona
     {
         return Persona::create([
             'cedula' => $cedula,
             'tipo' => Persona::TRABAJADOR,
             'nombre' => $nombre,
+            'ente' => $ente,
             'activo' => $activo,
         ]);
     }
@@ -78,7 +79,7 @@ class CotejoConCarnetsTest extends TestCase
     public function saca_a_quien_sigue_activo_aqui_y_ya_no_en_carnets(): void
     {
         $this->aqui('11111111', 'ANA PÉREZ');
-        $this->aqui('33333333', 'QUIEN SE FUE');
+        $this->aqui('33333333', 'QUIEN SE FUE');   // del CIIP: de ese sí se puede decir algo
 
         $this->carnetsResponde([['cedula' => '11111111', 'nombre' => 'ANA PÉREZ']]);
 
@@ -100,6 +101,39 @@ class CotejoConCarnetsTest extends TestCase
         $resultado = app(CotejoConCarnets::class)->comparar();
 
         $this->assertCount(1, $resultado['faltan']);
+    }
+
+    #[Test]
+    public function el_personal_de_marca_pais_y_venapp_nunca_sobra(): void
+    {
+        // El carnets es SOLO del CIIP: de los otros dos entes no está nadie allá, y por diseño.
+        // Contarlos como sobrantes llenaría la pantalla de avisos falsos.
+        $this->aqui('11111111', 'ANA PÉREZ');
+        $this->aqui('55555555', 'PEDRO DE VENAPP', ente: 'venapp');
+        $this->aqui('66666666', 'SARA DE MARCA PAÍS', ente: 'marca-pais');
+
+        $this->carnetsResponde([['cedula' => '11111111', 'nombre' => 'ANA PÉREZ']]);
+
+        $resultado = app(CotejoConCarnets::class)->comparar();
+
+        $this->assertCount(0, $resultado['sobran'], 'No son del CIIP: no tienen por qué tener carnet.');
+        $this->assertSame(2, $resultado['otrosEntes']);
+    }
+
+    #[Test]
+    public function quien_no_tiene_ente_se_lista_aparte_sin_acusarlo(): void
+    {
+        // No se puede saber si le falta el carnet o es que no es del CIIP. Meterlo en «sobran»
+        // sería afirmar lo primero sin base.
+        $this->aqui('77777777', 'SIN ENTE', ente: null);
+
+        $this->carnetsResponde([['cedula' => '11111111', 'nombre' => 'OTRA']]);
+
+        $resultado = app(CotejoConCarnets::class)->comparar();
+
+        $this->assertCount(0, $resultado['sobran']);
+        $this->assertCount(1, $resultado['sinEnte']);
+        $this->assertSame('77777777', $resultado['sinEnte'][0]->cedula);
     }
 
     #[Test]
