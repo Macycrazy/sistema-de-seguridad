@@ -143,6 +143,39 @@ class RostrosTest extends TestCase
     }
 
     #[Test]
+    public function ningun_boton_se_queda_con_una_directiva_de_blade_sin_evaluar(): void
+    {
+        /*
+         * El fallo que esto vigila: Blade NO interpreta sus directivas dentro de los atributos de
+         * un componente. Un «x-on:click="indexar(@json(...))"» en un <x-boton> viaja tal cual al
+         * navegador, Alpine recibe algo que no es JavaScript, y el botón deja de hacer nada sin
+         * decir por qué —desde el servidor todo parece correcto—.
+         *
+         * Por eso las listas van en el x-data del div, que sí es HTML normal.
+         */
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
+        $this->trabajador();
+
+        $html = Livewire::test(Indice::class)->html();
+
+        $this->assertStringNotContainsString('@json', $html, 'Quedó un @json sin evaluar en la pantalla.');
+        $this->assertStringContainsString('indexar(pendientes)', $html);
+        $this->assertStringContainsString('indiceDeRostros($wire, [', $html);
+    }
+
+    #[Test]
+    public function la_puerta_tampoco_deja_directivas_sin_evaluar(): void
+    {
+        $this->entrandoComo();
+        app(Rostros::class)->guardar($this->trabajador(), $this->descriptor());
+
+        $html = Livewire::test(Marcar::class)->html();
+
+        $this->assertStringNotContainsString('@json', $html);
+        $this->assertStringContainsString('rostroEnLaPuerta($wire, [', $html);
+    }
+
+    #[Test]
     public function reconocer_una_cara_deja_la_ficha_pero_n_o_marca_a_nadie(): void
     {
         // Lo más importante de todo el módulo: propone, no decide. Un parecido no es una

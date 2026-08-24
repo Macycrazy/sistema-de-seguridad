@@ -170,10 +170,10 @@
              es una identificación —con hermanos, o con mala luz, se equivoca—, y por eso esto
              acaba donde acaba teclear una cédula y no un paso más allá. --}}
         @if ($this->galeriaDeRostros !== [])
-            <div x-data="rostroEnLaPuerta($wire)" class="mb-4 border-b border-slate-100 pb-4">
+            <div x-data="rostroEnLaPuerta($wire, @json($this->galeriaDeRostros))" class="mb-4 border-b border-slate-100 pb-4">
                 <div x-show="!abierto">
                     <x-boton type="button" variante="secundario"
-                             x-on:click='abrir(@json($this->galeriaDeRostros))' class="w-full">
+                             x-on:click="abrir()" class="w-full">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
                              stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
                             <circle cx="12" cy="12" r="9"/><circle cx="9.5" cy="10.5" r="1"/>

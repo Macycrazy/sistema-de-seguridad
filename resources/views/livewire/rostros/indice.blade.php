@@ -4,7 +4,9 @@
     Lo calcula el navegador: aquí se enseña qué falta y se recogen los números. Ninguna foto sale
     del equipo que tiene esta pantalla abierta.
 --}}
-<div x-data="indiceDeRostros($wire)">
+{{-- Las listas van en el x-data —aquí sí las interpreta Blade— y no en el atributo de
+     cada botón: dentro de un <x-boton> un @json viaja sin evaluar. --}}
+<div x-data="indiceDeRostros($wire, @json($this->pendientes), @json($this->todos))">
     @if ($aviso !== '')
         <x-aviso class="mb-4" wire:key="aviso">{{ $aviso }}</x-aviso>
     @endif
@@ -46,7 +48,7 @@
     @can('gestionar-personal')
         <div class="mt-4 flex flex-wrap items-center gap-3">
             <x-boton x-show="!trabajando"
-                     x-on:click='indexar(@json($this->pendientes))'
+                     x-on:click="indexar(pendientes)"
                      :disabled="$this->estado['faltan'] === 0">
                 {{ $this->estado['faltan'] === 0 ? 'No falta ninguno' : 'Indexar los '.$this->estado['faltan'].' que faltan' }}
             </x-boton>
@@ -56,7 +58,7 @@
                      el día que se miró. Si en carnets le ponen una foto nueva, hay que volver a
                      mirarlas o el reconocimiento seguirá buscando la cara vieja. --}}
                 <x-boton variante="secundario" x-show="!trabajando"
-                         x-on:click='indexar(@json($this->todos))'>
+                         x-on:click="indexar(todos)">
                     Volver a indexar todos
                 </x-boton>
 

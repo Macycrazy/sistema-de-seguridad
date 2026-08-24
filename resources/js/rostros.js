@@ -84,13 +84,20 @@ function distancia(uno, otro) {
  * De una en una y no todas a la vez: son fotos que hay que descargar y un cálculo que ocupa la
  * pestaña, y treinta a la vez dejarían el navegador clavado sin que nadie sepa por qué.
  */
-export function indiceDeRostros(wire) {
+export function indiceDeRostros(wire, pendientes = [], todos = []) {
     return {
         trabajando: false,
         hechas: 0,
         total: 0,
         actual: '',
         error: '',
+
+        // Las listas llegan por el x-data y no por el atributo de cada botón: Blade NO interpreta
+        // sus directivas dentro de los atributos de un componente <x-boton>, así que un @json ahí
+        // viaja tal cual y Alpine recibe algo que no es JavaScript. El botón entonces no hace nada
+        // y no lo dice: mira RostrosTest.
+        pendientes,
+        todos,
 
         async indexar(pendientes) {
             if (this.trabajando || pendientes.length === 0) return;
@@ -146,22 +153,22 @@ export function indiceDeRostros(wire) {
  * del vigilante, que es quien confirma mirando la foto —igual que hace hoy con el carnet—. Un
  * parecido no es una identificación.
  */
-export function rostroEnLaPuerta(wire) {
+export function rostroEnLaPuerta(wire, galeria = []) {
     return {
         abierto: false,
         cargando: false,
         mensaje: '',
         stream: null,
         raf: null,
-        galeria: [],
+
+        // Por el x-data, por lo mismo que arriba.
+        galeria,
 
         // Por debajo de esto se considera la misma persona. 0,5 es prudente: prefiere no decir
         // nada a decir un nombre equivocado, que en la puerta es lo caro.
         umbral: 0.5,
 
-        async abrir(galeria) {
-            this.galeria = galeria || [];
-
+        async abrir() {
             if (this.galeria.length === 0) {
                 this.mensaje = 'Todavía no hay ningún rostro indexado.';
                 this.abierto = true;
