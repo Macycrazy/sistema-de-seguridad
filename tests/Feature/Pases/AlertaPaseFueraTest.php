@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Pases;
 
+use App\Models\Movimiento;
 use App\Models\Parametro;
 use App\Models\Pase;
 use App\Models\Persona;
@@ -23,11 +24,18 @@ class AlertaPaseFueraTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** Un visitante DENTRO con su pase: es el caso normal, y el pase se da al entrar. */
     private function entregar(string $hace = '5 minutes'): void
     {
         $persona = Persona::create([
             'cedula' => '11111111', 'tipo' => Persona::INVITADO,
             'nombre' => 'ANA PÉREZ', 'motivo' => 'REUNIÓN', 'activo' => true,
+        ]);
+
+        Movimiento::create([
+            'persona_id' => $persona->id,
+            'tipo' => Movimiento::ENTRADA,
+            'ocurrio_en' => now()->sub($hace),
         ]);
 
         $entrega = app(Pases::class)->entregar(Pase::create(['codigo' => 'V-01']), $persona);
@@ -60,6 +68,41 @@ class AlertaPaseFueraTest extends TestCase
         $this->entregar('6 hours');
 
         $this->assertTrue($this->dePases()[0]->esUrgente());
+    }
+
+    #[Test]
+    public function si_la_persona_ya_salio_del_edificio_el_pase_es_urgente_desde_el_primer_minuto(): void
+    {
+        // Que el pase esté fuera con su visitante dentro es lo normal. Que esté fuera cuando esa
+        // persona ya se fue significa que el pase se fue con ella, y eso no espera a ningún plazo.
+        $persona = Persona::create([
+            'cedula' => '11111111', 'tipo' => Persona::INVITADO,
+            'nombre' => 'ANA PÉREZ', 'motivo' => 'REUNIÓN', 'activo' => true,
+        ]);
+
+        Movimiento::create(['persona_id' => $persona->id, 'tipo' => Movimiento::ENTRADA, 'ocurrio_en' => now()->subHours(2)]);
+        app(Pases::class)->entregar(Pase::create(['codigo' => 'V-01']), $persona);
+        Movimiento::create(['persona_id' => $persona->id, 'tipo' => Movimiento::SALIDA, 'ocurrio_en' => now()->subMinutes(5)]);
+
+        $alerta = $this->dePases()[0];
+
+        $this->assertTrue($alerta->esUrgente());
+        $this->assertStringContainsString('se fue sin devolverse', $alerta->titulo);
+        $this->assertStringContainsString('no volvió', $alerta->detalle);
+    }
+
+    #[Test]
+    public function mientras_el_visitante_sigue_dentro_el_pase_es_solo_un_aviso(): void
+    {
+        $persona = Persona::create([
+            'cedula' => '22222222', 'tipo' => Persona::INVITADO,
+            'nombre' => 'LUIS GÓMEZ', 'motivo' => 'REUNIÓN', 'activo' => true,
+        ]);
+
+        Movimiento::create(['persona_id' => $persona->id, 'tipo' => Movimiento::ENTRADA, 'ocurrio_en' => now()->subHour()]);
+        app(Pases::class)->entregar(Pase::create(['codigo' => 'V-02']), $persona);
+
+        $this->assertFalse($this->dePases()[0]->esUrgente());
     }
 
     #[Test]

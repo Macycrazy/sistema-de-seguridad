@@ -146,17 +146,29 @@ final class Alertas
         $horasPase = $this->umbrales->horasPaseFuera();
 
         if ($horasPase > 0) {
+            $idsDentro = $dentro->pluck('persona_id')->map(fn ($id) => (string) $id)->all();
+
             foreach ($this->pases->fuera() as $entrega) {
                 $llevaHoras = intdiv((int) $entrega->entregado_en->diffInMinutes($ahora), 60);
 
+                // Que el pase esté fuera mientras su visitante está dentro es lo normal. Que esté
+                // fuera cuando esa persona YA SE FUE del edificio es otra cosa: el pase se fue con
+                // ella. Eso es urgente desde el primer minuto, no cuando se cumpla un plazo.
+                $seFueConEl = ! in_array((string) $entrega->persona_id, $idsDentro, true);
+                $tarde = $llevaHoras >= $horasPase;
+
                 $alertas->push(new Alerta(
                     tipo: Alerta::PASE_FUERA,
-                    severidad: $llevaHoras >= $horasPase ? Alerta::URGENTE : Alerta::AVISO,
-                    titulo: 'Pase '.($entrega->pase?->codigo ?? '?').' fuera'.($llevaHoras > 0 ? ' · '.$llevaHoras.' h' : ''),
+                    severidad: $seFueConEl || $tarde ? Alerta::URGENTE : Alerta::AVISO,
+                    titulo: 'Pase '.($entrega->pase?->codigo ?? '?')
+                        .($seFueConEl ? ' se fue sin devolverse' : ' fuera')
+                        .($llevaHoras > 0 ? ' · '.$llevaHoras.' h' : ''),
                     detalle: 'Lo lleva '.($entrega->persona?->nombre ?? 'alguien').', desde las '
                         .$entrega->entregado_en->format('g:i a')
                         .($entrega->usuario ? ' (lo entregó '.($entrega->usuario->nombre ?? $entrega->usuario->usuario).')' : '').'.'
-                        .($llevaHoras >= $horasPase ? ' Lleva más de las '.$horasPase.' h previstas.' : ''),
+                        .($seFueConEl
+                            ? ' Ya marcó su salida del edificio y el pase no volvió.'
+                            : ($tarde ? ' Lleva más de las '.$horasPase.' h previstas.' : '')),
                     personaId: $entrega->persona_id ? (string) $entrega->persona_id : null,
                     personaNombre: $entrega->persona?->nombre,
                     desde: CarbonImmutable::parse($entrega->entregado_en),
