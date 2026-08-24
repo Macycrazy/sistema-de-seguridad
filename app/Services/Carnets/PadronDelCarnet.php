@@ -103,9 +103,9 @@ class PadronDelCarnet
      *
      * @return array<int, array<string, mixed>>
      */
-    public function personal(): array
+    public function personal(bool $soloActivos = false): array
     {
-        if ($this->padron !== null) {
+        if (! $soloActivos && $this->padron !== null) {
             return $this->padron;
         }
 
@@ -116,7 +116,7 @@ class PadronDelCarnet
         try {
             $respuesta = Http::timeout(self::TIMEOUT)
                 ->withHeaders(['X-API-Token' => trim((string) config('carnets.token'))])
-                ->get($this->base().'/api/seguridad/personal');
+                ->get($this->base().'/api/seguridad/personal', $soloActivos ? ['solo_activos' => 1] : []);
         } catch (\Throwable $e) {
             Log::warning('No se pudo traer el padrón del carnets: '.$e->getMessage());
 
@@ -129,7 +129,10 @@ class PadronDelCarnet
             return [];
         }
 
-        return $this->padron = (array) ($respuesta->json('personal') ?? []);
+        $personal = (array) ($respuesta->json('personal') ?? []);
+
+        // Solo se memoriza el padrón completo: el filtrado es otra consulta y otra respuesta.
+        return $soloActivos ? $personal : $this->padron = $personal;
     }
 
     /**

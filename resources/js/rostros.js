@@ -394,8 +394,14 @@ export function rostroEnLaPuerta(wire) {
         // nada a decir un nombre equivocado, que en la puerta es lo caro.
         umbral: 0.5,
 
-        // Para mirar una cara se empieza por la frontal, al revés que para leer un carnet.
-        caraActual: 'user',
+        /*
+         * Se empieza por la cámara principal —la de atrás—, no por la de selfie.
+         *
+         * Quien sostiene el teléfono es el vigilante y a quien hay que mirar es al que tiene
+         * delante: apunta, no se retrata. Además la trasera de cualquier teléfono ve mucho mejor
+         * que la frontal, y aquí la calidad de la imagen es lo que decide si se reconoce o no.
+         */
+        caraActual: 'environment',
 
         async abrir(deviceId = null) {
             this.abierto = true;
