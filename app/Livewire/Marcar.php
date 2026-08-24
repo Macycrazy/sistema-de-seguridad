@@ -16,6 +16,7 @@ use App\Services\Estacionamiento\Flota;
 use App\Services\Estacionamiento\VehiculoEnLaPuerta;
 use App\Services\Marcaje;
 use App\Services\Pases\Pases;
+use App\Services\Rostros\Rostros;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
@@ -384,6 +385,46 @@ class Marcar extends Component
         $this->localizar($cedula);
     }
 
+    /**
+     * La cara que la cámara reconoció: se busca esa cédula y se deja la ficha delante.
+     *
+     * NO marca nada. Propone, y el vigilante confirma mirando la foto —igual que hace con el
+     * carnet—: un parecido no es una identificación, y con hermanos o con mala luz se equivoca.
+     * Por eso esto termina exactamente donde termina teclear una cédula.
+     *
+     * Queda en la auditoría: es biometría, y tiene que constar cuándo se usó y con quién.
+     */
+    public function rostroReconocido(string $cedula, float $distancia = 0): void
+    {
+        $this->confirmacion = '';
+        $this->resetValidation();
+        $this->olvidarPersona();
+
+        $cedula = Persona::normalizarCedula($cedula);
+
+        if ($cedula === '') {
+            $this->addError('cedula', 'El reconocimiento no trajo una cédula válida.');
+
+            return;
+        }
+
+        $this->nacionalidad = Persona::VENEZOLANO;
+        $this->cedula = $cedula;
+        $this->localizar($cedula);
+
+        if (! $this->persona()) {
+            $this->addError('cedula', 'Se reconoció la cara, pero esa cédula ya no está en el sistema.');
+
+            return;
+        }
+
+        app(Auditoria::class)->anota(
+            Auditoria::IDENTIFICO_POR_ROSTRO,
+            $cedula,
+            'Parecido: '.number_format($distancia, 3).' (cuanto menor, más se parece).',
+        );
+    }
+
     /** A quién pertenece esta cédula, y qué se le muestra al vigilante. */
     protected function localizar(string $cedula): void
     {
@@ -740,6 +781,20 @@ class Marcar extends Component
     public function hayFlotaCargada(): bool
     {
         return VehiculoDeFlota::query()->activos()->exists();
+    }
+
+    /**
+     * Las caras indexadas, para comparar EN EL NAVEGADOR. Vacío si no se ha indexado nada.
+     *
+     * Viaja lo justo —cédula, nombre y 128 números por persona— y ninguna foto. Con el personal de
+     * esta casa son unos pocos kilos.
+     *
+     * @return array<int, array{cedula:string, nombre:string, descriptor:array<int, float>}>
+     */
+    #[Computed]
+    public function galeriaDeRostros(): array
+    {
+        return app(Rostros::class)->galeria();
     }
 
     /**

@@ -9,7 +9,13 @@
  * Internet, así que todo lo que se ejecute tiene que venir del propio servidor. Y la cámara solo
  * funciona sobre HTTPS (o localhost); por eso el puesto se sirve por HTTPS.
  */
+import { indiceDeRostros, rostroEnLaPuerta } from './rostros.js';
+
 document.addEventListener('alpine:init', () => {
+    // El reconocimiento de caras vive en su propio archivo y se carga bajo demanda: ver rostros.js.
+    window.Alpine.data('indiceDeRostros', indiceDeRostros);
+    window.Alpine.data('rostroEnLaPuerta', rostroEnLaPuerta);
+
     window.Alpine.data('escanerCarnet', (wire) => ({
         abierto: false,
         mensaje: '',

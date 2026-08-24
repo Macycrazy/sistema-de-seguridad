@@ -1,0 +1,129 @@
+<?php
+
+namespace App\Livewire\Rostros;
+
+use App\Models\Persona;
+use App\Services\Auditoria\Auditoria;
+use App\Services\Rostros\Rostros;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Computed;
+use Livewire\Component;
+
+/**
+ * El índice de rostros: se calcula en el navegador y se guarda aquí.
+ *
+ * Esta pantalla no reconoce nada. Le da al navegador la lista de quién falta por indexar y la
+ * dirección de su foto; el navegador la mira, saca los 128 números y los manda de vuelta. El
+ * servidor nunca ve una cara ni tiene ninguna librería de visión.
+ *
+ * Va con los permisos del personal —«ver-personal» para entrar, «gestionar-personal» para
+ * indexar— y no con unos propios: el rostro es un dato más de la ficha, y así esto se puede
+ * quitar entero sin dejar permisos huérfanos por el sistema si se decide no usarlo.
+ */
+class Indice extends Component
+{
+    /** Lo que se le dice al administrador al terminar. */
+    public string $aviso = '';
+
+    /** Cuántas se han indexado en esta pasada, para que la barra avance. */
+    public int $hechas = 0;
+
+    /** Las que no se pudieron: sin foto, o con una foto donde no se ve una cara. */
+    public array $fallidas = [];
+
+    public function boot(): void
+    {
+        Gate::authorize('ver-personal');
+    }
+
+    /** @return array{indexadas:int, total:int, faltan:int} */
+    #[Computed]
+    public function estado(): array
+    {
+        return app(Rostros::class)->estado();
+    }
+
+    /**
+     * Lo que el navegador tiene que mirar: id, nombre y de dónde sacar la foto.
+     *
+     * @return array<int, array{id:int, nombre:string, foto:string}>
+     */
+    #[Computed]
+    public function pendientes(): array
+    {
+        return app(Rostros::class)->pendientes()
+            ->map(fn (Persona $persona) => [
+                'id' => $persona->id,
+                'nombre' => $persona->nombre,
+                'foto' => route('persona.foto', $persona),
+            ])
+            ->all();
+    }
+
+    /**
+     * Guarda los 128 números que calculó el navegador para una persona.
+     *
+     * @param  array<int, float>  $descriptor
+     */
+    public function guardarRostro(int $personaId, array $descriptor): void
+    {
+        Gate::authorize('gestionar-personal');
+
+        try {
+            app(Rostros::class)->guardar(Persona::findOrFail($personaId), $descriptor);
+        } catch (ValidationException $e) {
+            $this->fallidas[] = ['id' => $personaId, 'motivo' => $e->validator->errors()->first()];
+
+            return;
+        }
+
+        $this->hechas++;
+    }
+
+    /** El navegador no pudo con esa: sin foto, o sin una cara reconocible en ella. */
+    public function noSePudo(int $personaId, string $nombre, string $motivo): void
+    {
+        Gate::authorize('gestionar-personal');
+
+        $this->fallidas[] = ['id' => $personaId, 'nombre' => $nombre, 'motivo' => $motivo];
+    }
+
+    /** El navegador terminó la pasada: se recalcula el estado y se cuenta lo que pasó. */
+    public function terminado(): void
+    {
+        Gate::authorize('gestionar-personal');
+
+        $this->aviso = $this->hechas === 0
+            ? 'No se indexó ningún rostro nuevo.'
+            : 'Indexados '.$this->hechas.' rostros.';
+
+        if ($this->fallidas !== []) {
+            $this->aviso .= ' '.count($this->fallidas).' no se pudieron: sin foto, o sin una cara reconocible en ella.';
+        }
+
+        app(Auditoria::class)->anota(Auditoria::INDEXO_ROSTROS, null, $this->aviso);
+
+        unset($this->estado, $this->pendientes);
+    }
+
+    /** Vacía el índice entero: la salida si esto se decide no usar. */
+    public function vaciar(): void
+    {
+        Gate::authorize('gestionar-personal');
+
+        $cuantos = app(Rostros::class)->vaciar();
+
+        $this->reset('hechas', 'fallidas');
+        $this->aviso = $cuantos === 0 ? 'El índice ya estaba vacío.' : 'Borrados '.$cuantos.' rostros.';
+
+        app(Auditoria::class)->anota(Auditoria::BORRO_ROSTROS, null, $this->aviso);
+
+        unset($this->estado, $this->pendientes);
+    }
+
+    public function render()
+    {
+        return view('livewire.rostros.indice');
+    }
+}

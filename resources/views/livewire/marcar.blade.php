@@ -160,6 +160,52 @@
             </div>
         </div>
 
+        {{-- BUSCAR POR LA CARA.
+
+             Solo aparece si hay caras indexadas: sin índice no hay nada con qué comparar, y un
+             botón que no puede funcionar estorba más que ayuda.
+
+             Lo que hace es PROPONER: encuentra a quién se parece, rellena la cédula y deja la
+             ficha con su foto delante del vigilante. Marcar sigue siendo cosa suya. Un parecido no
+             es una identificación —con hermanos, o con mala luz, se equivoca—, y por eso esto
+             acaba donde acaba teclear una cédula y no un paso más allá. --}}
+        @if ($this->galeriaDeRostros !== [])
+            <div x-data="rostroEnLaPuerta($wire)" class="mb-4 border-b border-slate-100 pb-4">
+                <div x-show="!abierto">
+                    <x-boton type="button" variante="secundario"
+                             x-on:click='abrir(@json($this->galeriaDeRostros))' class="w-full">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                             stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
+                            <circle cx="12" cy="12" r="9"/><circle cx="9.5" cy="10.5" r="1"/>
+                            <circle cx="14.5" cy="10.5" r="1"/><path d="M9 15c.9.8 2 1.2 3 1.2s2.1-.4 3-1.2"/>
+                        </svg>
+                        Buscar por la cara
+                    </x-boton>
+                    <p class="mt-2 text-center font-mono text-xs uppercase tracking-widest text-slate-400">
+                        para quien no trae el carnet
+                    </p>
+                </div>
+
+                <div x-show="abierto" x-cloak class="mt-1">
+                    <div class="relative overflow-hidden rounded-xl bg-slate-900">
+                        <video x-ref="video" playsinline muted class="h-auto w-full"></video>
+
+                        <p class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-900/90 to-transparent
+                                  px-4 pb-4 pt-8 text-center text-sm font-semibold text-white"
+                           x-text="mensaje"></p>
+                    </div>
+
+                    <p class="mt-2 text-center text-xs text-slate-500">
+                        Compara aquí mismo, en este equipo: la imagen no se envía a ninguna parte.
+                    </p>
+
+                    <x-boton type="button" variante="secundario" x-on:click="cerrar()" class="mt-3 w-full">
+                        Cerrar cámara
+                    </x-boton>
+                </div>
+            </div>
+        @endif
+
         <form wire:submit="buscar">
             {{--
                 «live.debounce» busca sola en cuanto se deja de teclear, sin pulsar nada. Los

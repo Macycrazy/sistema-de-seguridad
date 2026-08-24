@@ -71,6 +71,14 @@ class Auditoria
     /** Se cerró una estadía que sobraba: el mismo vehículo figuraba dentro dos veces. */
     public const CERRO_DUPLICADA = 'cerro-estadia-duplicada';
 
+    // Los rostros. Se anotan porque son biometría: tiene que constar cuándo se creó el índice,
+    // cuándo se borró, y cuándo la puerta identificó a alguien por la cara.
+    public const INDEXO_ROSTROS = 'indexo-rostros';
+
+    public const BORRO_ROSTROS = 'borro-rostros';
+
+    public const IDENTIFICO_POR_ROSTRO = 'identifico-por-rostro';
+
     /** La acción, en frase, para la pantalla. */
     public const ETIQUETAS = [
         self::INGRESO_CORRECTO => 'Entró al sistema',
@@ -98,6 +106,9 @@ class Auditoria
         self::ANOTO_VEHICULO => 'Anotó un vehículo',
         self::SACO_VEHICULO => 'Sacó un vehículo',
         self::CERRO_DUPLICADA => 'Cerró una estadía duplicada',
+        self::INDEXO_ROSTROS => 'Indexó rostros',
+        self::BORRO_ROSTROS => 'Borró el índice de rostros',
+        self::IDENTIFICO_POR_ROSTRO => 'Identificó a alguien por la cara',
     ];
 
     /**

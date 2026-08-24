@@ -89,6 +89,10 @@ Route::middleware('auth')->group(function () {
 
     Route::view('/pases', 'pases')->middleware('can:ver-pases')->name('pases');
 
+    // El rostro es un dato más de la ficha del personal, así que va con sus permisos y no con unos
+    // propios: si esto se decide no usar, se quita entero sin dejar permisos huérfanos.
+    Route::view('/rostros', 'rostros')->middleware('can:ver-personal')->name('rostros');
+
     // Las reglas de tiempo del marcaje, ajustables sin reprogramar.
     Route::view('/ajustes', 'ajustes')->middleware('can:ver-ajustes')->name('ajustes');
 
