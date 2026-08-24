@@ -193,11 +193,6 @@
                     <div class="relative overflow-hidden rounded-xl bg-slate-900" @click="enfocar($event)">
                         <video x-ref="video" playsinline muted class="h-auto w-full"></video>
 
-                        {{-- Guía de encuadre: un óvalo, que es lo que se busca aquí. --}}
-                        <div class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-                            <div class="h-56 w-44 rounded-[50%] border-2 border-white/40 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]"></div>
-                        </div>
-
                         {{-- Los mandos, encima de la imagen. --}}
                         <div class="absolute inset-x-0 top-0 z-20 flex items-center gap-3 p-3">
                             <div x-show="soportaZoom" class="flex items-center gap-2" x-cloak>

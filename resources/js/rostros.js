@@ -116,6 +116,110 @@ function imagen(url) {
 }
 
 /**
+ * Trae la foto diciendo QUÉ pasó cuando no se puede.
+ *
+ * Con «new Image()» a secas, un 404, un servidor caído y un archivo corrupto dan el mismo error
+ * —«no se pudo cargar»—, y entonces la lista de fallos no ayuda a arreglar nada: no es lo mismo
+ * que a alguien le falte la foto en carnets que que la foto esté rota.
+ *
+ * @returns {Promise<{img: HTMLImageElement}>} o lanza un Error con un motivo que se puede leer
+ */
+async function traerFoto(url) {
+    let respuesta;
+
+    try {
+        respuesta = await fetch(url, { credentials: 'same-origin' });
+    } catch (e) {
+        throw new Error('no se pudo hablar con el servidor al pedir su foto');
+    }
+
+    if (respuesta.status === 404) {
+        throw new Error('no tiene foto cargada en el sistema de carnets');
+    }
+
+    if (!respuesta.ok) {
+        throw new Error('el servidor respondió ' + respuesta.status + ' al pedir su foto');
+    }
+
+    const blob = await respuesta.blob();
+
+    if (blob.size === 0) {
+        throw new Error('su foto está vacía (0 bytes)');
+    }
+
+    if (!blob.type.startsWith('image/')) {
+        throw new Error('lo que hay en su foto no es una imagen (' + (blob.type || 'sin tipo') + ')');
+    }
+
+    const url64 = URL.createObjectURL(blob);
+
+    try {
+        const img = await imagen(url64);
+
+        if (img.naturalWidth < 80 || img.naturalHeight < 80) {
+            throw new Error('su foto es diminuta (' + img.naturalWidth + '×' + img.naturalHeight + ' píxeles)');
+        }
+
+        return { img, url64 };
+    } catch (e) {
+        URL.revokeObjectURL(url64);
+
+        if (e.message && e.message.startsWith('su foto')) throw e;
+
+        throw new Error('su foto está dañada o en un formato que el navegador no abre');
+    }
+}
+
+/**
+ * Cuánto de nítida está una imagen, para poder decir «borrosa» en vez de «no sé qué pasa».
+ *
+ * Se mide con la varianza del laplaciano, que es el modo habitual: se mira cuánto cambia el brillo
+ * de un píxel al de al lado. En una foto nítida los bordes son bruscos y ese número es alto; en una
+ * borrosa todo son transiciones suaves y baja mucho.
+ *
+ * El umbral no es una ciencia exacta —depende del tamaño y del recorte—, pero por debajo de 60 una
+ * foto de carnet está claramente movida o desenfocada.
+ */
+function nitidez(img) {
+    const lado = 320;
+    const lienzo = document.createElement('canvas');
+    lienzo.width = lado;
+    lienzo.height = lado;
+
+    const ctx = lienzo.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, lado, lado);
+
+    const { data } = ctx.getImageData(0, 0, lado, lado);
+
+    // A gris, que el color no dice nada del enfoque.
+    const gris = new Float32Array(lado * lado);
+    for (let i = 0; i < gris.length; i++) {
+        const p = i * 4;
+        gris[i] = 0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2];
+    }
+
+    let suma = 0;
+    let sumaCuadrados = 0;
+    let cuantos = 0;
+
+    for (let y = 1; y < lado - 1; y++) {
+        for (let x = 1; x < lado - 1; x++) {
+            const i = y * lado + x;
+            const lap =
+                gris[i - lado] + gris[i + lado] + gris[i - 1] + gris[i + 1] - 4 * gris[i];
+
+            suma += lap;
+            sumaCuadrados += lap * lap;
+            cuantos++;
+        }
+    }
+
+    const media = suma / cuantos;
+
+    return sumaCuadrados / cuantos - media * media;
+}
+
+/**
  * A qué distancia están dos caras. Cuanto menor, más se parecen.
  *
  * Es la distancia euclídea de siempre. Por debajo de ~0,5 son la misma persona casi seguro; por
@@ -201,22 +305,7 @@ export function indiceDeRostros(wire) {
 
             for (const persona of pendientes) {
                 this.actual = persona.nombre;
-
-                try {
-                    const foto = await imagen(persona.foto);
-                    const encontrada = await descriptorDeFoto(foto);
-
-                    if (encontrada) {
-                        // Con el hash de la foto que se acaba de mirar: es lo que después permite
-                        // saber a quién le cambiaron la cara sin volver a mirarlos a todos.
-                        await wire.guardarRostro(persona.id, encontrada.descriptor, persona.hash ?? null);
-                    } else {
-                        await wire.noSePudo(persona.id, persona.nombre, 'no se distingue una cara en su foto');
-                    }
-                } catch (e) {
-                    await wire.noSePudo(persona.id, persona.nombre, e.message || 'no se pudo abrir su foto');
-                }
-
+                await this.mirarUna(persona);
                 this.hechas++;
             }
 
@@ -330,6 +419,58 @@ export function rostroEnLaPuerta(wire) {
             };
 
             tick();
+        },
+
+        /**
+         * Una persona: trae su foto, le busca la cara y guarda o explica POR QUÉ no se pudo.
+         *
+         * El motivo importa tanto como el resultado. Cuando todos los fallos decían «no se pudo
+         * cargar la foto», la lista no servía para arreglar nada: no es lo mismo que alguien no
+         * esté dado de alta en carnets, que esté sin foto, que la foto esté movida o que salga de
+         * medio lado. Cada uno se arregla en un sitio distinto.
+         */
+        async mirarUna(persona) {
+            let foto;
+
+            try {
+                foto = await traerFoto(persona.foto);
+            } catch (e) {
+                // «No tiene foto» y «no está fichado allá» llegan igual —un 404— y se distinguen
+                // con el padrón, que dice quién está.
+                const motivo = persona.enCarnets === false
+                    ? 'no está en el sistema de carnets'
+                    : (e.message || 'no se pudo abrir su foto');
+
+                await wire.noSePudo(persona.id, persona.nombre, motivo);
+                return;
+            }
+
+            try {
+                const encontrada = await descriptorDeFoto(foto.img);
+
+                if (encontrada) {
+                    // Con el hash de la foto que se acaba de mirar: es lo que después permite
+                    // saber a quién le cambiaron la cara sin volver a mirarlos a todos.
+                    await wire.guardarRostro(persona.id, encontrada.descriptor, persona.hash ?? null);
+                    return;
+                }
+
+                // No se le encontró cara: se mide el enfoque para poder decir si es que la foto
+                // está movida —que se arregla tomándola otra vez— o si hay otra cosa.
+                let motivo = 'no se distingue una cara en su foto';
+
+                try {
+                    if (nitidez(foto.img) < 60) {
+                        motivo = 'su foto está borrosa o movida';
+                    }
+                } catch (e) {
+                    // Medirlo es un extra: si no se puede, se queda el motivo general.
+                }
+
+                await wire.noSePudo(persona.id, persona.nombre, motivo);
+            } finally {
+                if (foto && foto.url64) URL.revokeObjectURL(foto.url64);
+            }
         },
 
         pararBusqueda() {

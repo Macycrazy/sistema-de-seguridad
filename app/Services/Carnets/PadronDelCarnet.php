@@ -37,6 +37,13 @@ class PadronDelCarnet
      */
     private ?array $hashes = null;
 
+    /**
+     * El padrón ya pedido en esta petición.
+     *
+     * @var array<int, array<string, mixed>>|null
+     */
+    private ?array $padron = null;
+
     /** Si está configurado para hablar con la API. Sin esto, todo lo de aquí queda apagado. */
     public function configurado(): bool
     {
@@ -73,12 +80,35 @@ class PadronDelCarnet
     }
 
     /**
+     * Las cédulas que el carnets tiene fichadas.
+     *
+     * Sirve para distinguir dos fallos que se ven igual al pedir una foto y no son lo mismo: que
+     * esa persona no esté en el carnets, o que esté pero sin foto cargada. La primera se arregla
+     * dándola de alta allá; la segunda, subiéndole una foto.
+     *
+     * Vacío si no está configurado o si el carnets no responde, y entonces no se afirma nada.
+     *
+     * @return array<int, string>
+     */
+    public function cedulas(): array
+    {
+        return array_values(array_filter(array_map(
+            fn ($ficha) => trim((string) ($ficha['cedula'] ?? '')),
+            $this->personal(),
+        ), fn ($cedula) => $cedula !== ''));
+    }
+
+    /**
      * El padrón entero, tal cual lo devuelve carnets.
      *
      * @return array<int, array<string, mixed>>
      */
     public function personal(): array
     {
+        if ($this->padron !== null) {
+            return $this->padron;
+        }
+
         if (! $this->configurado()) {
             return [];
         }
@@ -99,7 +129,7 @@ class PadronDelCarnet
             return [];
         }
 
-        return (array) ($respuesta->json('personal') ?? []);
+        return $this->padron = (array) ($respuesta->json('personal') ?? []);
     }
 
     /**

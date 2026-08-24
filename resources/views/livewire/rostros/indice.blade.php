@@ -102,19 +102,28 @@
                     {{ count($fallidas) }} sin indexar
                 </p>
                 <p class="mt-1 text-sm text-slate-600">
-                    Casi siempre es que no tienen foto en el sistema de carnets, o que en la foto no se
-                    distingue una cara. No pasa nada: esas personas se marcan con su carnet, como siempre.
+                    No pasa nada: esas personas se marcan con su carnet, como siempre. Pero el motivo dice
+                    dónde arreglarlo —dar de alta a alguien en carnets, subirle una foto, o repetir una que
+                    salió movida—.
                 </p>
             </div>
 
-            <ul class="divide-y divide-white/60 bg-white/50 text-sm">
-                @foreach ($fallidas as $fallida)
-                    <li class="flex flex-wrap justify-between gap-2 px-4 py-2">
-                        <span class="font-medium text-slate-800">{{ $fallida['nombre'] ?? '#'.$fallida['id'] }}</span>
-                        <span class="font-mono text-xs text-slate-500">{{ $fallida['motivo'] }}</span>
-                    </li>
+            {{-- Agrupadas por motivo: cada uno se arregla en un sitio distinto —dar de alta a
+                 alguien en carnets, subirle una foto, repetir una foto movida— y en una lista
+                 corrida de ciento y pico nombres eso no se ve. --}}
+            <div class="divide-y divide-white/60 bg-white/50 text-sm">
+                @foreach (collect($fallidas)->groupBy('motivo') as $motivo => $quienes)
+                    <div class="px-4 py-3">
+                        <p class="font-semibold text-slate-800">
+                            {{ ucfirst($motivo) }}
+                            <span class="ml-1 font-mono text-xs font-normal text-slate-500">{{ $quienes->count() }}</span>
+                        </p>
+                        <p class="mt-1 text-xs leading-relaxed text-slate-500">
+                            {{ $quienes->pluck('nombre')->filter()->take(12)->implode(' · ') }}@if ($quienes->count() > 12) … y {{ $quienes->count() - 12 }} más @endif
+                        </p>
+                    </div>
                 @endforeach
-            </ul>
+            </div>
         </div>
     @endif
 </div>

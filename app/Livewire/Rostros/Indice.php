@@ -136,7 +136,13 @@ class Indice extends Component
         // Los hashes se piden UNA vez para todo el lote: es una llamada al carnets, no una por
         // persona. Vacío si no está configurado, y entonces se indexa igual pero sin poder saber
         // después a quién le cambió la foto.
-        $hashes = app(PadronDelCarnet::class)->hashesDeFoto();
+        $padron = app(PadronDelCarnet::class);
+        $hashes = $padron->hashesDeFoto();
+
+        // Las cédulas que el carnets tiene fichadas, para poder decir «no está en carnets» en vez
+        // de «no se pudo cargar la foto», que no es lo mismo ni se arregla igual. Vacío si no se
+        // pudo preguntar, y entonces no se afirma nada.
+        $enCarnets = array_flip($padron->cedulas());
 
         return $personas
             ->map(fn (Persona $persona) => [
@@ -146,6 +152,8 @@ class Indice extends Component
                 // y se volvería a indexar la cara vieja, que es justo lo que se quiere evitar.
                 'foto' => route('persona.foto', $persona).'?v='.now()->timestamp,
                 'hash' => $hashes[(string) $persona->cedula] ?? null,
+                // true / false / null («no se pudo preguntar»).
+                'enCarnets' => $enCarnets === [] ? null : isset($enCarnets[(string) $persona->cedula]),
             ])
             ->all();
     }
