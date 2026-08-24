@@ -166,6 +166,26 @@ class RostrosTest extends TestCase
     }
 
     #[Test]
+    public function volver_a_indexar_ofrece_a_todos_y_no_solo_a_los_que_faltan(): void
+    {
+        // La foto manda y puede cambiar: si en carnets le ponen otra a alguien ya indexado, hay
+        // que poder volver a mirarla sin borrar el índice entero.
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
+
+        $ana = $this->trabajador();
+        $this->trabajador('87654321', 'LUIS GÓMEZ');
+        app(Rostros::class)->guardar($ana, $this->descriptor());
+
+        $componente = Livewire::test(Indice::class);
+
+        $this->assertCount(1, $componente->instance()->pendientes, 'Pendiente solo Luis.');
+        $this->assertCount(2, $componente->instance()->todos, 'Para volver a mirar, los dos.');
+
+        // La foto va con la hora pegada, o el navegador reusaría la que ya tenía guardada.
+        $this->assertStringContainsString('?v=', $componente->instance()->todos[0]['foto']);
+    }
+
+    #[Test]
     public function una_cedula_reconocida_que_ya_no_existe_lo_dice(): void
     {
         $this->entrandoComo();

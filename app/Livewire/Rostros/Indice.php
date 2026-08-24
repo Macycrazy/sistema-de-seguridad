@@ -5,6 +5,7 @@ namespace App\Livewire\Rostros;
 use App\Models\Persona;
 use App\Services\Auditoria\Auditoria;
 use App\Services\Rostros\Rostros;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
@@ -52,11 +53,37 @@ class Indice extends Component
     #[Computed]
     public function pendientes(): array
     {
-        return app(Rostros::class)->pendientes()
+        return $this->paraElNavegador(app(Rostros::class)->pendientes());
+    }
+
+    /**
+     * Todo el personal, para volver a mirarlo entero.
+     *
+     * Hace falta porque la foto manda y puede cambiar: el índice guarda la cara que TENÍA esa
+     * persona el día que se miró, y si en carnets le ponen una foto nueva el índice se queda con
+     * la vieja sin que nadie lo note.
+     *
+     * @return array<int, array{id:int, nombre:string, foto:string}>
+     */
+    #[Computed]
+    public function todos(): array
+    {
+        return $this->paraElNavegador(app(Rostros::class)->indexables());
+    }
+
+    /**
+     * @param  Collection<int, Persona>  $personas
+     * @return array<int, array{id:int, nombre:string, foto:string}>
+     */
+    private function paraElNavegador($personas): array
+    {
+        return $personas
             ->map(fn (Persona $persona) => [
                 'id' => $persona->id,
                 'nombre' => $persona->nombre,
-                'foto' => route('persona.foto', $persona),
+                // Con la hora pegada: si no, el navegador reutiliza la foto que ya tenía guardada
+                // y se volvería a indexar la cara vieja, que es justo lo que se quiere evitar.
+                'foto' => route('persona.foto', $persona).'?v='.now()->timestamp,
             ])
             ->all();
     }
@@ -104,7 +131,7 @@ class Indice extends Component
 
         app(Auditoria::class)->anota(Auditoria::INDEXO_ROSTROS, null, $this->aviso);
 
-        unset($this->estado, $this->pendientes);
+        unset($this->estado, $this->pendientes, $this->todos);
     }
 
     /** Vacía el índice entero: la salida si esto se decide no usar. */
@@ -119,7 +146,7 @@ class Indice extends Component
 
         app(Auditoria::class)->anota(Auditoria::BORRO_ROSTROS, null, $this->aviso);
 
-        unset($this->estado, $this->pendientes);
+        unset($this->estado, $this->pendientes, $this->todos);
     }
 
     public function render()

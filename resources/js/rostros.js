@@ -100,6 +100,11 @@ export function indiceDeRostros(wire) {
             this.hechas = 0;
             this.total = pendientes.length;
 
+            // Se dice ANTES de empezar: cargar los modelos son varios megas y unos segundos en
+            // los que no pasa nada visible. Sin esto, el botón parece que no hizo nada y se
+            // vuelve a pulsar.
+            this.actual = 'cargando los modelos (la primera vez tarda)…';
+
             try {
                 await motor();
             } catch (e) {

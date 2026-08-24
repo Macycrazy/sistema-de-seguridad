@@ -23,8 +23,11 @@
     <template x-if="trabajando">
         <div class="mt-4 rounded border border-slate-200 bg-white p-4 shadow-sm">
             <p class="text-sm text-slate-600">
-                Mirando <span class="font-semibold" x-text="actual"></span>…
-                <span class="font-mono text-xs text-slate-400" x-text="hechas + ' de ' + total"></span>
+                <span x-show="hechas === 0 && actual.startsWith('cargando')" x-text="actual"></span>
+                <span x-show="!(hechas === 0 && actual.startsWith('cargando'))">
+                    Mirando <span class="font-semibold" x-text="actual"></span>…
+                    <span class="font-mono text-xs text-slate-400" x-text="hechas + ' de ' + total"></span>
+                </span>
             </p>
             <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
                 <div class="h-full rounded-full bg-parte1 transition-all"
@@ -49,6 +52,14 @@
             </x-boton>
 
             @if ($this->estado['indexadas'] > 0)
+                {{-- La foto manda y puede cambiar: el índice guarda la cara que TENÍA esa persona
+                     el día que se miró. Si en carnets le ponen una foto nueva, hay que volver a
+                     mirarlas o el reconocimiento seguirá buscando la cara vieja. --}}
+                <x-boton variante="secundario" x-show="!trabajando"
+                         x-on:click='indexar(@json($this->todos))'>
+                    Volver a indexar todos
+                </x-boton>
+
                 <x-boton variante="secundario" x-show="!trabajando"
                          wire:click="vaciar"
                          wire:confirm="¿Borrar el índice entero? Habrá que volver a indexar para usar el reconocimiento.">
