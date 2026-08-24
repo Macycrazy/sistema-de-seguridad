@@ -86,6 +86,27 @@ class Indice extends Component
     /** Si ya se comprobó en esta pantalla, para saber si decir «ninguno» o no decir nada. */
     public bool $comprobado = false;
 
+    /**
+     * La lista que el navegador tiene que mirar, pedida cuando se pulsa.
+     *
+     * NO viaja en un atributo del HTML. Se probó y estaba mal por dos motivos: el JSON lleva
+     * comillas dobles y el atributo también, así que el navegador cortaba el valor por la mitad
+     * («missing ) after element list»); y con casi trescientas personas ese atributo pesa más que
+     * la página. Pedirlo por Livewire lo arregla de raíz.
+     *
+     * @return array<int, array{id:int, nombre:string, foto:string, hash:?string}>
+     */
+    public function listaParaIndexar(string $cual = 'pendientes'): array
+    {
+        Gate::authorize('gestionar-personal');
+
+        return match ($cual) {
+            'todos' => $this->paraElNavegador(app(Rostros::class)->indexables()),
+            'desactualizados' => $this->desactualizados,
+            default => $this->paraElNavegador(app(Rostros::class)->pendientes()),
+        };
+    }
+
     /** Va al carnets, compara los hashes y deja la lista de a quién hay que volver a mirar. */
     public function comprobarCambios(): void
     {

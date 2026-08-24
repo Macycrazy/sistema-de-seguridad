@@ -84,7 +84,7 @@ function distancia(uno, otro) {
  * De una en una y no todas a la vez: son fotos que hay que descargar y un cálculo que ocupa la
  * pestaña, y treinta a la vez dejarían el navegador clavado sin que nadie sepa por qué.
  */
-export function indiceDeRostros(wire, pendientes = [], todos = [], desactualizados = []) {
+export function indiceDeRostros(wire) {
     return {
         trabajando: false,
         hechas: 0,
@@ -92,16 +92,41 @@ export function indiceDeRostros(wire, pendientes = [], todos = [], desactualizad
         actual: '',
         error: '',
 
-        // Las listas llegan por el x-data y no por el atributo de cada botón: Blade NO interpreta
-        // sus directivas dentro de los atributos de un componente <x-boton>, así que un @json ahí
-        // viaja tal cual y Alpine recibe algo que no es JavaScript. El botón entonces no hace nada
-        // y no lo dice: mira RostrosTest.
-        pendientes,
-        todos,
-        desactualizados,
+        /**
+         * La lista se le PIDE a Livewire; no viaja en el HTML.
+         *
+         * Meterla en un atributo estaba mal por partida doble: el JSON lleva comillas dobles y el
+         * atributo también, así que el navegador cortaba el valor por la mitad y Alpine se
+         * quejaba de un paréntesis que faltaba; y con casi trescientas personas ese atributo pesa
+         * más que la página entera.
+         */
+        async indexar(cual) {
+            if (this.trabajando) return;
 
-        async indexar(pendientes) {
-            if (this.trabajando || pendientes.length === 0) return;
+            this.trabajando = true;
+            this.error = '';
+            this.actual = 'buscando a quién mirar…';
+
+            let pendientes = [];
+
+            try {
+                pendientes = await wire.listaParaIndexar(cual);
+            } catch (e) {
+                this.error = 'No se pudo pedir la lista: ' + (e.message || e);
+                this.trabajando = false;
+                return;
+            }
+
+            if (!pendientes || pendientes.length === 0) {
+                this.trabajando = false;
+                this.actual = '';
+                return;
+            }
+
+            await this.mirar(pendientes);
+        },
+
+        async mirar(pendientes) {
 
             this.trabajando = true;
             this.error = '';
@@ -156,7 +181,7 @@ export function indiceDeRostros(wire, pendientes = [], todos = [], desactualizad
  * del vigilante, que es quien confirma mirando la foto —igual que hace hoy con el carnet—. Un
  * parecido no es una identificación.
  */
-export function rostroEnLaPuerta(wire, galeria = []) {
+export function rostroEnLaPuerta(wire) {
     return {
         abierto: false,
         cargando: false,
@@ -164,25 +189,30 @@ export function rostroEnLaPuerta(wire, galeria = []) {
         stream: null,
         raf: null,
 
-        // Por el x-data, por lo mismo que arriba.
-        galeria,
+        // Se pide al abrir, por lo mismo que la lista del índice: son 128 números por persona, y
+        // en un atributo del HTML serían cientos de kilos con las comillas rotas por medio.
+        galeria: [],
 
         // Por debajo de esto se considera la misma persona. 0,5 es prudente: prefiere no decir
         // nada a decir un nombre equivocado, que en la puerta es lo caro.
         umbral: 0.5,
 
         async abrir() {
-            if (this.galeria.length === 0) {
-                this.mensaje = 'Todavía no hay ningún rostro indexado.';
-                this.abierto = true;
-                return;
-            }
-
             this.abierto = true;
             this.cargando = true;
-            this.mensaje = 'Preparando la cámara…';
+            this.mensaje = 'Preparando…';
 
             try {
+                if (this.galeria.length === 0) {
+                    this.galeria = (await wire.galeriaParaReconocer()) || [];
+                }
+
+                if (this.galeria.length === 0) {
+                    this.cargando = false;
+                    this.mensaje = 'Todavía no hay ningún rostro indexado.';
+                    return;
+                }
+
                 await motor();
 
                 this.stream = await navigator.mediaDevices.getUserMedia({

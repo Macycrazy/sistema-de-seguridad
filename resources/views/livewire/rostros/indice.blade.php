@@ -4,9 +4,10 @@
     Lo calcula el navegador: aquí se enseña qué falta y se recogen los números. Ninguna foto sale
     del equipo que tiene esta pantalla abierta.
 --}}
-{{-- Las listas van en el x-data —aquí sí las interpreta Blade— y no en el atributo de
-     cada botón: dentro de un <x-boton> un @json viaja sin evaluar. --}}
-<div x-data="indiceDeRostros($wire, @json($this->pendientes), @json($this->todos), @json($desactualizados))">
+{{-- Sin datos en el atributo: el navegador se los pide a Livewire al pulsar. Un @json
+     aquí rompe el valor —sus comillas chocan con las del atributo— y con cientos de personas
+     pesaría más que la página. --}}
+<div x-data="indiceDeRostros($wire)">
     @if ($aviso !== '')
         <x-aviso class="mb-4" wire:key="aviso">{{ $aviso }}</x-aviso>
     @endif
@@ -48,7 +49,7 @@
     @can('gestionar-personal')
         <div class="mt-4 flex flex-wrap items-center gap-3">
             <x-boton x-show="!trabajando"
-                     x-on:click="indexar(pendientes)"
+                     x-on:click="indexar('pendientes')"
                      :disabled="$this->estado['faltan'] === 0">
                 {{ $this->estado['faltan'] === 0 ? 'No falta ninguno' : 'Indexar los '.$this->estado['faltan'].' que faltan' }}
             </x-boton>
@@ -66,7 +67,7 @@
                      estar, y no se va a esperar por ella para pintar un botón. --}}
                 @if ($this->padronDisponible)
                     @if ($desactualizados !== [])
-                        <x-boton x-show="!trabajando" x-on:click="indexar(desactualizados)">
+                        <x-boton x-show="!trabajando" x-on:click="indexar('desactualizados')">
                             Actualizar los {{ count($desactualizados) }} que cambiaron de foto
                         </x-boton>
                     @elseif (! $comprobado)
@@ -77,7 +78,7 @@
                 @endif
 
                 <x-boton variante="secundario" x-show="!trabajando"
-                         x-on:click="indexar(todos)">
+                         x-on:click="indexar('todos')">
                     Volver a indexar todos
                 </x-boton>
 

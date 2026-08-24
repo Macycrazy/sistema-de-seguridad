@@ -112,7 +112,7 @@
                             </button>
 
                             {{-- Botón Cambiar Cámara --}}
-                            <button type="button" x-show="camaras.length > 1" @click="cambiarCamara()" x-cloak
+                            <button type="button" x-show="puedeCambiarCamara" @click="cambiarCamara()" x-cloak
                                     class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md transition hover:bg-black/60">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                             </button>
@@ -169,8 +169,8 @@
              ficha con su foto delante del vigilante. Marcar sigue siendo cosa suya. Un parecido no
              es una identificación —con hermanos, o con mala luz, se equivoca—, y por eso esto
              acaba donde acaba teclear una cédula y no un paso más allá. --}}
-        @if ($this->galeriaDeRostros !== [])
-            <div x-data="rostroEnLaPuerta($wire, @json($this->galeriaDeRostros))" class="mb-4 border-b border-slate-100 pb-4">
+        @if ($this->hayRostros)
+            <div x-data="rostroEnLaPuerta($wire)" class="mb-4 border-b border-slate-100 pb-4">
                 <div x-show="!abierto">
                     <x-boton type="button" variante="secundario"
                              x-on:click="abrir()" class="w-full">

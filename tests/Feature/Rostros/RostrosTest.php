@@ -159,8 +159,11 @@ class RostrosTest extends TestCase
         $html = Livewire::test(Indice::class)->html();
 
         $this->assertStringNotContainsString('@json', $html, 'Quedó un @json sin evaluar en la pantalla.');
-        $this->assertStringContainsString('indexar(pendientes)', $html);
-        $this->assertStringContainsString('indiceDeRostros($wire, [', $html);
+        $this->assertStringContainsString("indexar('pendientes')", $html);
+
+        // Y el x-data va limpio: los datos se piden por Livewire. Un JSON aquí rompería el
+        // atributo —sus comillas chocan con las del valor— y Alpine se queja de un paréntesis.
+        $this->assertStringContainsString('x-data="indiceDeRostros($wire)"', $html);
     }
 
     #[Test]
@@ -172,7 +175,7 @@ class RostrosTest extends TestCase
         $html = Livewire::test(Marcar::class)->html();
 
         $this->assertStringNotContainsString('@json', $html);
-        $this->assertStringContainsString('rostroEnLaPuerta($wire, [', $html);
+        $this->assertStringContainsString('x-data="rostroEnLaPuerta($wire)"', $html);
     }
 
     #[Test]

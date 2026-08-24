@@ -6,6 +6,7 @@ use App\Models\EntregaDePase;
 use App\Models\Movimiento;
 use App\Models\Pase;
 use App\Models\Persona;
+use App\Models\Rostro;
 use App\Models\Vehiculo;
 use App\Models\VehiculoDeFlota;
 use App\Models\VehiculoFijo;
@@ -795,6 +796,26 @@ class Marcar extends Component
     public function galeriaDeRostros(): array
     {
         return app(Rostros::class)->galeria();
+    }
+
+    /**
+     * La galería, pedida por el navegador al abrir la cámara y NO metida en un atributo.
+     *
+     * Son 128 números por persona: en el HTML serían cientos de kilos dentro de un atributo, y
+     * además el JSON lleva comillas dobles que rompen el valor. Se pide cuando hace falta.
+     *
+     * @return array<int, array{cedula:string, nombre:string, descriptor:array<int, float>}>
+     */
+    public function galeriaParaReconocer(): array
+    {
+        return $this->galeriaDeRostros;
+    }
+
+    /** Si hay algún rostro indexado: sin eso, la puerta no ofrece buscar por la cara. */
+    #[Computed]
+    public function hayRostros(): bool
+    {
+        return Rostro::query()->exists();
     }
 
     /**

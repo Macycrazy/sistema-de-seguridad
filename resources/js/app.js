@@ -33,17 +33,15 @@ document.addEventListener('alpine:init', () => {
         camaras: [],
         camaraActivaId: null,
 
+        // Qué cara del teléfono se pide cuando no hay identificadores con los que elegir. Empieza
+        // en la trasera, que es con la que se lee un carnet.
+        caraActual: 'environment',
+
         async abrir(deviceId = null) {
             this.abierto = true;
             this.mensaje = 'Apunta al QR del carnet…';
 
             try {
-                // Cargar lista de cámaras si aún no la tenemos
-                if (this.camaras.length === 0) {
-                    const devices = await navigator.mediaDevices.enumerateDevices();
-                    this.camaras = devices.filter(d => d.kind === 'videoinput');
-                }
-
                 let constraints = {
                     video: { 
                         width: { ideal: 1920 },
@@ -56,7 +54,7 @@ document.addEventListener('alpine:init', () => {
                 if (deviceId) {
                     constraints.video.deviceId = { exact: deviceId };
                 } else {
-                    constraints.video.facingMode = 'environment';
+                    constraints.video.facingMode = this.caraActual;
                 }
 
                 this.stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -66,6 +64,21 @@ document.addEventListener('alpine:init', () => {
                 // Actualizar ID de la cámara actual
                 const track = this.stream.getVideoTracks()[0];
                 this.camaraActivaId = track.getSettings().deviceId;
+
+                /*
+                 * La lista de cámaras se pide AQUÍ, con el permiso ya concedido, y no antes.
+                 *
+                 * Sin permiso, el navegador esconde las cámaras: devuelve la lista incompleta y
+                 * con el «deviceId» en blanco, para que una página no pueda reconocer un equipo
+                 * por sus dispositivos. Preguntando antes de abrir la cámara, un teléfono con
+                 * frontal y trasera parecía tener una sola, y el botón de cambiar no salía.
+                 */
+                try {
+                    const dispositivos = await navigator.mediaDevices.enumerateDevices();
+                    this.camaras = dispositivos.filter((d) => d.kind === 'videoinput');
+                } catch (e) {
+                    this.camaras = [];
+                }
 
                 // Revisar capacidades (Linterna y Zoom)
                 if (track && typeof track.getCapabilities === 'function') {
@@ -119,15 +132,37 @@ document.addEventListener('alpine:init', () => {
             } catch (e) {}
         },
 
+        /**
+         * Si tiene sentido ofrecer el cambio de cámara.
+         *
+         * Con varias enumeradas, claro. Pero también cuando NO se pudo enumerar ninguna o el
+         * navegador devolvió los identificadores en blanco: en un teléfono siempre hay frontal y
+         * trasera, y esconder el botón por no haber podido preguntar deja al vigilante sin poder
+         * girar la cámara. En ese caso se cambia por «facingMode», que no necesita identificadores.
+         */
+        get puedeCambiarCamara() {
+            return this.camaras.length > 1 || !this.camaras.some((c) => c.deviceId);
+        },
+
         async cambiarCamara() {
-            if (this.camaras.length < 2) return;
-            let idx = this.camaras.findIndex(c => c.deviceId === this.camaraActivaId);
-            idx = (idx + 1) % this.camaras.length;
-            const nuevaCamara = this.camaras[idx].deviceId;
-            
-            // Cerrar stream actual y reabrir con la nueva
-            this.cerrar(false); // false para no cerrar la UI
-            await this.abrir(nuevaCamara);
+            // Con identificadores de verdad: se rota por la lista.
+            const conId = this.camaras.filter((c) => c.deviceId);
+
+            if (conId.length > 1) {
+                let idx = conId.findIndex((c) => c.deviceId === this.camaraActivaId);
+                idx = (idx + 1) % conId.length;
+
+                this.cerrar(false);
+                await this.abrir(conId[idx].deviceId);
+                return;
+            }
+
+            // Sin ellos —o con una sola enumerada— se pide la otra cara del teléfono. Es lo que
+            // funciona cuando el navegador no quiere decir qué cámaras hay.
+            this.caraActual = this.caraActual === 'environment' ? 'user' : 'environment';
+
+            this.cerrar(false);
+            await this.abrir(null);
         },
 
         async enfocar(e) {
