@@ -94,21 +94,9 @@ document.addEventListener('alpine:init', () => {
                     }
 
                     if (qrEncontrado) {
-                        // 1. Reproducir Beep
-                        try {
-                            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                            const osc = ctx.createOscillator();
-                            osc.type = 'sine';
-                            osc.frequency.setValueAtTime(880, ctx.currentTime);
-                            osc.connect(ctx.destination);
-                            osc.start();
-                            osc.stop(ctx.currentTime + 0.1);
-                        } catch(e) {}
-
-                        // 2. Vibrar
-                        if (window.navigator.vibrate) {
-                            window.navigator.vibrate([200]);
-                        }
+                        // Pitido y vibración: el vigilante está mirando a la persona, no a la
+                        // pantalla. Ver camara.js.
+                        this.avisarDeLectura();
 
                         this.mensaje = 'Carnet leído, verificando…';
                         wire.carnetEscaneado(qrEncontrado);

@@ -75,6 +75,7 @@
             $sobran = $cotejo['sobran'];
             $sinEnte = $cotejo['sinEnte'];
             $desactivados = $cotejo['desactivados'];
+            $inactivosAlla = $cotejo['inactivosEnCarnets'];
         @endphp
 
         <div class="mt-4 rounded border border-slate-200 bg-white p-4 shadow-sm">
@@ -118,6 +119,48 @@
                                 @can('gestionar-personal')
                                     <button type="button" wire:click="cargarDelPadron('{{ $ficha['cedula'] }}')"
                                             class="shrink-0 text-sm font-semibold text-parte3 hover:underline">Cargar</button>
+                                @endcan
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            {{-- Activos aquí y de baja en carnets. De estos no hay duda de qué pasó, así que el
+                 estado se puede igualar sin pensarlo: desactivar conserva el histórico y se
+                 deshace reactivando. --}}
+            @if ($inactivosAlla->isNotEmpty())
+                <div class="mt-4 border-t border-slate-100 pt-3">
+                    <div class="flex flex-wrap items-baseline justify-between gap-2">
+                        <p class="font-semibold text-slate-900">
+                            {{ $inactivosAlla->count() }} activos aquí y de baja en carnets
+                        </p>
+
+                        @can('gestionar-personal')
+                            <button type="button" wire:click="desactivarTodosComoEnCarnets"
+                                    wire:confirm="¿Desactivar a los {{ $inactivosAlla->count() }}? Su histórico se conserva y se puede deshacer."
+                                    class="text-sm font-semibold text-alto hover:underline">
+                                Desactivar todos
+                            </button>
+                        @endcan
+                    </div>
+                    <p class="mt-0.5 text-xs text-slate-500">
+                        Siguen pudiendo marcar aquí. Desactivar conserva su histórico y se deshace reactivando.
+                    </p>
+
+                    <ul class="mt-2 divide-y divide-slate-100 text-sm">
+                        @foreach ($inactivosAlla as $fila)
+                            <li class="flex flex-wrap items-center justify-between gap-2 py-2" wire:key="inact-{{ $fila['persona']->id }}">
+                                <span class="min-w-0">
+                                    <span class="block truncate font-medium text-slate-800">{{ $fila['persona']->nombre }}</span>
+                                    <span class="font-mono text-xs text-slate-500">
+                                        {{ $fila['persona']->cedula }} · en carnets: {{ $fila['estatus'] }}
+                                    </span>
+                                </span>
+
+                                @can('gestionar-personal')
+                                    <button type="button" wire:click="desactivarComoEnCarnets('{{ $fila['persona']->cedula }}')"
+                                            class="shrink-0 text-sm font-semibold text-alto hover:underline">Desactivar</button>
                                 @endcan
                             </li>
                         @endforeach
@@ -173,10 +216,11 @@
             @if ($sobran->isNotEmpty())
                 <div class="mt-4 border-t border-slate-100 pt-3">
                     <p class="font-semibold text-slate-900">
-                        {{ $sobran->count() }} del CIIP activos aquí y ya no en carnets
+                        {{ $sobran->count() }} del CIIP que no aparecen en carnets
                     </p>
                     <p class="mt-0.5 text-xs text-slate-500">
-                        Puede que se hayan ido. Desactivarlos conserva su histórico; borrarlos, no.
+                        Ni activos ni de baja: no constan. Puede ser una baja vieja o un dato mal cargado, así que
+                        aquí no se toca nada solo.
                     </p>
 
                     <p class="mt-2 text-sm text-slate-600">
@@ -185,8 +229,8 @@
                 </div>
             @endif
 
-            @if ($faltan->isEmpty() && $sobran->isEmpty() && $sinEnte->isEmpty() && $desactivados->isEmpty())
-                <p class="mt-3 text-sm font-medium text-parte1">Las dos listas dicen lo mismo.</p>
+            @if ($faltan->isEmpty() && $sobran->isEmpty() && $sinEnte->isEmpty() && $desactivados->isEmpty() && $inactivosAlla->isEmpty())
+                <p class="mt-3 text-sm font-medium text-parte1">Las dos listas dicen lo mismo, y con el mismo estado.</p>
             @endif
         </div>
     @endif

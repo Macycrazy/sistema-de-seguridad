@@ -79,6 +79,22 @@ class CotejarPadron extends Command
             $this->newLine();
         }
 
+        // Activos aquí y de baja allá: de estos no hay duda, y el estado se puede igualar.
+        if ($resultado['inactivosEnCarnets']->isNotEmpty()) {
+            $this->warn($resultado['inactivosEnCarnets']->count().' persona(s) están activas aquí y de baja en carnets:');
+            $this->line('  <fg=gray>Se igualan desde Trabajadores. Desactivar conserva el histórico.</>');
+
+            foreach ($resultado['inactivosEnCarnets'] as $fila) {
+                $this->line(sprintf('  %-12s %-38s <fg=yellow>%s</>',
+                    $fila['persona']->cedula,
+                    mb_substr((string) $fila['persona']->nombre, 0, 38),
+                    $fila['estatus'],
+                ));
+            }
+
+            $this->newLine();
+        }
+
         // El carnets es solo del CIIP: de los otros dos entes no está nadie allá, y es lo normal.
         if ($resultado['otrosEntes'] > 0) {
             $this->line('  <fg=gray>'.$resultado['otrosEntes'].' de Marca País y VENAPP quedan fuera: el carnets es solo del CIIP.</>');
@@ -98,10 +114,10 @@ class CotejarPadron extends Command
         $sobran = $resultado['sobran'];
 
         if ($sobran->isEmpty()) {
-            $this->info('Del CIIP no sobra nadie: todos los activos siguen activos en carnets.');
+            $this->info('Del CIIP no hay nadie que no aparezca en carnets.');
         } else {
-            $this->warn($sobran->count().' persona(s) del CIIP están activas aquí y ya NO en carnets:');
-            $this->line('  <fg=gray>Puede que se hayan ido. Su histórico se conserva aunque se desactiven.</>');
+            $this->warn($sobran->count().' persona(s) del CIIP no aparecen en carnets (ni activas ni de baja):');
+            $this->line('  <fg=gray>Puede ser una baja vieja o un dato mal cargado. Aquí no se toca nada solo.</>');
             $this->newLine();
 
             foreach ($sobran as $persona) {

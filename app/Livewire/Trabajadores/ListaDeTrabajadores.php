@@ -398,15 +398,13 @@ class ListaDeTrabajadores extends Component
             return;
         }
 
-        $faltan = $this->cotejo['faltan']->count();
-        $desactivados = $this->cotejo['desactivados']->count();
+        $pendientes = $this->cotejo['faltan']->count()
+            + $this->cotejo['desactivados']->count()
+            + $this->cotejo['inactivosEnCarnets']->count();
 
-        $this->aviso = match (true) {
-            $faltan > 0 && $desactivados > 0 => $faltan.' sin cargar y '.$desactivados.' desactivados que en carnets siguen activos.',
-            $faltan > 0 => $faltan.' persona(s) están en carnets y no aquí.',
-            $desactivados > 0 => $desactivados.' persona(s) están desactivadas aquí y activas en carnets.',
-            default => 'Todo el personal activo del carnets está cargado y activo aquí.',
-        };
+        $this->aviso = $pendientes === 0
+            ? 'El estado de aquí coincide con el del carnets.'
+            : $pendientes.' diferencia(s) con el carnets. Están abajo, cada una con qué hacer.';
     }
 
     /**
@@ -465,6 +463,59 @@ class ListaDeTrabajadores extends Component
 
         $this->gestion->reactivar($persona);
         $this->aviso = $persona->nombre.' reactivado. Su histórico se conserva.';
+
+        $this->cotejo = app(CotejoConCarnets::class)->comparar();
+    }
+
+    /**
+     * Iguala aquí el estado que esa persona tiene en el carnets: la desactiva.
+     *
+     * De estos no hay duda: en carnets consta su baja. Desactivar conserva su histórico —los
+     * movimientos siguen ahí— y se puede deshacer reactivándola, así que es una operación barata.
+     */
+    public function desactivarComoEnCarnets(string $cedula): void
+    {
+        Gate::authorize('gestionar-personal');
+
+        $persona = Persona::where('cedula', Persona::normalizarCedula($cedula))->first();
+
+        if (! $persona) {
+            $this->aviso = 'Esa persona ya no está: vuelve a comparar.';
+
+            return;
+        }
+
+        $this->gestion->desactivar($persona);
+        $this->aviso = $persona->nombre.' desactivado, como en carnets. Su histórico se conserva.';
+
+        $this->cotejo = app(CotejoConCarnets::class)->comparar();
+    }
+
+    /**
+     * Iguala el estado de TODOS los que en carnets constan de baja.
+     *
+     * Se ofrece en bloque solo para esto y no para lo demás: aquí el carnets dice explícitamente
+     * que están de baja, y desactivar no borra nada ni impide volver atrás. Cargar o reactivar
+     * gente sí crea o cambia fichas, y eso se hace de una en una.
+     */
+    public function desactivarTodosComoEnCarnets(): void
+    {
+        Gate::authorize('gestionar-personal');
+
+        $cuantos = 0;
+
+        foreach ($this->cotejo['inactivosEnCarnets'] ?? [] as $fila) {
+            $persona = Persona::find($fila['persona']->id ?? null);
+
+            if ($persona && $persona->activo) {
+                $this->gestion->desactivar($persona);
+                $cuantos++;
+            }
+        }
+
+        $this->aviso = $cuantos === 0
+            ? 'No había ninguno que desactivar.'
+            : $cuantos.' persona(s) desactivadas, como en carnets. Su histórico se conserva.';
 
         $this->cotejo = app(CotejoConCarnets::class)->comparar();
     }

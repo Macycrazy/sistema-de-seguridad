@@ -243,6 +243,30 @@ export function controlesDeCamara() {
             }, despuesDe);
         },
 
+        /**
+         * El aviso de que se leyó algo: un pitido y una vibración.
+         *
+         * En la puerta el vigilante está mirando a la persona, no a la pantalla. Sin esto hay que
+         * comprobar el teléfono cada vez para saber si ya leyó, que es justo lo que se quería
+         * evitar. Los dos son «si se puede»: un navegador sin sonido o un equipo sin vibrador no
+         * son un error, solo se quedan sin ese aviso.
+         */
+        avisarDeLectura() {
+            try {
+                const audio = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audio.createOscillator();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, audio.currentTime);
+                osc.connect(audio.destination);
+                osc.start();
+                osc.stop(audio.currentTime + 0.1);
+            } catch (e) {}
+
+            try {
+                if (window.navigator.vibrate) window.navigator.vibrate([200]);
+            } catch (e) {}
+        },
+
         /** Apaga la cámara y suelta el aparato: sin esto la luz del teléfono se queda encendida. */
         apagarCamara() {
             if (this.stream) {

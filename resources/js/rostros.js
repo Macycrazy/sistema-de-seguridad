@@ -461,6 +461,10 @@ export function rostroEnLaPuerta(wire) {
                         const mejor = parecidos[0];
 
                         if (mejor && mejor.distancia <= this.umbral) {
+                            // Lo mismo que al leer un carnet: aquí el vigilante está mirando a la
+                            // persona que tiene delante, no al teléfono.
+                            this.avisarDeLectura();
+
                             this.mensaje = 'Es ' + mejor.nombre + '. Comprueba la foto.';
                             wire.rostroReconocido(mejor.cedula, Number(mejor.distancia.toFixed(3)));
                             this.cerrar();

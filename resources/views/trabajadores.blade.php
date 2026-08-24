@@ -11,7 +11,7 @@
             que="El personal del edificio. Aquí se registra a quién se le marca en la puerta —los que aparecen por su cédula— y se corrigen sus datos."
             :pasos="[
                 'Con <b>Trabajadores | Visitantes</b> eliges a quién ves.',
-                '<b>Comparar con carnets</b> dice quién está activo allá y no aquí —esos se plantan en la puerta y no aparecen—: los que no existen se cargan y los desactivados se reactivan, de un toque.',
+                '<b>Comparar con carnets</b> pone el estado de aquí al día con el de allá: carga a quien falta, reactiva a quien allá sigue activo y desactiva a quien allá está de baja.',
                 '<b>Nuevo trabajador</b> lo da de alta a mano; <b>Importar</b> sube una lista de Excel.',
                 '<b>Editar</b> corrige nombre, gerencia, piso o ente (la cédula no se cambia).',
                 'Los filtros de gerencia, ente y estado, y la búsqueda por cédula o nombre, achican la lista.',

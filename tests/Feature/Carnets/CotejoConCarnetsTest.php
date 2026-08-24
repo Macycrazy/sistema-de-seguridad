@@ -30,7 +30,12 @@ class CotejoConCarnetsTest extends TestCase
         config(['carnets.token' => 'un-token', 'carnets.url' => 'https://carnet.example']);
     }
 
-    /** @param  array<int, array{cedula:string, nombre:string}>  $fichas */
+    /**
+     * El carnets respondiendo. Por omisión todos «Activo», que es el caso normal; un estatus
+     * distinto es lo que marca una baja allá.
+     *
+     * @param  array<int, array{cedula:string, nombre:string, gerencia?:string, estatus?:string}>  $fichas
+     */
     private function carnetsResponde(array $fichas): void
     {
         Http::fake([
@@ -40,6 +45,7 @@ class CotejoConCarnetsTest extends TestCase
                     'cedula' => $f['cedula'],
                     'nombre_completo' => $f['nombre'],
                     'gerencia' => $f['gerencia'] ?? 'GERENCIA A',
+                    'estatus' => $f['estatus'] ?? 'Activo',
                 ], $fichas),
             ]),
         ]);
@@ -76,8 +82,10 @@ class CotejoConCarnetsTest extends TestCase
     }
 
     #[Test]
-    public function saca_a_quien_sigue_activo_aqui_y_ya_no_en_carnets(): void
+    public function saca_a_quien_no_aparece_en_carnets_pero_sin_tocarlo(): void
     {
+        // Ni activo ni de baja: no consta. Puede ser una baja vieja o un dato mal cargado, así que
+        // solo se dice —a diferencia de quien SÍ consta de baja, que se puede desactivar—.
         $this->aqui('11111111', 'ANA PÉREZ');
         $this->aqui('33333333', 'QUIEN SE FUE');   // del CIIP: de ese sí se puede decir algo
 
@@ -126,6 +134,76 @@ class CotejoConCarnetsTest extends TestCase
         $this->assertTrue((bool) $ana->activo);
         $this->assertSame('4-1', $ana->piso, 'Reactivar no pisa lo que ya tenía.');
         $this->assertSame('LO QUE TENÍA', $ana->dependencia);
+    }
+
+    #[Test]
+    public function quien_esta_de_baja_en_carnets_y_activo_aqui_sale_para_igualarlo(): void
+    {
+        // Lo que se busca: que el estado sea el mismo en los dos sitios. De este no hay duda —el
+        // carnets dice su baja con todas las letras— así que se puede desactivar con confianza.
+        $this->aqui('11111111', 'ANA PÉREZ');
+        $this->aqui('33333333', 'QUIEN SE FUE');
+
+        $this->carnetsResponde([
+            ['cedula' => '11111111', 'nombre' => 'ANA PÉREZ'],
+            ['cedula' => '33333333', 'nombre' => 'QUIEN SE FUE', 'estatus' => 'Inactivo'],
+        ]);
+
+        $resultado = app(CotejoConCarnets::class)->comparar();
+
+        $this->assertCount(1, $resultado['inactivosEnCarnets']);
+        $this->assertSame('33333333', $resultado['inactivosEnCarnets'][0]['persona']->cedula);
+        $this->assertSame('Inactivo', $resultado['inactivosEnCarnets'][0]['estatus']);
+
+        // Y no se mezcla con «no aparece en carnets», que es otra cosa: de este sí consta.
+        $this->assertCount(0, $resultado['sobran']);
+    }
+
+    #[Test]
+    public function desactivar_desde_la_pantalla_iguala_el_estado_y_conserva_el_historico(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
+
+        $quienSeFue = $this->aqui('33333333', 'QUIEN SE FUE');
+
+        $this->carnetsResponde([
+            ['cedula' => '33333333', 'nombre' => 'QUIEN SE FUE', 'estatus' => 'Retirado'],
+        ]);
+
+        Livewire::test(ListaDeTrabajadores::class)
+            ->call('cotejarConCarnets')
+            ->assertSee('de baja en carnets')
+            ->assertSee('Retirado')
+            ->call('desactivarComoEnCarnets', '33333333')
+            ->assertHasNoErrors();
+
+        $this->assertFalse((bool) $quienSeFue->fresh()->activo);
+        $this->assertNotNull($quienSeFue->fresh(), 'Se desactiva, no se borra: el histórico se conserva.');
+    }
+
+    #[Test]
+    public function se_pueden_igualar_todos_de_una_vez(): void
+    {
+        // En bloque solo para esto: el carnets dice explícitamente que están de baja, y
+        // desactivar no borra nada ni impide volver atrás.
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
+
+        $this->aqui('33333333', 'UNO');
+        $this->aqui('44444444', 'OTRO');
+        $this->aqui('11111111', 'ANA PÉREZ');
+
+        $this->carnetsResponde([
+            ['cedula' => '33333333', 'nombre' => 'UNO', 'estatus' => 'Inactivo'],
+            ['cedula' => '44444444', 'nombre' => 'OTRO', 'estatus' => 'Inactivo'],
+            ['cedula' => '11111111', 'nombre' => 'ANA PÉREZ'],
+        ]);
+
+        Livewire::test(ListaDeTrabajadores::class)
+            ->call('cotejarConCarnets')
+            ->call('desactivarTodosComoEnCarnets')
+            ->assertHasNoErrors();
+
+        $this->assertSame(1, Persona::where('activo', true)->count(), 'Solo queda activa Ana.');
     }
 
     #[Test]

@@ -35,6 +35,7 @@ final class CotejoConCarnets
      *     faltan: Collection<int, array{cedula:string, nombre:string, gerencia:?string}>,
      *     sobran: Collection<int, Persona>,
      *     desactivados: Collection<int, Persona>,
+     *     inactivosEnCarnets: Collection<int, array{persona:Persona, estatus:string}>,
      *     sinEnte: Collection<int, Persona>,
      *     otrosEntes: int,
      *     coinciden: int,
@@ -50,17 +51,25 @@ final class CotejoConCarnets
             return $this->vacio(false);
         }
 
-        // Solo los activos de allá: quien está de baja en carnets no tiene por qué estar aquí.
-        $enCarnets = collect($padron->personal(soloActivos: true))
+        // El padrón ENTERO, con su estatus. No solo los activos: hace falta distinguir a quien
+        // está de baja allá —de ese se sabe qué pasó y se puede desactivar aquí con confianza— de
+        // quien no aparece en absoluto, que puede ser cualquier otra cosa.
+        $padronEntero = collect($padron->personal())
             ->map(fn ($ficha) => [
                 'cedula' => Persona::normalizarCedula((string) ($ficha['cedula'] ?? '')),
                 'nombre' => trim((string) ($ficha['nombre_completo'] ?? '')),
                 'gerencia' => $ficha['gerencia'] ?? null,
+                'estatus' => trim((string) ($ficha['estatus'] ?? '')),
             ])
             ->filter(fn ($ficha) => $ficha['cedula'] !== '')
             ->keyBy('cedula');
 
-        if ($enCarnets->isEmpty()) {
+        $enCarnets = $padronEntero->filter(fn ($ficha) => $this->esActivo($ficha['estatus']));
+
+        // Los que allá constan pero no como activos: baja, suspendido, lo que diga su estatus.
+        $inactivosAlla = $padronEntero->reject(fn ($ficha) => $this->esActivo($ficha['estatus']));
+
+        if ($padronEntero->isEmpty()) {
             // Ni una ficha: el carnets no respondió o no tiene a nadie activo. En cualquiera de los
             // dos casos no se puede afirmar que aquí sobre nadie.
             return $this->vacio(false);
@@ -96,15 +105,27 @@ final class CotejoConCarnets
                 ->filter(fn (Persona $persona, $cedula) => ! $persona->activo && $enCarnets->has((string) $cedula))
                 ->values(),
 
-            // Del CIIP, activos aquí y ya no en carnets: se fueron, o cambiaron de estatus allá.
+            // Activos aquí y en carnets constan como NO activos: ahí no hay duda de qué pasó, y
+            // el estado se puede igualar. Vale para cualquier ente: si está en el carnets, es del
+            // CIIP —el carnets es suyo—.
+            'inactivosEnCarnets' => $aqui
+                ->filter(fn (Persona $persona, $cedula) => $inactivosAlla->has((string) $cedula))
+                ->map(fn (Persona $persona) => [
+                    'persona' => $persona,
+                    'estatus' => $inactivosAlla[(string) $persona->cedula]['estatus'] ?: 'no activo',
+                ])
+                ->values(),
+
+            // Del CIIP, activos aquí y que NO aparecen en carnets: ni activos ni inactivos, no
+            // están. Eso puede ser una baja vieja o un dato mal cargado, así que solo se dice.
             'sobran' => $delCiip
-                ->reject(fn (Persona $persona, $cedula) => $enCarnets->has((string) $cedula))
+                ->reject(fn (Persona $persona, $cedula) => $padronEntero->has((string) $cedula))
                 ->values(),
 
             // Sin ente asignado: no se puede juzgar si les falta el carnet o es que no son del
             // CIIP. Se dicen para que alguien les ponga el ente, no para acusarlos de nada.
             'sinEnte' => $sinEnte
-                ->reject(fn (Persona $persona, $cedula) => $enCarnets->has((string) $cedula))
+                ->reject(fn (Persona $persona, $cedula) => $padronEntero->has((string) $cedula))
                 ->values(),
 
             'otrosEntes' => $deOtroEnte->count(),
@@ -112,6 +133,18 @@ final class CotejoConCarnets
             'enCarnets' => $enCarnets->count(),
             'aqui' => $aqui->count(),
         ];
+    }
+
+    /**
+     * Si ese estatus del carnets cuenta como estar activo.
+     *
+     * El carnets lo dice con una palabra —«Activo», y las demás son bajas de un tipo u otro—, así
+     * que se compara con esa y no se intenta adivinar el resto: si mañana añaden «Reposo», caerá
+     * del lado de «no activo», que es lo prudente.
+     */
+    private function esActivo(?string $estatus): bool
+    {
+        return mb_strtolower(trim((string) $estatus)) === 'activo';
     }
 
     /** @return array<string, mixed> */
@@ -123,6 +156,7 @@ final class CotejoConCarnets
             'sobran' => collect(),
             'sinEnte' => collect(),
             'desactivados' => collect(),
+            'inactivosEnCarnets' => collect(),
             'otrosEntes' => 0,
             'coinciden' => 0,
             'enCarnets' => 0,
