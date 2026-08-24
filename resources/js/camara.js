@@ -139,8 +139,18 @@ export function controlesDeCamara() {
         },
 
         /**
-         * Cambia de cámara. Quien lo use tiene que traer «reabrirCamara(deviceId)», porque cada
-         * visor sabe cómo se vuelve a arrancar lo suyo —uno busca un QR, el otro una cara—.
+         * Cómo se vuelve a arrancar el visor con otra cámara. LO PONE QUIEN USE ESTOS CONTROLES.
+         *
+         * Aquí no se puede saber: uno busca un QR y el otro una cara, y cada uno tiene que parar
+         * lo suyo antes de reabrir. Se deja declarado —y reventando con un mensaje claro— para que
+         * el contrato esté escrito y no se descubra en el navegador.
+         */
+        async reabrirCamara(deviceId) {
+            throw new Error('Quien use controlesDeCamara() tiene que definir reabrirCamara(deviceId).');
+        },
+
+        /**
+         * Cambia de cámara. Se apoya en «reabrirCamara», que trae quien use estos controles.
          */
         async cambiarCamara() {
             const conId = this.camaras.filter((c) => c.deviceId);

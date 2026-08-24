@@ -283,6 +283,58 @@ export function indiceDeRostros(wire) {
             await this.mirar(pendientes);
         },
 
+        /**
+         * Una persona: trae su foto, le busca la cara y guarda o explica POR QUÉ no se pudo.
+         *
+         * El motivo importa tanto como el resultado. Cuando todos los fallos decían «no se pudo
+         * cargar la foto», la lista no servía para arreglar nada: no es lo mismo que alguien no
+         * esté dado de alta en carnets, que esté sin foto, que la foto esté movida o que salga de
+         * medio lado. Cada uno se arregla en un sitio distinto.
+         */
+        async mirarUna(persona) {
+            let foto;
+
+            try {
+                foto = await traerFoto(persona.foto);
+            } catch (e) {
+                // «No tiene foto» y «no está fichado allá» llegan igual —un 404— y se distinguen
+                // con el padrón, que dice quién está.
+                const motivo = persona.enCarnets === false
+                    ? 'no está en el sistema de carnets'
+                    : (e.message || 'no se pudo abrir su foto');
+
+                await wire.noSePudo(persona.id, persona.nombre, motivo);
+                return;
+            }
+
+            try {
+                const encontrada = await descriptorDeFoto(foto.img);
+
+                if (encontrada) {
+                    // Con el hash de la foto que se acaba de mirar: es lo que después permite
+                    // saber a quién le cambiaron la cara sin volver a mirarlos a todos.
+                    await wire.guardarRostro(persona.id, encontrada.descriptor, persona.hash ?? null);
+                    return;
+                }
+
+                // No se le encontró cara: se mide el enfoque para poder decir si es que la foto
+                // está movida —que se arregla tomándola otra vez— o si hay otra cosa.
+                let motivo = 'no se distingue una cara en su foto';
+
+                try {
+                    if (nitidez(foto.img) < 60) {
+                        motivo = 'su foto está borrosa o movida';
+                    }
+                } catch (e) {
+                    // Medirlo es un extra: si no se puede, se queda el motivo general.
+                }
+
+                await wire.noSePudo(persona.id, persona.nombre, motivo);
+            } finally {
+                if (foto && foto.url64) URL.revokeObjectURL(foto.url64);
+            }
+        },
+
         async mirar(pendientes) {
 
             this.trabajando = true;
@@ -419,58 +471,6 @@ export function rostroEnLaPuerta(wire) {
             };
 
             tick();
-        },
-
-        /**
-         * Una persona: trae su foto, le busca la cara y guarda o explica POR QUÉ no se pudo.
-         *
-         * El motivo importa tanto como el resultado. Cuando todos los fallos decían «no se pudo
-         * cargar la foto», la lista no servía para arreglar nada: no es lo mismo que alguien no
-         * esté dado de alta en carnets, que esté sin foto, que la foto esté movida o que salga de
-         * medio lado. Cada uno se arregla en un sitio distinto.
-         */
-        async mirarUna(persona) {
-            let foto;
-
-            try {
-                foto = await traerFoto(persona.foto);
-            } catch (e) {
-                // «No tiene foto» y «no está fichado allá» llegan igual —un 404— y se distinguen
-                // con el padrón, que dice quién está.
-                const motivo = persona.enCarnets === false
-                    ? 'no está en el sistema de carnets'
-                    : (e.message || 'no se pudo abrir su foto');
-
-                await wire.noSePudo(persona.id, persona.nombre, motivo);
-                return;
-            }
-
-            try {
-                const encontrada = await descriptorDeFoto(foto.img);
-
-                if (encontrada) {
-                    // Con el hash de la foto que se acaba de mirar: es lo que después permite
-                    // saber a quién le cambiaron la cara sin volver a mirarlos a todos.
-                    await wire.guardarRostro(persona.id, encontrada.descriptor, persona.hash ?? null);
-                    return;
-                }
-
-                // No se le encontró cara: se mide el enfoque para poder decir si es que la foto
-                // está movida —que se arregla tomándola otra vez— o si hay otra cosa.
-                let motivo = 'no se distingue una cara en su foto';
-
-                try {
-                    if (nitidez(foto.img) < 60) {
-                        motivo = 'su foto está borrosa o movida';
-                    }
-                } catch (e) {
-                    // Medirlo es un extra: si no se puede, se queda el motivo general.
-                }
-
-                await wire.noSePudo(persona.id, persona.nombre, motivo);
-            } finally {
-                if (foto && foto.url64) URL.revokeObjectURL(foto.url64);
-            }
         },
 
         pararBusqueda() {

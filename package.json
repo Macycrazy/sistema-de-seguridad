@@ -3,8 +3,9 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build",
-        "dev": "vite"
+        "build": "node tools/comprobar-js.mjs && vite build",
+        "dev": "vite",
+        "comprobar": "node tools/comprobar-js.mjs"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
