@@ -6,7 +6,7 @@
 --}}
 {{-- Las listas van en el x-data —aquí sí las interpreta Blade— y no en el atributo de
      cada botón: dentro de un <x-boton> un @json viaja sin evaluar. --}}
-<div x-data="indiceDeRostros($wire, @json($this->pendientes), @json($this->todos))">
+<div x-data="indiceDeRostros($wire, @json($this->pendientes), @json($this->todos), @json($desactualizados))">
     @if ($aviso !== '')
         <x-aviso class="mb-4" wire:key="aviso">{{ $aviso }}</x-aviso>
     @endif
@@ -57,6 +57,25 @@
                 {{-- La foto manda y puede cambiar: el índice guarda la cara que TENÍA esa persona
                      el día que se miró. Si en carnets le ponen una foto nueva, hay que volver a
                      mirarlas o el reconocimiento seguirá buscando la cara vieja. --}}
+                {{-- Solo a quien le cambió la foto en carnets: se sabe comparando el hash que
+                     publica su padrón con el que se guardó al indexar. Sin la API configurada no
+                     hay con qué comparar y solo queda mirarlos a todos. --}}
+                {{-- Solo a quien le cambió la foto en carnets: se sabe comparando el hash que
+                     publica su padrón con el que se guardó al indexar. Se pregunta cuando se pulsa
+                     y no al abrir la pantalla: es una llamada por la red a un sistema que puede no
+                     estar, y no se va a esperar por ella para pintar un botón. --}}
+                @if ($this->padronDisponible)
+                    @if ($desactualizados !== [])
+                        <x-boton x-show="!trabajando" x-on:click="indexar(desactualizados)">
+                            Actualizar los {{ count($desactualizados) }} que cambiaron de foto
+                        </x-boton>
+                    @elseif (! $comprobado)
+                        <x-boton variante="secundario" x-show="!trabajando" wire:click="comprobarCambios">
+                            Comprobar si alguna foto cambió
+                        </x-boton>
+                    @endif
+                @endif
+
                 <x-boton variante="secundario" x-show="!trabajando"
                          x-on:click="indexar(todos)">
                     Volver a indexar todos

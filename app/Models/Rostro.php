@@ -21,6 +21,9 @@ class Rostro extends Model
         'persona_id',
         'descriptor',
         'origen',
+        // El hash de la foto con la que se hizo, para saber si se quedó viejo. Ver la migración
+        // 2026_08_24_150000.
+        'hash_foto',
         'calculado_en',
     ];
 

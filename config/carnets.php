@@ -39,4 +39,33 @@ return [
     */
     'timeout' => (int) env('CARNETS_TIMEOUT', 4),
 
+    /*
+    |--------------------------------------------------------------------------
+    | La API del padrón
+    |--------------------------------------------------------------------------
+    |
+    | El carnets expone su personal en «/api/seguridad/personal», protegido por un token en la
+    | cabecera «X-API-Token» y por una lista de IPs. Se usa para dos cosas:
+    |
+    |   · traer el padrón de golpe, con el HASH de la foto de cada quien;
+    |   · pedir cada foto por esa misma vía, ya autenticada.
+    |
+    | El hash es lo que hace que el reconocimiento facial no se quede viejo: el índice guarda la
+    | cara que tenía esa persona el día que se miró, y comparando hashes se sabe A QUIÉN hay que
+    | volver a mirar en vez de reindexar a los sesenta.
+    |
+    | Sin token configurado, todo esto queda apagado y el sistema sigue tirando de «fotos» de
+    | arriba, que es como funcionaba antes.
+    |
+    */
+
+    'token' => env('CARNETS_TOKEN'),
+
+    /*
+    | La base de la API. Si se deja vacía se usa «url» de arriba, que es lo normal: el padrón vive
+    | en el mismo carnets.
+    */
+
+    'api' => env('CARNETS_API'),
+
 ];

@@ -77,8 +77,16 @@ class FotoDelCarnet
 
         if (str_starts_with($origen, 'http://') || str_starts_with($origen, 'https://')) {
             try {
-                $respuesta = Http::timeout((int) config('carnets.timeout', 4))
-                    ->get(rtrim($origen, '/').'/'.$nombre);
+                $peticion = Http::timeout((int) config('carnets.timeout', 4));
+
+                // Con token, la petición va firmada. Hace falta para la ruta autenticada del
+                // padrón; a la carpeta pública de siempre no le estorba una cabecera de más, así
+                // que se manda igual y no hay que distinguir de qué origen se trata.
+                if ($token = trim((string) config('carnets.token'))) {
+                    $peticion = $peticion->withHeaders(['X-API-Token' => $token]);
+                }
+
+                $respuesta = $peticion->get(rtrim($origen, '/').'/'.$nombre);
             } catch (\Throwable) {
                 // Carnets caído o sin ruta: se sigue sin foto.
                 return null;

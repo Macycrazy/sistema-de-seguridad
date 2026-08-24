@@ -4,6 +4,7 @@ namespace App\Livewire\Rostros;
 
 use App\Models\Persona;
 use App\Services\Auditoria\Auditoria;
+use App\Services\Carnets\PadronDelCarnet;
 use App\Services\Rostros\Rostros;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -72,11 +73,50 @@ class Indice extends Component
     }
 
     /**
+     * A quién le cambió la foto desde que se indexó.
+     *
+     * NO se calcula al abrir la pantalla: preguntarle al carnets es una llamada por la red, y
+     * ponerla en cada render dejaba la pantalla esperando a un sistema que puede no estar. Se pide
+     * cuando alguien pulsa «comprobar», que es cuando de verdad interesa.
+     *
+     * @return array<int, array{id:int, nombre:string, foto:string, hash:?string}>
+     */
+    public array $desactualizados = [];
+
+    /** Si ya se comprobó en esta pantalla, para saber si decir «ninguno» o no decir nada. */
+    public bool $comprobado = false;
+
+    /** Va al carnets, compara los hashes y deja la lista de a quién hay que volver a mirar. */
+    public function comprobarCambios(): void
+    {
+        Gate::authorize('gestionar-personal');
+
+        $this->desactualizados = $this->paraElNavegador(app(Rostros::class)->desactualizados());
+        $this->comprobado = true;
+
+        $this->aviso = $this->desactualizados === []
+            ? 'Ninguna foto cambió desde la última vez: el índice está al día.'
+            : 'A '.count($this->desactualizados).' persona(s) les cambió la foto en carnets.';
+    }
+
+    /** Si se puede hablar con la API del carnets: sin eso no hay hashes que comparar. */
+    #[Computed]
+    public function padronDisponible(): bool
+    {
+        return app(PadronDelCarnet::class)->configurado();
+    }
+
+    /**
      * @param  Collection<int, Persona>  $personas
-     * @return array<int, array{id:int, nombre:string, foto:string}>
+     * @return array<int, array{id:int, nombre:string, foto:string, hash:?string}>
      */
     private function paraElNavegador($personas): array
     {
+        // Los hashes se piden UNA vez para todo el lote: es una llamada al carnets, no una por
+        // persona. Vacío si no está configurado, y entonces se indexa igual pero sin poder saber
+        // después a quién le cambió la foto.
+        $hashes = app(PadronDelCarnet::class)->hashesDeFoto();
+
         return $personas
             ->map(fn (Persona $persona) => [
                 'id' => $persona->id,
@@ -84,6 +124,7 @@ class Indice extends Component
                 // Con la hora pegada: si no, el navegador reutiliza la foto que ya tenía guardada
                 // y se volvería a indexar la cara vieja, que es justo lo que se quiere evitar.
                 'foto' => route('persona.foto', $persona).'?v='.now()->timestamp,
+                'hash' => $hashes[(string) $persona->cedula] ?? null,
             ])
             ->all();
     }
@@ -131,6 +172,7 @@ class Indice extends Component
 
         app(Auditoria::class)->anota(Auditoria::INDEXO_ROSTROS, null, $this->aviso);
 
+        $this->reset('desactualizados', 'comprobado');
         unset($this->estado, $this->pendientes, $this->todos);
     }
 
@@ -146,6 +188,7 @@ class Indice extends Component
 
         app(Auditoria::class)->anota(Auditoria::BORRO_ROSTROS, null, $this->aviso);
 
+        $this->reset('desactualizados', 'comprobado');
         unset($this->estado, $this->pendientes, $this->todos);
     }
 

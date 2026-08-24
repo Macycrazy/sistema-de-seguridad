@@ -13,7 +13,7 @@
                 '<b>Indexar</b> recorre las fotos del personal y saca de cada cara 128 números. Se hace en este equipo: ninguna foto sale de aquí.',
                 'Hecho eso, en <b>Marcar</b> aparece el botón de buscar por rostro.',
                 'La puerta <b>propone</b> a quién se parece y rellena la cédula. Marcar sigue siendo cosa del vigilante.',
-                'Si a alguien le cambian la foto en carnets, <b>Volver a indexar todos</b>: el índice guarda la cara que tenía el día que se miró.',
+                'Si a alguien le cambian la foto en carnets, <b>Comprobar si alguna foto cambió</b> lo dice, y se actualiza solo a esa gente.',
                 '<b>Borrar el índice</b> lo deja todo como estaba, y el sistema sigue funcionando igual con el carnet.',
             ]"
             nota="Los 128 números identifican a una persona, así que son un dato personal: quién indexa y quién borra queda en la auditoría." />

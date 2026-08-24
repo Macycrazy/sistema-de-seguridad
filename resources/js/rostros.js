@@ -84,7 +84,7 @@ function distancia(uno, otro) {
  * De una en una y no todas a la vez: son fotos que hay que descargar y un cálculo que ocupa la
  * pestaña, y treinta a la vez dejarían el navegador clavado sin que nadie sepa por qué.
  */
-export function indiceDeRostros(wire, pendientes = [], todos = []) {
+export function indiceDeRostros(wire, pendientes = [], todos = [], desactualizados = []) {
     return {
         trabajando: false,
         hechas: 0,
@@ -98,6 +98,7 @@ export function indiceDeRostros(wire, pendientes = [], todos = []) {
         // y no lo dice: mira RostrosTest.
         pendientes,
         todos,
+        desactualizados,
 
         async indexar(pendientes) {
             if (this.trabajando || pendientes.length === 0) return;
@@ -128,7 +129,9 @@ export function indiceDeRostros(wire, pendientes = [], todos = []) {
                     const descriptor = await descriptorDe(foto);
 
                     if (descriptor) {
-                        await wire.guardarRostro(persona.id, descriptor);
+                        // Con el hash de la foto que se acaba de mirar: es lo que después permite
+                        // saber a quién le cambiaron la cara sin volver a mirarlos a todos.
+                        await wire.guardarRostro(persona.id, descriptor, persona.hash ?? null);
                     } else {
                         await wire.noSePudo(persona.id, persona.nombre, 'no se ve una cara en su foto');
                     }

@@ -4,6 +4,7 @@ namespace App\Services\Rostros;
 
 use App\Models\Persona;
 use App\Models\Rostro;
+use App\Services\Carnets\PadronDelCarnet;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -66,7 +67,7 @@ class Rostros
      *
      * @throws ValidationException
      */
-    public function guardar(Persona $persona, array $descriptor, string $origen = 'carnet'): Rostro
+    public function guardar(Persona $persona, array $descriptor, string $origen = 'carnet', ?string $hashFoto = null): Rostro
     {
         if (count($descriptor) !== Rostro::LARGO) {
             throw ValidationException::withMessages([
@@ -85,6 +86,7 @@ class Rostros
             [
                 'descriptor' => array_map('floatval', array_values($descriptor)),
                 'origen' => $origen,
+                'hash_foto' => $hashFoto,
                 'calculado_en' => now(),
             ],
         );
@@ -122,6 +124,46 @@ class Rostros
             'total' => $total,
             'faltan' => max(0, $total - $indexadas),
         ];
+    }
+
+    /**
+     * A quién le cambió la foto desde que se le indexó: los que hay que volver a mirar.
+     *
+     * Se pregunta a carnets por el hash de cada foto y se compara con el que se guardó. Los que no
+     * tienen hash guardado —de antes de que existiera la columna— NO cuentan: de ellos no se sabe
+     * con qué foto se hicieron, y darlos por viejos sería reindexar a todos, que es justo lo que
+     * esto viene a evitar.
+     *
+     * Si carnets no responde devuelve vacío, que se lee como «no sé de nadie» y no como «nadie
+     * cambió»: la pantalla lo dice en vez de callar.
+     *
+     * @return Collection<int, Persona>
+     */
+    public function desactualizados(): Collection
+    {
+        $hashes = app(PadronDelCarnet::class)->hashesDeFoto();
+
+        if ($hashes === []) {
+            return collect();
+        }
+
+        $rostros = Rostro::query()->with('persona')->whereNotNull('hash_foto')->get();
+
+        return $rostros
+            ->filter(function (Rostro $rostro) use ($hashes) {
+                $persona = $rostro->persona;
+
+                if (! $persona || ! $persona->activo) {
+                    return false;
+                }
+
+                $ahora = $hashes[(string) $persona->cedula] ?? null;
+
+                // Sin hash en el padrón, esa foto no se puede comprobar: no se toca.
+                return $ahora !== null && $ahora !== $rostro->hash_foto;
+            })
+            ->map(fn (Rostro $rostro) => $rostro->persona)
+            ->values();
     }
 
     /**
