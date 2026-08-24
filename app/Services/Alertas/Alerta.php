@@ -21,6 +21,9 @@ final class Alerta
     /** Un vehículo de la empresa que salió y no ha vuelto. */
     public const FLOTA_FUERA = 'flota-fuera';
 
+    /** Un pase de visitante que se entregó y no ha vuelto. */
+    public const PASE_FUERA = 'pase-fuera';
+
     /** Dos gravedades: «aviso» conviene mirarlo; «urgente» pide actuar ya. */
     public const AVISO = 'aviso';
 

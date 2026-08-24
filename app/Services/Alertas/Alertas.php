@@ -6,6 +6,7 @@ use App\Models\Movimiento;
 use App\Models\Persona;
 use App\Services\Estacionamiento\Estacionamiento;
 use App\Services\Estacionamiento\Flota;
+use App\Services\Pases\Pases;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -23,6 +24,7 @@ use Illuminate\Support\Collection;
  *   · aforo         — más gente dentro a la vez de la que el aforo configurado admite.
  *   · estacionamiento — lo mismo con los vehículos, por total y por tipo.
  *   · flota fuera   — un vehículo de la empresa que está fuera, desde que sale; urgente si tarda.
+ *   · pase fuera    — un pase de visitante entregado y sin devolver, con lo mismo.
  *
  * Los umbrales salen todos de UmbralesDeAlerta, ajustables desde Ajustes; en 0 se apagan.
  */
@@ -32,6 +34,7 @@ final class Alertas
         private UmbralesDeAlerta $umbrales,
         private Estacionamiento $estacionamiento,
         private Flota $flota,
+        private Pases $pases,
     ) {}
 
     /**
@@ -133,6 +136,30 @@ final class Alertas
                         .($vehiculo->loDejoSalir ? ', anotado por '.$vehiculo->loDejoSalir : '').'.'
                         .($llevaHoras >= $horasFuera ? ' Lleva fuera más de las '.$horasFuera.' h previstas.' : ''),
                     desde: $vehiculo->salio_en,
+                ));
+            }
+        }
+
+        // PASE FUERA — cada pase de visitante que está en la calle. Igual que la flota: se avisa
+        // desde que se entrega, porque saber cuáles están fuera es justo el punto de contarlos; el
+        // plazo solo decide cuándo deja de ser una visita larga y pasa a ser un pase que no vuelve.
+        $horasPase = $this->umbrales->horasPaseFuera();
+
+        if ($horasPase > 0) {
+            foreach ($this->pases->fuera() as $entrega) {
+                $llevaHoras = intdiv((int) $entrega->entregado_en->diffInMinutes($ahora), 60);
+
+                $alertas->push(new Alerta(
+                    tipo: Alerta::PASE_FUERA,
+                    severidad: $llevaHoras >= $horasPase ? Alerta::URGENTE : Alerta::AVISO,
+                    titulo: 'Pase '.($entrega->pase?->codigo ?? '?').' fuera'.($llevaHoras > 0 ? ' · '.$llevaHoras.' h' : ''),
+                    detalle: 'Lo lleva '.($entrega->persona?->nombre ?? 'alguien').', desde las '
+                        .$entrega->entregado_en->format('g:i a')
+                        .($entrega->usuario ? ' (lo entregó '.($entrega->usuario->nombre ?? $entrega->usuario->usuario).')' : '').'.'
+                        .($llevaHoras >= $horasPase ? ' Lleva más de las '.$horasPase.' h previstas.' : ''),
+                    personaId: $entrega->persona_id ? (string) $entrega->persona_id : null,
+                    personaNombre: $entrega->persona?->nombre,
+                    desde: CarbonImmutable::parse($entrega->entregado_en),
                 ));
             }
         }

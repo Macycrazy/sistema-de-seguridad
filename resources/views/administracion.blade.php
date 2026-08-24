@@ -27,6 +27,7 @@
             ['ruta' => 'usuarios', 'permiso' => 'ver-usuarios', 'titulo' => 'Usuarios', 'texto' => 'Cuentas que entran al sistema, roles y claves.'],
             ['ruta' => 'edificio', 'permiso' => 'ver-edificio', 'titulo' => 'Edificio', 'texto' => 'Las oficinas que se ofrecen al marcar el piso.'],
             ['ruta' => 'puestos', 'permiso' => 'ver-puestos', 'titulo' => 'Puestos', 'texto' => 'Las plazas numeradas del estacionamiento.'],
+            ['ruta' => 'pases', 'permiso' => 'ver-pases', 'titulo' => 'Pases de visitante', 'texto' => 'Las credenciales que se prestan en la puerta y quién lleva cada una.'],
             ['ruta' => 'ajustes', 'permiso' => 'ver-ajustes', 'titulo' => 'Ajustes', 'texto' => 'Reglas de tiempo, umbrales de alerta y retención.'],
             ['ruta' => 'auditoria', 'permiso' => 'ver-auditoria', 'titulo' => 'Auditoría', 'texto' => 'Quién consultó, exportó o cambió qué.'],
             ['ruta' => 'roles', 'permiso' => 'gestionar-permisos', 'titulo' => 'Roles', 'texto' => 'Qué puede hacer cada rol.'],

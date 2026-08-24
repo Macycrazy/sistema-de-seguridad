@@ -49,6 +49,7 @@
                                     @case(\App\Services\Alertas\Alerta::AFORO) Aforo @break
                                     @case(\App\Services\Alertas\Alerta::ESTACIONAMIENTO) Estacionamiento @break
                                     @case(\App\Services\Alertas\Alerta::FLOTA_FUERA) Vehículo de la empresa @break
+                                    @case(\App\Services\Alertas\Alerta::PASE_FUERA) Pase de visitante @break
                                     @default Permanencia
                                 @endswitch
                             </span>

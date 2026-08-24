@@ -50,6 +50,10 @@ enum Permiso: string
 
     case GESTIONAR_PUESTOS = 'gestionar-puestos';
 
+    case VER_PASES = 'ver-pases';
+
+    case GESTIONAR_PASES = 'gestionar-pases';
+
     case VER_AJUSTES = 'ver-ajustes';
 
     case GESTIONAR_AJUSTES = 'gestionar-ajustes';
@@ -72,6 +76,7 @@ enum Permiso: string
             self::VER_VISITAS, self::GESTIONAR_VISITAS => 'Visitas',
             self::VER_EDIFICIO, self::GESTIONAR_EDIFICIO => 'Edificio',
             self::VER_PUESTOS, self::GESTIONAR_PUESTOS => 'Puestos',
+            self::VER_PASES, self::GESTIONAR_PASES => 'Pases',
             self::VER_AJUSTES, self::GESTIONAR_AJUSTES => 'Ajustes',
             self::VER_AUDITORIA => 'Auditoría',
             self::GESTIONAR_RESPALDOS => 'Respaldos',
@@ -95,6 +100,7 @@ enum Permiso: string
             self::VER_VISITAS => self::GESTIONAR_VISITAS,
             self::VER_EDIFICIO => self::GESTIONAR_EDIFICIO,
             self::VER_PUESTOS => self::GESTIONAR_PUESTOS,
+            self::VER_PASES => self::GESTIONAR_PASES,
             self::VER_AJUSTES => self::GESTIONAR_AJUSTES,
             default => null,
         };
@@ -124,6 +130,8 @@ enum Permiso: string
             self::GESTIONAR_EDIFICIO => 'Gestionar el edificio',
             self::VER_PUESTOS => 'Ver los puestos',
             self::GESTIONAR_PUESTOS => 'Gestionar los puestos',
+            self::VER_PASES => 'Ver los pases de visitante',
+            self::GESTIONAR_PASES => 'Gestionar los pases de visitante',
             self::VER_AJUSTES => 'Ver los ajustes',
             self::GESTIONAR_AJUSTES => 'Cambiar los ajustes',
             self::VER_AUDITORIA => 'Ver la auditoría',
@@ -150,6 +158,8 @@ enum Permiso: string
             self::GESTIONAR_EDIFICIO => 'Agregar, editar y quitar oficinas.',
             self::VER_PUESTOS => 'Ver el catálogo de plazas del estacionamiento.',
             self::GESTIONAR_PUESTOS => 'Agregar, editar, deshabilitar y quitar plazas del estacionamiento.',
+            self::VER_PASES => 'Ver el catálogo de pases y cuáles están entregados.',
+            self::GESTIONAR_PASES => 'Cargar pases, deshabilitarlos y recuperar los que están fuera.',
             self::VER_AJUSTES => 'Ver las reglas de tiempo, umbrales y retención.',
             self::GESTIONAR_AJUSTES => 'Cambiar las reglas de tiempo, umbrales y retención.',
             self::VER_AUDITORIA => 'Quién consultó qué cédula, quién exportó y quién corrigió.',
@@ -186,7 +196,11 @@ enum Permiso: string
             self::VER_VISITAS,
             self::GESTIONAR_VISITAS,
             self::VER_USUARIOS,
-            self::GESTIONAR_USUARIOS => [Rol::supervisor(), Rol::administrador()],
+            self::GESTIONAR_USUARIOS,
+            // Los pases los lleva quien está en la recepción, no solo el administrador: es quien
+            // los entrega, los cuenta al cerrar el turno y persigue los que no vuelven.
+            self::VER_PASES,
+            self::GESTIONAR_PASES => [Rol::supervisor(), Rol::administrador()],
 
             self::VER_AUDITORIA,
             self::VER_PERSONAL,

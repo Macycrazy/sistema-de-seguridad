@@ -46,6 +46,11 @@ class UmbralesDeAlerta
             'Cuántas motos caben, aparte de los carros. En 0 no se avisa por motos.',
             0, 0, 9999, 'motos',
         ],
+        'alerta_horas_pase_fuera' => [
+            'Pase de visitante sin devolver',
+            'Un pase entregado se avisa desde que sale, para saber cuáles están en la calle. Estas son las horas a partir de las cuales ese aviso pasa a urgente: una visita larga no es un pase perdido. En 0 no se avisa de los pases.',
+            4, 0, 720, 'horas',
+        ],
         'alerta_horas_flota_fuera' => [
             'Vehículo de la empresa sin volver',
             'Horas que un vehículo de la empresa puede llevar fuera antes de que se avise. Se cuenta desde que se le marcó la salida. En 0 el aviso queda desactivado.',
@@ -79,6 +84,12 @@ class UmbralesDeAlerta
     public function aforoMotos(): int
     {
         return $this->valor('alerta_aforo_moto');
+    }
+
+    /** Horas fuera a partir de las cuales el aviso de un pase pasa a urgente. 0 = no se avisa. */
+    public function horasPaseFuera(): int
+    {
+        return $this->valor('alerta_horas_pase_fuera');
     }
 
     /** Horas fuera a partir de las cuales el aviso de la flota pasa a urgente. 0 = no se avisa. */

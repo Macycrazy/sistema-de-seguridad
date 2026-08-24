@@ -610,6 +610,60 @@
                     </div>
                 @endif
 
+                {{-- EL PASE DE VISITANTE.
+
+                     Solo para invitados: el trabajador entra con su carnet. Se entrega en el mismo
+                     gesto de marcar, porque en la puerta no hay un segundo momento para nada, y se
+                     recupera igual al salir. --}}
+                @if ($puedeEntrar && $persona->esInvitado() && $this->hayPasesCargados)
+                    <div class="mt-5 border-t border-slate-100 pt-5">
+                        <p class="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">
+                            ¿Se le da pase?
+                        </p>
+
+                        @if ($this->pasesLibres !== [])
+                            <div class="mt-2.5 w-full sm:w-72">
+                                <x-selector nombre="paseEntrada" wire:model.live="paseEntrada"
+                                            :opciones="['' => 'Sin pase'] + $this->pasesLibres"
+                                            :error="$errors->first('pase')" />
+                            </div>
+                        @else
+                            {{-- Que no quede ninguno libre no es lo mismo que no haber pases: con
+                                 todos fuera, la pantalla muda parecería que esto no funciona. --}}
+                            <x-error class="mt-2.5">
+                                No queda ningún pase libre: están todos entregados. Recupera alguno para poder dar otro.
+                            </x-error>
+                        @endif
+                    </div>
+                @endif
+
+                {{-- Al salir: el pase vuelve. Viene marcado porque es lo que DEBE pasar; se puede
+                     desmarcar cuando de verdad se lo lleva, y entonces queda constando que sigue
+                     fuera en vez de darse por devuelto sin serlo. --}}
+                @if ($puedeSalir && $this->paseQueLleva)
+                    <div class="mt-5 border-t border-slate-100 pt-5">
+                        <p class="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">
+                            El pase
+                        </p>
+
+                        <label class="mt-2.5 flex cursor-pointer items-center gap-3 rounded border px-3 py-2.5 transition
+                                      {{ $devuelvePase ? 'border-parte1 bg-parte1-suave' : 'border-alto bg-alto-suave/40' }}">
+                            <input type="checkbox" wire:model.live="devuelvePase"
+                                   class="h-5 w-5 rounded border-slate-300 text-parte1 focus:ring-2 focus:ring-parte1/40">
+                            <span class="text-sm">
+                                Devuelve el pase
+                                <span class="font-mono font-bold tracking-wider">{{ $this->paseQueLleva->pase?->codigo }}</span>
+                            </span>
+                        </label>
+
+                        @unless ($devuelvePase)
+                            <p class="mt-2 text-xs font-semibold text-alto">
+                                Se marcará que se va con el pase puesto: quedará constando que sigue fuera.
+                            </p>
+                        @endunless
+                    </div>
+                @endif
+
                 @if ($puedeSalir && ($this->susVehiculosDentro->isNotEmpty() || $this->otrosVehiculosDentro !== []))
                     <div class="mt-5 border-t border-slate-100 pt-5">
                         <p class="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">

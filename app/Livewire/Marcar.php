@@ -2,7 +2,9 @@
 
 namespace App\Livewire;
 
+use App\Models\EntregaDePase;
 use App\Models\Movimiento;
+use App\Models\Pase;
 use App\Models\Persona;
 use App\Models\Vehiculo;
 use App\Models\VehiculoDeFlota;
@@ -13,6 +15,7 @@ use App\Services\DatosVehiculo;
 use App\Services\Estacionamiento\Flota;
 use App\Services\Estacionamiento\VehiculoEnLaPuerta;
 use App\Services\Marcaje;
+use App\Services\Pases\Pases;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
@@ -139,6 +142,17 @@ class Marcar extends Component
      * @var list<int>
      */
     public array $vehiculosSalida = [];
+
+    /**
+     * El pase que se le entrega al visitante (su id), o vacío para no darle ninguno.
+     *
+     * Solo para invitados: el trabajador tiene su carnet. Se entrega en el mismo gesto de marcar
+     * la entrada —igual que el vehículo— porque en la puerta no hay un segundo momento para nada.
+     */
+    public string $paseEntrada = '';
+
+    /** Si al marcar la salida se recupera el pase que lleva. Empieza en sí: es lo que debe pasar. */
+    public bool $devuelvePase = true;
 
     /** Lo que se le dice al vigilante después de marcar. */
     public string $confirmacion = '';
@@ -392,7 +406,7 @@ class Marcar extends Component
             unset(
                 $this->persona, $this->sugerido, $this->esperaHasta, $this->esperaSalidaHasta,
                 $this->motivoEspera, $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
-                $this->susPlacasDentro,
+                $this->susPlacasDentro, $this->pasesLibres, $this->paseQueLleva, $this->hayPasesCargados,
                 $this->flotaParaEntrar, $this->hayFlotaCargada,
             );
 
@@ -403,12 +417,12 @@ class Marcar extends Component
         $this->invitadoNuevo = false;
 
         // Los vehículos son de quien acaba de aparecer, no de quien estaba antes.
-        $this->reset(['vehiculoEntrada', 'placaNueva', 'tipoNuevo', 'vehiculosSalida', 'otroVehiculoSalida']);
+        $this->reset(['vehiculoEntrada', 'placaNueva', 'tipoNuevo', 'vehiculosSalida', 'otroVehiculoSalida', 'paseEntrada', 'devuelvePase']);
 
         unset(
             $this->persona, $this->sugerido, $this->esperaHasta, $this->esperaSalidaHasta,
             $this->motivoEspera, $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
-            $this->susPlacasDentro,
+            $this->susPlacasDentro, $this->pasesLibres, $this->paseQueLleva, $this->hayPasesCargados,
             $this->flotaParaEntrar, $this->hayFlotaCargada,
         );
 
@@ -624,12 +638,12 @@ class Marcar extends Component
 
         // Lo elegido era de la persona anterior: el carro de uno no puede quedarse marcado
         // cuando en pantalla ya hay otro.
-        $this->reset(['vehiculoEntrada', 'placaNueva', 'tipoNuevo', 'vehiculosSalida', 'otroVehiculoSalida']);
+        $this->reset(['vehiculoEntrada', 'placaNueva', 'tipoNuevo', 'vehiculosSalida', 'otroVehiculoSalida', 'paseEntrada', 'devuelvePase']);
 
         unset(
             $this->persona, $this->sugerido, $this->esperaHasta, $this->esperaSalidaHasta,
             $this->motivoEspera, $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
-            $this->susPlacasDentro,
+            $this->susPlacasDentro, $this->pasesLibres, $this->paseQueLleva, $this->hayPasesCargados,
             $this->flotaParaEntrar, $this->hayFlotaCargada,
         );
     }
@@ -726,6 +740,35 @@ class Marcar extends Component
     public function hayFlotaCargada(): bool
     {
         return VehiculoDeFlota::query()->activos()->exists();
+    }
+
+    /**
+     * Los pases que se pueden entregar ahora. Vacío si no hay catálogo o están todos fuera.
+     *
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function pasesLibres(): array
+    {
+        return app(Pases::class)->libres()
+            ->mapWithKeys(fn (Pase $pase) => [(string) $pase->id => $pase->descripcion()])
+            ->all();
+    }
+
+    /** El pase que lleva encima quien se está marcando, si lleva alguno. */
+    #[Computed]
+    public function paseQueLleva(): ?EntregaDePase
+    {
+        $persona = $this->persona();
+
+        return $persona ? app(Pases::class)->deLaPersona($persona) : null;
+    }
+
+    /** Si hay pases cargados en el catálogo, aunque ahora mismo no quede ninguno libre. */
+    #[Computed]
+    public function hayPasesCargados(): bool
+    {
+        return Pase::query()->activos()->exists();
     }
 
     /** Elegir con qué entra: a pie, uno de los suyos, u «otro» para teclear una placa. */
@@ -857,11 +900,12 @@ class Marcar extends Component
             return;
         }
 
-        // El vehículo va DESPUÉS del asiento y nunca antes: si algo falla al anotarlo, la persona
-        // ya está marcada —que es lo que no puede perderse— y el carro se arregla desde el
-        // estacionamiento. Al revés, un fallo del vehículo dejaría a la persona sin marcar.
+        // El vehículo y el pase van DESPUÉS del asiento y nunca antes: si algo falla al anotarlos,
+        // la persona ya está marcada —que es lo que no puede perderse— y lo demás se arregla desde
+        // su pantalla. Al revés, un fallo del carro dejaría a alguien sin marcar.
         try {
             $vehiculos = $this->anotarVehiculo($persona, $tipo);
+            $pase = $this->moverPase($persona, $tipo);
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
 
@@ -885,8 +929,55 @@ class Marcar extends Component
             $confirmacion .= ' · '.($tipo === Movimiento::ENTRADA ? 'entró con ' : 'se llevó ').implode(', ', $vehiculos);
         }
 
+        // El pase también se dice: es lo único que le prueba al guardia que quedó anotado, y de un
+        // pase entregado hay que acordarse al final del turno.
+        if ($pase !== null) {
+            $confirmacion .= ' · '.($tipo === Movimiento::ENTRADA ? 'pase ' : 'devolvió el pase ').$pase;
+        }
+
         $this->limpiar();
         $this->confirmacion = $confirmacion;
+    }
+
+    /**
+     * Entrega el pase al entrar o lo recupera al salir. Devuelve el código movido, o null.
+     *
+     * Al salir se recupera aunque el visitante no lleve pase de este sistema: si no lleva ninguno
+     * no hay nada que hacer y no se dice nada.
+     *
+     * @throws ValidationException
+     */
+    private function moverPase(Persona $persona, string $tipo): ?string
+    {
+        $pases = app(Pases::class);
+
+        if ($tipo === Movimiento::SALIDA) {
+            $entrega = $pases->deLaPersona($persona);
+
+            if ($entrega === null || ! $this->devuelvePase) {
+                return null;
+            }
+
+            $pases->devolver($entrega);
+
+            return $entrega->pase?->codigo;
+        }
+
+        if ($this->paseEntrada === '') {
+            return null;
+        }
+
+        $pase = Pase::find((int) $this->paseEntrada);
+
+        if (! $pase) {
+            throw ValidationException::withMessages([
+                'pase' => 'Ese pase ya no está en el catálogo. Vuelve a elegirlo.',
+            ]);
+        }
+
+        $pases->entregar($pase, $persona);
+
+        return $pase->codigo;
     }
 
     /** Si lo elegido en pantalla dice que va a pie: sin vehículo en este sentido. */
@@ -979,6 +1070,7 @@ class Marcar extends Component
             'cedula', 'nacionalidad', 'personaId', 'invitadoNuevo', 'avisoInvitado', 'nombre',
             'motivo', 'piso', 'nivel', 'pisoAMano', 'confirmacion',
             'vehiculoEntrada', 'placaNueva', 'tipoNuevo', 'vehiculosSalida', 'otroVehiculoSalida',
+            'paseEntrada', 'devuelvePase',
         ]);
         $this->resetValidation();
 
@@ -989,7 +1081,7 @@ class Marcar extends Component
             $this->persona, $this->sugerido, $this->esperaHasta,
             $this->esperaSalidaHasta, $this->dentro, $this->dentroPorTipo,
             $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
-            $this->susPlacasDentro,
+            $this->susPlacasDentro, $this->pasesLibres, $this->paseQueLleva, $this->hayPasesCargados,
             $this->flotaParaEntrar, $this->hayFlotaCargada,
         );
     }

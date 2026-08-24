@@ -87,6 +87,8 @@ Route::middleware('auth')->group(function () {
     // El catálogo de puestos del estacionamiento: las plazas numeradas donde se para cada vehículo.
     Route::view('/puestos', 'puestos')->middleware('can:ver-puestos')->name('puestos');
 
+    Route::view('/pases', 'pases')->middleware('can:ver-pases')->name('pases');
+
     // Las reglas de tiempo del marcaje, ajustables sin reprogramar.
     Route::view('/ajustes', 'ajustes')->middleware('can:ver-ajustes')->name('ajustes');
 
