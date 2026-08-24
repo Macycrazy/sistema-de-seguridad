@@ -90,7 +90,7 @@
             @endif
 
             <p class="text-sm text-slate-500">
-                La primera vez baja unos 6 MB de modelos; después quedan en el navegador.
+                La primera vez baja unos 12 MB de modelos; después quedan en el navegador.
             </p>
         </div>
     @endcan

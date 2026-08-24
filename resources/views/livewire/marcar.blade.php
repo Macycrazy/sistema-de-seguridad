@@ -186,11 +186,57 @@
                     </p>
                 </div>
 
+                {{-- El visor, con los mismos mandos que el del carnet: linterna, zoom, girar la
+                     cámara y tocar para enfocar. Salen del mismo sitio (camara.js), así que lo que
+                     se arregle en uno vale para el otro. --}}
                 <div x-show="abierto" x-cloak class="mt-1">
-                    <div class="relative overflow-hidden rounded-xl bg-slate-900">
+                    <div class="relative overflow-hidden rounded-xl bg-slate-900" @click="enfocar($event)">
                         <video x-ref="video" playsinline muted class="h-auto w-full"></video>
 
-                        <p class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-900/90 to-transparent
+                        {{-- Guía de encuadre: un óvalo, que es lo que se busca aquí. --}}
+                        <div class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                            <div class="h-56 w-44 rounded-[50%] border-2 border-white/40 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]"></div>
+                        </div>
+
+                        {{-- Los mandos, encima de la imagen. --}}
+                        <div class="absolute inset-x-0 top-0 z-20 flex items-center gap-3 p-3">
+                            <div x-show="soportaZoom" class="flex items-center gap-2" x-cloak>
+                                <span class="font-mono text-[0.625rem] font-bold uppercase tracking-widest text-white drop-shadow-md">Zoom</span>
+                                <input type="range" x-model="zoomActual" :min="zoomMin" :max="zoomMax" step="0.1"
+                                       @input="aplicarZoomManual" @click.stop
+                                       class="w-24 accent-parte1">
+                            </div>
+
+                            <div class="ml-auto flex items-center gap-3">
+                                <button type="button" x-show="soportaLinterna" @click.stop="toggleLinterna()" x-cloak
+                                        class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md transition hover:bg-black/60"
+                                        :class="linternaEncendida ? '!bg-yellow-400 !text-black shadow-[0_0_15px_rgba(250,204,21,0.5)]' : ''">
+                                    <svg x-show="!linternaEncendida" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                    <svg x-show="linternaEncendida" class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                </button>
+
+                                <button type="button" x-show="puedeCambiarCamara" @click.stop="cambiarCamara()" x-cloak
+                                        class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md transition hover:bg-black/60">
+                                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Pulso de enfoque donde se toca. --}}
+                        <div x-show="mostrandoCuadro"
+                             x-transition:enter="transition ease-out duration-200"
+                             x-transition:enter-start="opacity-0 scale-50"
+                             x-transition:enter-end="opacity-100 scale-100"
+                             x-transition:leave="transition ease-out duration-500"
+                             x-transition:leave-start="opacity-100 scale-100"
+                             x-transition:leave-end="opacity-0 scale-150"
+                             :style="{ top: topCuadro, left: leftCuadro }"
+                             x-cloak
+                             class="pointer-events-none absolute z-30 flex h-12 w-12 items-center justify-center rounded-full border-[1.5px] border-white/80 bg-white/10 shadow-[0_0_10px_rgba(255,255,255,0.5)]">
+                            <div class="h-1.5 w-1.5 rounded-full bg-white/90 shadow-sm"></div>
+                        </div>
+
+                        <p class="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-slate-900/90 to-transparent
                                   px-4 pb-4 pt-8 text-center text-sm font-semibold text-white"
                            x-text="mensaje"></p>
                     </div>

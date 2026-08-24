@@ -9,47 +9,100 @@
  * puerta no puede tardar más en abrir por una función que casi no se usa.
  */
 
+import { controlesDeCamara } from './camara.js';
+
 /** El modelo cargado, una sola vez por pestaña. */
 let api = null;
 
 const RUTA_MODELOS = '/modelos/rostros';
 
 /**
- * Carga la librería y los tres modelos que hacen falta.
+ * Carga la librería y los modelos.
  *
- * Son tres y no más a propósito: detectar dónde hay una cara, colocarle los puntos de la cara, y
- * sacar los 128 números. Lo demás que trae el paquete —edad, expresión— no se usa y no se baja.
+ * Son DOS detectores y no uno porque los dos trabajos no se parecen:
+ *
+ *   · «tiny» es el rápido, y es el que mira el vídeo en vivo: ahí hay treinta oportunidades por
+ *     segundo y lo que importa es no dejar la imagen a tirones.
+ *   · «ssd» es el bueno, y es el que mira las fotos al indexar: eso se hace una vez, sin prisa, y
+ *     una cara que no se detecte ahí deja a esa persona fuera del reconocimiento para siempre.
+ *
+ * Con «tiny» solo, de 296 fotos de carnet se quedaban 154 sin indexar. No era culpa de las fotos:
+ * el rápido se pierde las caras pequeñas o algo giradas, que en un carnet abundan.
+ *
+ * El de puntos de la cara y el de los 128 números son los mismos para ambos.
  */
-async function motor() {
-    if (api) return api;
+async function motor(conElBueno = false) {
+    const faceapi = api ?? (await import('@vladmandic/face-api'));
 
-    const faceapi = await import('@vladmandic/face-api');
+    if (!api) {
+        await Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri(RUTA_MODELOS),
+            faceapi.nets.faceLandmark68TinyNet.loadFromUri(RUTA_MODELOS),
+            faceapi.nets.faceRecognitionNet.loadFromUri(RUTA_MODELOS),
+        ]);
 
-    await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri(RUTA_MODELOS),
-        faceapi.nets.faceLandmark68TinyNet.loadFromUri(RUTA_MODELOS),
-        faceapi.nets.faceRecognitionNet.loadFromUri(RUTA_MODELOS),
-    ]);
+        api = faceapi;
+    }
 
-    api = faceapi;
+    // El bueno se baja solo cuando se va a indexar: son 5 MB más que la puerta no necesita.
+    if (conElBueno && !faceapi.nets.ssdMobilenetv1.isLoaded) {
+        await faceapi.nets.ssdMobilenetv1.loadFromUri(RUTA_MODELOS);
+    }
+
     return api;
 }
 
-/** Cómo se busca una cara. inputSize 416 va sobrado para una foto de carnet y para un vídeo. */
-function opciones(faceapi) {
-    return new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 });
+/** Cómo se busca en vídeo: rápido, que hay muchos cuadros por segundo. */
+function enVivo(faceapi) {
+    return new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.4 });
 }
 
-/** Los 128 números de la cara más grande de una imagen o un vídeo. Null si no se ve ninguna. */
+/** Los 128 números de la cara de un vídeo. Null si no se ve ninguna. */
 async function descriptorDe(elemento) {
     const faceapi = await motor();
 
     const resultado = await faceapi
-        .detectSingleFace(elemento, opciones(faceapi))
+        .detectSingleFace(elemento, enVivo(faceapi))
         .withFaceLandmarks(true)
         .withFaceDescriptor();
 
     return resultado ? Array.from(resultado.descriptor) : null;
+}
+
+/**
+ * Los 128 números de una FOTO, intentándolo en serio.
+ *
+ * Tres pasadas, de la más fiable a la más permisiva, porque cada persona que no se detecta se
+ * queda fuera del reconocimiento y eso cuesta más que unos segundos de más al indexar:
+ *
+ *   1. el detector bueno, con la exigencia de siempre;
+ *   2. el mismo, aceptando detecciones flojas (una cara de perfil, o pequeña en el encuadre);
+ *   3. el rápido mirando más fino, por si la foto es diminuta y el bueno la descartó.
+ *
+ * Devuelve también con cuál se consiguió, para poder decir después si una cara se coló por los
+ * pelos.
+ */
+async function descriptorDeFoto(imagen) {
+    const faceapi = await motor(true);
+
+    const intentos = [
+        ['normal', new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 })],
+        ['flojo', new faceapi.SsdMobilenetv1Options({ minConfidence: 0.2 })],
+        ['fino', new faceapi.TinyFaceDetectorOptions({ inputSize: 608, scoreThreshold: 0.2 })],
+    ];
+
+    for (const [comoSalio, opciones] of intentos) {
+        const resultado = await faceapi
+            .detectSingleFace(imagen, opciones)
+            .withFaceLandmarks(true)
+            .withFaceDescriptor();
+
+        if (resultado) {
+            return { descriptor: Array.from(resultado.descriptor), comoSalio };
+        }
+    }
+
+    return null;
 }
 
 /** Carga una foto por su URL. Mismo origen, así que el lienzo no queda «manchado». */
@@ -151,17 +204,17 @@ export function indiceDeRostros(wire) {
 
                 try {
                     const foto = await imagen(persona.foto);
-                    const descriptor = await descriptorDe(foto);
+                    const encontrada = await descriptorDeFoto(foto);
 
-                    if (descriptor) {
+                    if (encontrada) {
                         // Con el hash de la foto que se acaba de mirar: es lo que después permite
                         // saber a quién le cambiaron la cara sin volver a mirarlos a todos.
-                        await wire.guardarRostro(persona.id, descriptor, persona.hash ?? null);
+                        await wire.guardarRostro(persona.id, encontrada.descriptor, persona.hash ?? null);
                     } else {
-                        await wire.noSePudo(persona.id, persona.nombre, 'no se ve una cara en su foto');
+                        await wire.noSePudo(persona.id, persona.nombre, 'no se distingue una cara en su foto');
                     }
                 } catch (e) {
-                    await wire.noSePudo(persona.id, persona.nombre, e.message || 'no se pudo leer su foto');
+                    await wire.noSePudo(persona.id, persona.nombre, e.message || 'no se pudo abrir su foto');
                 }
 
                 this.hechas++;
@@ -183,10 +236,13 @@ export function indiceDeRostros(wire) {
  */
 export function rostroEnLaPuerta(wire) {
     return {
+        // Linterna, zoom, cambiar de cámara y enfocar al tocar: los mismos que el escáner del
+        // carnet, del mismo sitio. Ver camara.js.
+        ...controlesDeCamara(),
+
         abierto: false,
         cargando: false,
         mensaje: '',
-        stream: null,
         raf: null,
 
         // Se pide al abrir, por lo mismo que la lista del índice: son 128 números por persona, y
@@ -197,7 +253,10 @@ export function rostroEnLaPuerta(wire) {
         // nada a decir un nombre equivocado, que en la puerta es lo caro.
         umbral: 0.5,
 
-        async abrir() {
+        // Para mirar una cara se empieza por la frontal, al revés que para leer un carnet.
+        caraActual: 'user',
+
+        async abrir(deviceId = null) {
             this.abierto = true;
             this.cargando = true;
             this.mensaje = 'Preparando…';
@@ -214,14 +273,7 @@ export function rostroEnLaPuerta(wire) {
                 }
 
                 await motor();
-
-                this.stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
-                    audio: false,
-                });
-
-                this.$refs.video.srcObject = this.stream;
-                await this.$refs.video.play();
+                await this.encenderCamara(deviceId);
 
                 this.cargando = false;
                 this.mensaje = 'Mira a la cámara…';
@@ -230,6 +282,13 @@ export function rostroEnLaPuerta(wire) {
                 this.cargando = false;
                 this.mensaje = 'No se pudo abrir la cámara: ' + (e.message || e.name);
             }
+        },
+
+        /** Lo que camara.js necesita para poder cambiar de cámara sin saber qué busca este visor. */
+        async reabrirCamara(deviceId) {
+            this.pararBusqueda();
+            this.apagarCamara();
+            await this.abrir(deviceId);
         },
 
         async buscar() {
@@ -273,13 +332,15 @@ export function rostroEnLaPuerta(wire) {
             tick();
         },
 
+        pararBusqueda() {
+            if (this.raf) cancelAnimationFrame(this.raf);
+            this.raf = null;
+        },
+
         cerrar() {
             this.abierto = false;
-            if (this.raf) cancelAnimationFrame(this.raf);
-            if (this.stream) {
-                this.stream.getTracks().forEach((t) => t.stop());
-                this.stream = null;
-            }
+            this.pararBusqueda();
+            this.apagarCamara();
         },
     };
 }

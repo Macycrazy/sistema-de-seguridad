@@ -9,6 +9,7 @@
  * Internet, así que todo lo que se ejecute tiene que venir del propio servidor. Y la cámara solo
  * funciona sobre HTTPS (o localhost); por eso el puesto se sirve por HTTPS.
  */
+import { controlesDeCamara } from './camara.js';
 import { indiceDeRostros, rostroEnLaPuerta } from './rostros.js';
 
 document.addEventListener('alpine:init', () => {
@@ -17,95 +18,21 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.data('rostroEnLaPuerta', rostroEnLaPuerta);
 
     window.Alpine.data('escanerCarnet', (wire) => ({
+        // Linterna, zoom, cambiar de cámara y enfocar al tocar: viven en camara.js, y de ahí los
+        // toma también el visor de reconocimiento facial. Estaban aquí y se copiaron allá; el
+        // primer arreglo que se hizo en uno no llegó al otro, así que ahora hay un solo sitio.
+        ...controlesDeCamara(),
+
         abierto: false,
         mensaje: '',
-        stream: null,
         raf: null,
-        mostrandoCuadro: false,
-        topCuadro: '0px',
-        leftCuadro: '0px',
-        soportaLinterna: false,
-        linternaEncendida: false,
-        soportaZoom: false,
-        zoomMin: 1,
-        zoomMax: 1,
-        zoomActual: 1,
-        camaras: [],
-        camaraActivaId: null,
-
-        // Qué cara del teléfono se pide cuando no hay identificadores con los que elegir. Empieza
-        // en la trasera, que es con la que se lee un carnet.
-        caraActual: 'environment',
 
         async abrir(deviceId = null) {
             this.abierto = true;
             this.mensaje = 'Apunta al QR del carnet…';
 
             try {
-                let constraints = {
-                    video: { 
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
-                    },
-                    audio: false,
-                };
-
-                // Si pedimos una cámara específica (al rotar), la usamos. Si no, intentamos la trasera por defecto.
-                if (deviceId) {
-                    constraints.video.deviceId = { exact: deviceId };
-                } else {
-                    constraints.video.facingMode = this.caraActual;
-                }
-
-                this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-                this.$refs.video.srcObject = this.stream;
-                await this.$refs.video.play();
-                
-                // Actualizar ID de la cámara actual
-                const track = this.stream.getVideoTracks()[0];
-                this.camaraActivaId = track.getSettings().deviceId;
-
-                /*
-                 * La lista de cámaras se pide AQUÍ, con el permiso ya concedido, y no antes.
-                 *
-                 * Sin permiso, el navegador esconde las cámaras: devuelve la lista incompleta y
-                 * con el «deviceId» en blanco, para que una página no pueda reconocer un equipo
-                 * por sus dispositivos. Preguntando antes de abrir la cámara, un teléfono con
-                 * frontal y trasera parecía tener una sola, y el botón de cambiar no salía.
-                 */
-                try {
-                    const dispositivos = await navigator.mediaDevices.enumerateDevices();
-                    this.camaras = dispositivos.filter((d) => d.kind === 'videoinput');
-                } catch (e) {
-                    this.camaras = [];
-                }
-
-                // Revisar capacidades (Linterna y Zoom)
-                if (track && typeof track.getCapabilities === 'function') {
-                    const capabilities = track.getCapabilities();
-                    
-                    // LINTERNA
-                    this.soportaLinterna = !!capabilities.torch;
-                    this.linternaEncendida = false;
-
-                    // ZOOM
-                    if (capabilities.zoom) {
-                        this.soportaZoom = true;
-                        this.zoomMin = capabilities.zoom.min || 1;
-                        this.zoomMax = capabilities.zoom.max || 5;
-                        // Intentar hacer zoom ligero inicial
-                        this.zoomActual = Math.min(this.zoomMin + (this.zoomMax - this.zoomMin) * 0.2, 2.0);
-                        if (this.zoomActual > this.zoomMax) this.zoomActual = this.zoomMax;
-                        if (this.zoomActual < this.zoomMin) this.zoomActual = this.zoomMin;
-                        
-                        try {
-                            await track.applyConstraints({ advanced: [{ zoom: this.zoomActual }] });
-                        } catch (e) {}
-                    } else {
-                        this.soportaZoom = false;
-                    }
-                }
-
+                await this.encenderCamara(deviceId);
                 this.buscar();
             } catch (e) {
                 this.mensaje = 'No se pudo abrir la cámara: ' + (e.message || e.name) +
@@ -113,129 +40,10 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        async toggleLinterna() {
-            if (!this.stream || !this.soportaLinterna) return;
-            const track = this.stream.getVideoTracks()[0];
-            this.linternaEncendida = !this.linternaEncendida;
-            try {
-                await track.applyConstraints({ advanced: [{ torch: this.linternaEncendida }] });
-            } catch (e) {
-                console.error("Error con linterna", e);
-            }
-        },
-
-        async aplicarZoomManual() {
-            if (!this.stream || !this.soportaZoom) return;
-            const track = this.stream.getVideoTracks()[0];
-            try {
-                await track.applyConstraints({ advanced: [{ zoom: parseFloat(this.zoomActual) }] });
-            } catch (e) {}
-        },
-
-        /**
-         * Si tiene sentido ofrecer el cambio de cámara.
-         *
-         * Con varias enumeradas, claro. Pero también cuando NO se pudo enumerar ninguna o el
-         * navegador devolvió los identificadores en blanco: en un teléfono siempre hay frontal y
-         * trasera, y esconder el botón por no haber podido preguntar deja al vigilante sin poder
-         * girar la cámara. En ese caso se cambia por «facingMode», que no necesita identificadores.
-         */
-        get puedeCambiarCamara() {
-            return this.camaras.length > 1 || !this.camaras.some((c) => c.deviceId);
-        },
-
-        async cambiarCamara() {
-            // Con identificadores de verdad: se rota por la lista.
-            const conId = this.camaras.filter((c) => c.deviceId);
-
-            if (conId.length > 1) {
-                let idx = conId.findIndex((c) => c.deviceId === this.camaraActivaId);
-                idx = (idx + 1) % conId.length;
-
-                this.cerrar(false);
-                await this.abrir(conId[idx].deviceId);
-                return;
-            }
-
-            // Sin ellos —o con una sola enumerada— se pide la otra cara del teléfono. Es lo que
-            // funciona cuando el navegador no quiere decir qué cámaras hay.
-            this.caraActual = this.caraActual === 'environment' ? 'user' : 'environment';
-
+        /** Lo que camara.js necesita para cambiar de cámara sin saber qué busca este visor. */
+        async reabrirCamara(deviceId) {
             this.cerrar(false);
-            await this.abrir(null);
-        },
-
-        async enfocar(e) {
-            if (e) {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const x = e.clientX - rect.left - 24; // 24 es la mitad del ancho del cuadro (48px / 2)
-                const y = e.clientY - rect.top - 24;  // 24 es la mitad del alto del cuadro (48px / 2)
-                this.leftCuadro = `${x}px`;
-                this.topCuadro = `${y}px`;
-                this.mostrandoCuadro = true;
-                setTimeout(() => {
-                    this.mostrandoCuadro = false;
-                }, 800);
-            }
-
-            if (!this.stream) return;
-            const track = this.stream.getVideoTracks()[0];
-            if (!track) return;
-
-            try {
-                if (typeof track.getCapabilities !== 'function') return;
-
-                const capabilities = track.getCapabilities();
-
-                // Intentar usar pointsOfInterest si el navegador lo soporta (muy raro pero preciso)
-                if (capabilities.pointsOfInterest) {
-                    try {
-                        await track.applyConstraints({ advanced: [{ pointsOfInterest: [{ x: 0.5, y: 0.5 }] }] });
-                    } catch (e) { }
-                }
-
-                if (capabilities.focusMode) {
-                    // Truco comprobado para forzar autoenfoque: Pasar a manual (para detener la lente) 
-                    // y luego a continuo (para forzar un nuevo barrido).
-                    if (capabilities.focusMode.includes('manual') && capabilities.focusMode.includes('continuous')) {
-                        let manualConfig = { focusMode: 'manual' };
-                        // Si permite forzar la distancia, lo enviamos al mínimo temporalmente
-                        if (capabilities.focusDistance && capabilities.focusDistance.min !== undefined) {
-                            manualConfig.focusDistance = capabilities.focusDistance.min;
-                        }
-                        
-                        await track.applyConstraints({ advanced: [manualConfig] });
-                        
-                        // Y regresamos a continuous para que vuelva a enfocar automáticamente
-                        setTimeout(async () => {
-                            try {
-                                if (this.stream && this.abierto) {
-                                    const t = this.stream.getVideoTracks()[0];
-                                    if (t) {
-                                        await t.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-                                    }
-                                }
-                            } catch (err) {}
-                        }, 100);
-                    } else if (capabilities.focusMode.includes('single-shot')) {
-                        await track.applyConstraints({ advanced: [{ focusMode: 'single-shot' }] });
-                        if (capabilities.focusMode.includes('continuous')) {
-                            setTimeout(async () => {
-                                try {
-                                    if (this.stream && this.abierto) {
-                                        const t = this.stream.getVideoTracks()[0];
-                                        if (t) await t.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-                                    }
-                                } catch (err) {}
-                            }, 500);
-                        }
-                    } else if (capabilities.focusMode.includes('continuous')) {
-                        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-                    }
-                }
-            } catch (err) {
-                console.error("Error al aplicar enfoque en la cámara:", err);
-            }
+            await this.abrir(deviceId);
         },
 
         async buscar() {
@@ -323,13 +131,11 @@ document.addEventListener('alpine:init', () => {
         cerrar(cerrarUi = true) {
             if (cerrarUi) {
                 this.abierto = false;
-                this.mostrandoCuadro = false;
             }
+
             if (this.raf) cancelAnimationFrame(this.raf);
-            if (this.stream) {
-                this.stream.getTracks().forEach((t) => t.stop());
-                this.stream = null;
-            }
+            this.raf = null;
+            this.apagarCamara();
         },
     }));
 });
