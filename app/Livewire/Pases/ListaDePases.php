@@ -136,6 +136,24 @@ class ListaDePases extends Component
         $this->olvidar();
     }
 
+    /**
+     * Los visitantes que están dentro sin pase: la lista de ponerse al día.
+     *
+     * @return Collection<int, Persona>
+     */
+    #[Computed]
+    public function sinPase(): Collection
+    {
+        return app(Pases::class)->visitantesDentroSinPase();
+    }
+
+    /** Abre la entrega ya apuntando a esa persona: un toque desde la lista de los que no llevan. */
+    public function darPaseA(string $cedula): void
+    {
+        $this->abrirEntrega();
+        $this->cedulaEntrega = $cedula;
+    }
+
     public function abrirNuevo(): void
     {
         $this->exigirGestionar();
@@ -259,6 +277,6 @@ class ListaDePases extends Component
 
     private function olvidar(): void
     {
-        unset($this->pases, $this->fuera, $this->cuentas, $this->libres);
+        unset($this->pases, $this->fuera, $this->cuentas, $this->libres, $this->sinPase);
     }
 }

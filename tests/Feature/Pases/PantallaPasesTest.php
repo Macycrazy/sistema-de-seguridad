@@ -4,6 +4,7 @@ namespace Tests\Feature\Pases;
 
 use App\Livewire\Pases\ListaDePases;
 use App\Models\EntregaDePase;
+use App\Models\Movimiento;
 use App\Models\Pase;
 use App\Models\Persona;
 use App\Models\User;
@@ -129,6 +130,47 @@ class PantallaPasesTest extends TestCase
             ->assertHasErrors('cedulaEntrega');
 
         $this->assertSame(0, EntregaDePase::count());
+    }
+
+    #[Test]
+    public function la_pantalla_lista_a_los_visitantes_que_estan_dentro_sin_pase(): void
+    {
+        // Es la lista de ponerse al día el día que se cargan los pases, y después destapa al
+        // visitante al que se le olvidó dárselo.
+        $this->actingAs(User::factory()->create(['rol' => Rol::supervisor()]));
+
+        $ana = $this->visitante();
+        Movimiento::create([
+            'persona_id' => $ana->id,
+            'tipo' => Movimiento::ENTRADA,
+            'ocurrio_en' => now()->subHour(),
+        ]);
+
+        Livewire::test(ListaDePases::class)
+            ->assertSee('visitante dentro sin pase')
+            ->assertSee('ANA PÉREZ')
+            // Y el botón deja la entrega apuntando a ella.
+            ->call('darPaseA', '11111111')
+            ->assertSet('entregando', true)
+            ->assertSet('cedulaEntrega', '11111111');
+    }
+
+    #[Test]
+    public function quien_ya_lleva_pase_o_ya_se_fue_no_sale_en_esa_lista(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::supervisor()]));
+
+        // Ana está dentro y ya lleva pase.
+        $ana = $this->visitante();
+        Movimiento::create(['persona_id' => $ana->id, 'tipo' => Movimiento::ENTRADA, 'ocurrio_en' => now()->subHours(2)]);
+        app(Pases::class)->entregar(Pase::create(['codigo' => 'V-01']), $ana);
+
+        // Luis entró y ya salió.
+        $luis = Persona::create(['cedula' => '22222222', 'tipo' => Persona::INVITADO, 'nombre' => 'LUIS GÓMEZ', 'motivo' => 'X', 'activo' => true]);
+        Movimiento::create(['persona_id' => $luis->id, 'tipo' => Movimiento::ENTRADA, 'ocurrio_en' => now()->subHours(3)]);
+        Movimiento::create(['persona_id' => $luis->id, 'tipo' => Movimiento::SALIDA, 'ocurrio_en' => now()->subHour()]);
+
+        Livewire::test(ListaDePases::class)->assertDontSee('visitante dentro sin pase');
     }
 
     #[Test]

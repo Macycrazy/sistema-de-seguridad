@@ -3,6 +3,7 @@
 namespace App\Services\Pases;
 
 use App\Models\EntregaDePase;
+use App\Models\Movimiento;
 use App\Models\Pase;
 use App\Models\Persona;
 use Carbon\CarbonImmutable;
@@ -64,6 +65,37 @@ class Pases
             ->where('persona_id', $persona->id)
             ->latest('entregado_en')
             ->first();
+    }
+
+    /**
+     * Los visitantes que están dentro y no llevan pase.
+     *
+     * Es la lista de «ponerse al día»: el día que se cargan los pases ya hay gente dentro a la que
+     * nadie le dio ninguno, y buscarlos cédula por cédula no lo hace nadie. También destapa al
+     * visitante al que se le olvidó dárselo.
+     *
+     * Solo invitados: el trabajador entra con su carnet y no lleva pase.
+     *
+     * @return Collection<int, Persona>
+     */
+    public function visitantesDentroSinPase(): Collection
+    {
+        $dentro = Movimiento::ultimoDeCadaPersona()
+            ->where('movimientos.tipo', Movimiento::ENTRADA)
+            ->pluck('movimientos.persona_id');
+
+        if ($dentro->isEmpty()) {
+            return collect();
+        }
+
+        $conPase = EntregaDePase::query()->abiertas()->pluck('persona_id')->all();
+
+        return Persona::query()
+            ->whereIn('id', $dentro)
+            ->where('tipo', Persona::INVITADO)
+            ->when($conPase !== [], fn ($q) => $q->whereNotIn('id', $conPase))
+            ->orderBy('nombre')
+            ->get();
     }
 
     /**

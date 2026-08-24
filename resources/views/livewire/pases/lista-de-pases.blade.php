@@ -99,6 +99,35 @@
         @endif
     @endcan
 
+    {{-- Quién está dentro sin pase. Sale solo si hay alguien: el día que se cargan los pases ya
+         hay gente dentro a la que nadie le dio ninguno, y buscarlos cédula por cédula no lo hace
+         nadie. Después destapa al visitante al que se le olvidó dárselo. --}}
+    @if ($this->sinPase->isNotEmpty())
+        <div class="mt-4 overflow-hidden rounded border-l-4 border-invitado bg-invitado-suave/40">
+            <div class="px-4 py-3">
+                <p class="font-mono text-xs font-bold uppercase tracking-widest text-invitado">
+                    {{ $this->sinPase->count() }} {{ $this->sinPase->count() === 1 ? 'visitante dentro sin pase' : 'visitantes dentro sin pase' }}
+                </p>
+            </div>
+
+            <ul class="divide-y divide-white/60 bg-white/50">
+                @foreach ($this->sinPase as $persona)
+                    <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5" wire:key="sin-pase-{{ $persona->id }}">
+                        <span class="min-w-0">
+                            <span class="block truncate font-medium text-slate-800">{{ $persona->nombre }}</span>
+                            <span class="font-mono text-xs text-slate-500">{{ $persona->cedula }}</span>
+                        </span>
+
+                        @can('gestionar-pases')
+                            <button wire:click="darPaseA('{{ $persona->cedula }}')"
+                                    class="shrink-0 text-sm font-semibold text-parte1 hover:underline">Darle un pase</button>
+                        @endcan
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <div class="mt-4 overflow-x-auto rounded border border-slate-200 bg-white shadow-sm">
         <table class="w-full min-w-[36rem] text-sm">
             <thead>
