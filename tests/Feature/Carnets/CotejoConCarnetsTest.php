@@ -2,10 +2,14 @@
 
 namespace Tests\Feature\Carnets;
 
+use App\Livewire\Trabajadores\ListaDeTrabajadores;
 use App\Models\Persona;
+use App\Models\User;
 use App\Services\Carnets\CotejoConCarnets;
+use App\Usuarios\Rol;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -136,6 +140,35 @@ class CotejoConCarnetsTest extends TestCase
         $this->aqui('11111111', 'ANA PÉREZ');
 
         $this->assertFalse(app(CotejoConCarnets::class)->comparar()['disponible']);
+    }
+
+    #[Test]
+    public function la_pantalla_de_trabajadores_lo_enseña_y_permite_cargarlos(): void
+    {
+        // Un comando en el servidor no lo va a usar quien lleva el personal: tiene que estar donde
+        // se cargan los trabajadores.
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
+
+        $this->aqui('11111111', 'ANA PÉREZ');
+        $this->carnetsResponde([
+            ['cedula' => '11111111', 'nombre' => 'ANA PÉREZ'],
+            ['cedula' => '22222222', 'nombre' => 'LUIS GÓMEZ', 'gerencia' => 'OPERACIONES'],
+        ]);
+
+        $componente = Livewire::test(ListaDeTrabajadores::class)
+            ->call('cotejarConCarnets')
+            ->assertSee('en carnets y no aquí')
+            ->assertSee('LUIS GÓMEZ')
+            ->assertSee('OPERACIONES');
+
+        // Y se puede dar de alta con lo que dice el carnets, sin teclearlo.
+        $componente->call('cargarDelPadron', '22222222')->assertHasNoErrors();
+
+        $this->assertDatabaseHas('personas', [
+            'cedula' => '22222222',
+            'tipo' => Persona::TRABAJADOR,
+            'activo' => true,
+        ]);
     }
 
     #[Test]

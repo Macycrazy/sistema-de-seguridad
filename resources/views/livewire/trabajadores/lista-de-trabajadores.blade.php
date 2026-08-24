@@ -37,6 +37,14 @@
                     Descargar plantilla
                 </button>
 
+                {{-- Comparar con el carnets. Se pulsa: es una llamada por la red y esta pantalla
+                     se abre muchas veces al día para buscar a alguien, no para cotejar. --}}
+                <button type="button" wire:click="cotejarConCarnets"
+                        class="text-sm font-semibold text-parte3 hover:underline">
+                    <span wire:loading.remove wire:target="cotejarConCarnets">Comparar con carnets</span>
+                    <span wire:loading wire:target="cotejarConCarnets">Preguntando…</span>
+                </button>
+
                 {{-- Importar: subir el Excel y cargar en bloque. --}}
                 <form wire:submit="importar" class="flex items-center gap-2">
                     <label class="cursor-pointer rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
@@ -56,6 +64,74 @@
     @error('archivo') <p class="mt-2 text-sm text-alto">{{ $message }}</p> @enderror
 
     {{-- Filtros: gerencia y ente (solo nómina) y estado. Se afinan en vivo. --}}
+    {{-- QUÉ NO CUADRA CON EL CARNETS.
+
+         Las dos listas de personal se llevan por separado y se separan solas: entra alguien, lo
+         dan de alta allá, aquí nadie lo carga, y el día que llega se planta en la puerta y no
+         aparece. Esto lo saca antes de que pase. --}}
+    @if ($cotejo && $cotejo['disponible'])
+        @php $faltan = $cotejo['faltan']; $sobran = $cotejo['sobran']; @endphp
+
+        <div class="mt-4 rounded border border-slate-200 bg-white p-4 shadow-sm">
+            <p class="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">
+                Comparado con carnets
+            </p>
+            <p class="mt-1 text-sm text-slate-600">
+                En carnets <b class="tabular-nums">{{ $cotejo['enCarnets'] }}</b> activos ·
+                aquí <b class="tabular-nums">{{ $cotejo['aqui'] }}</b> ·
+                coinciden <b class="tabular-nums">{{ $cotejo['coinciden'] }}</b>
+            </p>
+
+            @if ($faltan->isNotEmpty())
+                <div class="mt-4">
+                    <p class="font-semibold text-slate-900">
+                        {{ $faltan->count() }} en carnets y no aquí
+                    </p>
+                    <p class="mt-0.5 text-xs text-slate-500">
+                        Se plantarán en la puerta y no aparecerán. «Cargar» los da de alta con lo que dice el carnets.
+                    </p>
+
+                    <ul class="mt-2 divide-y divide-slate-100 text-sm">
+                        @foreach ($faltan as $ficha)
+                            <li class="flex flex-wrap items-center justify-between gap-2 py-2" wire:key="falta-{{ $ficha['cedula'] }}">
+                                <span class="min-w-0">
+                                    <span class="block truncate font-medium text-slate-800">{{ $ficha['nombre'] }}</span>
+                                    <span class="font-mono text-xs text-slate-500">
+                                        {{ $ficha['cedula'] }}@if ($ficha['gerencia']) · {{ $ficha['gerencia'] }} @endif
+                                    </span>
+                                </span>
+
+                                @can('gestionar-personal')
+                                    <button type="button" wire:click="cargarDelPadron('{{ $ficha['cedula'] }}')"
+                                            class="shrink-0 text-sm font-semibold text-parte3 hover:underline">Cargar</button>
+                                @endcan
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            @if ($sobran->isNotEmpty())
+                <div class="mt-4 border-t border-slate-100 pt-3">
+                    <p class="font-semibold text-slate-900">
+                        {{ $sobran->count() }} activos aquí y ya no en carnets
+                    </p>
+                    <p class="mt-0.5 text-xs text-slate-500">
+                        Puede que se hayan ido. Desactivarlos conserva su histórico; borrarlos, no.
+                    </p>
+
+                    <p class="mt-2 text-sm text-slate-600">
+                        {{ $sobran->take(15)->pluck('nombre')->implode(' · ') }}@if ($sobran->count() > 15) … y {{ $sobran->count() - 15 }} más @endif
+                    </p>
+                </div>
+            @endif
+
+            @if ($faltan->isEmpty() && $sobran->isEmpty())
+                <p class="mt-3 text-sm font-medium text-parte1">Las dos listas dicen lo mismo.</p>
+            @endif
+        </div>
+    @endif
+
     <div class="mt-4 flex flex-wrap items-end gap-3">
         @unless ($this->verInvitados())
             <div class="w-56">

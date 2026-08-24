@@ -7,10 +7,12 @@ use App\Imports\TrabajadoresImport;
 use App\Models\Oficina;
 use App\Models\Persona;
 use App\Services\Auditoria\Auditoria;
+use App\Services\Carnets\CotejoConCarnets;
 use App\Services\GestionDeInvitados;
 use App\Services\GestionDeTrabajadores;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -60,6 +62,19 @@ class ListaDeTrabajadores extends Component
 
     /** El Excel a importar. */
     public $archivo = null;
+
+    /**
+     * El cotejo con el padrón del carnets: quién está allá activo y aquí no.
+     *
+     * Las dos listas se llevan por separado y se separan solas: entra alguien, lo dan de alta en
+     * carnets, aquí nadie lo carga, y el día que llega se planta en la puerta y no aparece.
+     *
+     * Se pide cuando se pulsa y NO al abrir la pantalla: es una llamada por la red a un sistema
+     * que puede no estar, y Trabajadores se abre muchas veces al día para otra cosa.
+     *
+     * @var array<string, mixed>|null
+     */
+    public ?array $cotejo = null;
 
     public string $busqueda = '';
 
@@ -362,6 +377,68 @@ class ListaDeTrabajadores extends Component
         $persona = Persona::findOrFail($id);
         $this->gestion->reactivar($persona);
         $this->aviso = ($persona->esInvitado() ? 'Invitado' : 'Trabajador').' reactivado.';
+    }
+
+    /**
+     * Va al carnets y compara las dos listas de personal.
+     *
+     * Solo cuando se pulsa: es una llamada por la red, y esta pantalla se abre muchas veces al día
+     * para buscar a alguien, no para cotejar.
+     */
+    public function cotejarConCarnets(): void
+    {
+        Gate::authorize('ver-personal');
+
+        $this->cotejo = app(CotejoConCarnets::class)->comparar();
+        $this->aviso = '';
+
+        if (! $this->cotejo['disponible']) {
+            $this->aviso = 'No se pudo consultar el carnets: revisa el token en el .env, o pregúntale a quien lleve el servidor.';
+
+            return;
+        }
+
+        $faltan = $this->cotejo['faltan']->count();
+
+        $this->aviso = $faltan === 0
+            ? 'Todo el personal activo del carnets está cargado aquí.'
+            : $faltan.' persona(s) están en carnets y no aquí.';
+    }
+
+    /**
+     * Da de alta a alguien que ya está en el carnets, con lo que el carnets dice de él.
+     *
+     * Se hace de uno en uno y pulsando, no de golpe: cargar personal es una decisión, no algo que
+     * deba pasar solo porque dos listas no coincidan. La foto se trae sola, como en cualquier alta.
+     */
+    public function cargarDelPadron(string $cedula): void
+    {
+        Gate::authorize('gestionar-personal');
+
+        $ficha = collect($this->cotejo['faltan'] ?? [])->firstWhere('cedula', $cedula);
+
+        if (! $ficha) {
+            $this->aviso = 'Esa persona ya no está en la lista: vuelve a cotejar.';
+
+            return;
+        }
+
+        try {
+            $this->gestion->guardar(
+                cedula: $ficha['cedula'],
+                nombre: $ficha['nombre'],
+                dependencia: $ficha['gerencia'] ?? null,
+            );
+        } catch (ValidationException $e) {
+            $this->setErrorBag($e->validator->errors());
+
+            return;
+        }
+
+        $this->aviso = $ficha['nombre'].' cargado desde el carnets.';
+
+        // Se rehace el cotejo para que esa persona desaparezca de la lista.
+        $this->cotejo = app(CotejoConCarnets::class)->comparar();
     }
 
     public function render()
