@@ -5,7 +5,9 @@
     // necesita una etiqueta, se agrega aquí un tipo —no se inventa un pill a mano en la vista—,
     // para que el color y el tamaño no se desparramen.
     [$clases, $texto] = match ($tipo) {
-        'invitado' => ['bg-invitado-suave text-invitado', 'INVITADO'],
+        // El valor «invitado» es el que se guarda en la base y el que usan las otras partes; lo
+        // que cambia es cómo se le llama en pantalla. Ver docs/esquema.md.
+        'invitado' => ['bg-invitado-suave text-invitado', 'VISITANTE'],
         'entrada' => ['bg-ok-suave text-ok', 'ENTRADA'],
         'salida' => ['bg-slate-100 text-slate-600', 'SALIDA'],
         'inactivo' => ['bg-alto-suave text-alto', 'INACTIVO'],

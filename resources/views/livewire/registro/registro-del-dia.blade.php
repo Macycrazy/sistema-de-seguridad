@@ -41,7 +41,7 @@
             etiqueta="Tipo"
             nombre="tipo"
             wire:model.live="tipo"
-            :opciones="['' => 'Todos', 'trabajador' => 'Solo trabajadores', 'invitado' => 'Solo invitados']"
+            :opciones="['' => 'Todos', 'trabajador' => 'Solo trabajadores', 'invitado' => 'Solo visitantes']"
         />
 
         {{-- Tres entes comparten el edificio, y el reporte del día suele pedirse por uno. --}}

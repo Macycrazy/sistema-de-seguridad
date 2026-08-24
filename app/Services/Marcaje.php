@@ -141,7 +141,7 @@ class Marcaje
 
         if ($nombre === '') {
             throw ValidationException::withMessages([
-                'nombre' => 'Hace falta el nombre del invitado.',
+                'nombre' => 'Hace falta el nombre del visitante.',
             ]);
         }
 

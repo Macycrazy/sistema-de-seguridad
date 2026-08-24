@@ -123,7 +123,7 @@
                     </div>
                     <div class="flex items-center justify-between">
                         <dt class="flex items-center gap-2 text-sm text-slate-600">
-                            <span class="h-3 w-3 rounded-full bg-parte3"></span>Invitados
+                            <span class="h-3 w-3 rounded-full bg-parte3"></span>Visitantes
                         </dt>
                         <dd class="font-semibold tabular-nums text-slate-900">
                             {{ number_format($porTipo['invitado']) }}

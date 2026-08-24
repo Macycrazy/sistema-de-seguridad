@@ -348,7 +348,7 @@ class Marcar extends Component
         $datos = $veredicto['datos'] ?? [];
 
         if (($datos['activo'] ?? false) !== true) {
-            $this->addError('cedula', 'Ese carnet no es de personal activo. Si va a pasar, regístralo como invitado.');
+            $this->addError('cedula', 'Ese carnet no es de personal activo. Si va a pasar, regístralo como visitante.');
 
             return;
         }

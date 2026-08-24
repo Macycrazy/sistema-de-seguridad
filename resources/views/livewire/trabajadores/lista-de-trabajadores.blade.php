@@ -6,7 +6,7 @@
 
     {{-- Personal de nómina o visitas: una sola pantalla, dos vistas. --}}
     <div class="mb-5 inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
-        @foreach ([\App\Models\Persona::TRABAJADOR => 'Trabajadores', \App\Models\Persona::INVITADO => 'Invitados'] as $valor => $rotulo)
+        @foreach ([\App\Models\Persona::TRABAJADOR => 'Trabajadores', \App\Models\Persona::INVITADO => 'Visitantes'] as $valor => $rotulo)
             <button type="button" wire:click="$set('filtro', '{{ $valor }}')"
                     class="rounded-md px-4 py-1.5 text-sm font-semibold transition
                            {{ $filtro === $valor ? 'bg-white text-parte3 shadow-sm' : 'text-slate-500 hover:text-slate-700' }}">
@@ -99,7 +99,7 @@
         @php $editando = $editandoId !== null; @endphp
         <form wire:submit="guardar" class="mt-6 rounded border border-slate-200 bg-white p-5 shadow-sm">
             <h2 class="text-lg font-semibold">
-                @if ($this->verInvitados()) Editar invitado
+                @if ($this->verInvitados()) Editar visitante
                 @elseif ($editando) Editar trabajador
                 @else Nuevo trabajador @endif
             </h2>
@@ -222,7 +222,7 @@
                         @if (trim($busqueda) !== '')
                             Nadie coincide con «{{ $busqueda }}».
                         @elseif ($this->verInvitados())
-                            Todavía no hay invitados registrados.
+                            Todavía no hay visitantes registrados.
                         @else
                             Todavía no hay trabajadores cargados.
                         @endif

@@ -164,7 +164,7 @@ class MarcarPantallaTest extends TestCase
             ->set('cedula', '87654321')
             ->call('buscar')
             ->assertSet('invitadoNuevo', true)
-            ->assertSee('es un invitado')
+            ->assertSee('es un visitante')
             ->assertSee('Motivo de visita');
     }
 
@@ -192,7 +192,7 @@ class MarcarPantallaTest extends TestCase
                 ->assertSet('invitadoNuevo', false)
                 ->assertSet('personaId', null)
                 ->assertHasNoErrors()
-                ->assertDontSee('es un invitado');
+                ->assertDontSee('es un visitante');
         }
     }
 
@@ -213,7 +213,7 @@ class MarcarPantallaTest extends TestCase
         Livewire::test(Marcar::class)
             ->set('cedula', '876543')
             ->assertSet('invitadoNuevo', true)
-            ->assertSee('es un invitado');
+            ->assertSee('es un visitante');
     }
 
     public function test_borrar_la_cedula_deja_la_pantalla_como_al_principio(): void
@@ -765,7 +765,7 @@ class MarcarPantallaTest extends TestCase
 
         Livewire::test(Marcar::class)
             ->assertSee('Trabajadores')
-            ->assertSee('Invitados');
+            ->assertSee('Visitantes');
 
         // Un trabajador entra…
         Livewire::test(Marcar::class)

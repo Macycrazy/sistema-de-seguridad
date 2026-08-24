@@ -72,7 +72,7 @@ class GestionDeTrabajadores
 
         if ($existente && $existente->esInvitado()) {
             throw ValidationException::withMessages([
-                'cedula' => 'Esa cédula ya está registrada como invitado, no como trabajador.',
+                'cedula' => 'Esa cédula ya está registrada como visitante, no como trabajador.',
             ]);
         }
 

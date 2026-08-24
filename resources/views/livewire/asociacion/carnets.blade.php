@@ -67,7 +67,7 @@
                     <x-tarjeta class="mt-4">
                         <div class="flex items-center gap-2">
                             <x-etiqueta tipo="inactivo">NO ACTIVO</x-etiqueta>
-                            <span class="text-sm text-slate-600">Carnet inexistente o dado de baja. En la puerta iría por el flujo de invitado o se rechazaría.</span>
+                            <span class="text-sm text-slate-600">Carnet inexistente o dado de baja. En la puerta iría por el flujo de visitante o se rechazaría.</span>
                         </div>
                     </x-tarjeta>
                 @endif

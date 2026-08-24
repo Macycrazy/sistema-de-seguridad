@@ -74,7 +74,7 @@ class Pases
      * nadie le dio ninguno, y buscarlos cédula por cédula no lo hace nadie. También destapa al
      * visitante al que se le olvidó dárselo.
      *
-     * Solo invitados: el trabajador entra con su carnet y no lleva pase.
+     * Solo visitantes: el trabajador entra con su carnet y no lleva pase.
      *
      * @return Collection<int, Persona>
      */

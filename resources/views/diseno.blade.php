@@ -52,7 +52,7 @@ tamano:   chico · normal · grande</code></pre>
                          oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
                 <x-campo etiqueta="Nombre y apellido" nombre="nombre" ayuda="Como aparece en el documento." />
                 <x-campo etiqueta="Motivo de visita" nombre="motivo"
-                         error="Este dato es obligatorio para un invitado." />
+                         error="Este dato es obligatorio para un visitante." />
             </div>
 
             <pre class="mt-5 overflow-x-auto rounded bg-slate-900 p-4 text-xs text-slate-100"><code>&lt;x-campo etiqueta="Cédula" nombre="cedula" tamano="grande" /&gt;
@@ -74,7 +74,7 @@ tamano:   chico · normal · grande</code></pre>
                 <x-etiqueta tipo="inactivo" />
             </div>
             <p class="mt-4 text-sm text-slate-600">
-                El ámbar significa <strong class="font-semibold text-slate-900">invitado</strong> en
+                El ámbar significa <strong class="font-semibold text-slate-900">visitante</strong> en
                 todo el sistema, y no se usa para nada más.
             </p>
 
@@ -141,7 +141,7 @@ tipo: trabajador · invitado · entrada · salida · inactivo</code></pre>
                 <span class="h-9 w-9 shrink-0 rounded bg-parte1"></span>
                 <div class="min-w-0">
                     <p class="font-mono text-xs font-bold text-slate-900">parte1</p>
-                    <p class="truncate text-xs text-slate-500">Parte 1 · marcar e invitados</p>
+                    <p class="truncate text-xs text-slate-500">Parte 1 · marcar y visitantes</p>
                 </div>
             </div>
             <div class="flex items-center gap-3 rounded border border-slate-200 bg-white p-3">
@@ -162,7 +162,7 @@ tipo: trabajador · invitado · entrada · salida · inactivo</code></pre>
                 <span class="h-9 w-9 shrink-0 rounded bg-invitado"></span>
                 <div class="min-w-0">
                     <p class="font-mono text-xs font-bold text-slate-900">invitado</p>
-                    <p class="truncate text-xs text-slate-500">Solo para invitados</p>
+                    <p class="truncate text-xs text-slate-500">Solo para visitantes</p>
                 </div>
             </div>
             <div class="flex items-center gap-3 rounded border border-slate-200 bg-white p-3">

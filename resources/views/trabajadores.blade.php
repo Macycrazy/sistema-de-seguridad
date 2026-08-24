@@ -10,7 +10,7 @@
             titulo="Trabajadores"
             que="El personal del edificio. Aquí se registra a quién se le marca en la puerta —los que aparecen por su cédula— y se corrigen sus datos."
             :pasos="[
-                'Con <b>Trabajadores | Invitados</b> eliges a quién ves.',
+                'Con <b>Trabajadores | Visitantes</b> eliges a quién ves.',
                 '<b>Nuevo trabajador</b> lo da de alta a mano; <b>Importar</b> sube una lista de Excel.',
                 '<b>Editar</b> corrige nombre, gerencia, piso o ente (la cédula no se cambia).',
                 'Los filtros de gerencia, ente y estado, y la búsqueda por cédula o nombre, achican la lista.',
