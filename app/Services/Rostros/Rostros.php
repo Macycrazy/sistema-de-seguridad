@@ -38,12 +38,24 @@ class Rostros
     }
 
     /**
-     * La galería para comparar en la puerta: cédula, nombre y descriptor.
+     * Cuántas muestras se guardan como máximo por persona.
+     *
+     * Cada una es otra oportunidad de reconocerla, pero también más trabajo por cuadro de vídeo y
+     * más peso al descargar la galería. Seis cubre de sobra la variedad de una misma cara —luz,
+     * gafas, barba— sin que la puerta se note más lenta.
+     */
+    public const MAX_MUESTRAS = 6;
+
+    /**
+     * La galería para comparar en la puerta: cédula, nombre y TODAS sus muestras.
      *
      * Va sin foto y sin más datos de los necesarios: lo que viaja al navegador es lo justo para
      * decir «este es Fulano», que es lo único que la puerta necesita.
      *
-     * @return array<int, array{cedula:string, nombre:string, descriptor:array<int, float>}>
+     * Las muestras van juntas por persona porque al comparar se toma la MEJOR de las suyas. No se
+     * promedian: la media entre la cara de 2019 y la de hoy es una cara que no existe.
+     *
+     * @return array<int, array{cedula:string, nombre:string, descriptores:array<int, array<int, float>>}>
      */
     public function galeria(): array
     {
@@ -51,13 +63,37 @@ class Rostros
             ->with('persona')
             ->get()
             ->filter(fn (Rostro $rostro) => $rostro->persona?->activo)
-            ->map(fn (Rostro $rostro) => [
-                'cedula' => (string) $rostro->persona->cedula,
-                'nombre' => (string) $rostro->persona->nombre,
-                'descriptor' => array_map('floatval', $rostro->descriptor),
+            ->groupBy(fn (Rostro $rostro) => (string) $rostro->persona->cedula)
+            ->map(fn ($muestras, $cedula) => [
+                'cedula' => (string) $cedula,
+                'nombre' => (string) $muestras->first()->persona->nombre,
+                'descriptores' => $muestras
+                    ->map(fn (Rostro $rostro) => array_map('floatval', $rostro->descriptor))
+                    ->values()
+                    ->all(),
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Las muestras de una persona, de la más reciente a la más antigua.
+     *
+     * @return Collection<int, Rostro>
+     */
+    public function muestrasDe(Persona $persona): Collection
+    {
+        return Rostro::query()
+            ->where('persona_id', $persona->id)
+            ->orderByDesc('calculado_en')
+            ->orderByDesc('id')
+            ->get();
+    }
+
+    /** Quita una muestra concreta. Las demás de esa persona se quedan. */
+    public function olvidarMuestra(Rostro $rostro): void
+    {
+        $rostro->delete();
     }
 
     /**
@@ -81,15 +117,48 @@ class Rostros
             }
         }
 
-        return Rostro::updateOrCreate(
-            ['persona_id' => $persona->id],
-            [
-                'descriptor' => array_map('floatval', array_values($descriptor)),
-                'origen' => $origen,
-                'hash_foto' => $hashFoto,
-                'calculado_en' => now(),
-            ],
-        );
+        $atributos = [
+            'descriptor' => array_map('floatval', array_values($descriptor)),
+            'origen' => $origen,
+            'hash_foto' => $hashFoto,
+            'calculado_en' => now(),
+        ];
+
+        // La del carnet es UNA: reindexar la sustituye, que es de lo que va reindexar. Las demás se
+        // acumulan, porque cada una es una cara distinta de la misma persona.
+        if ($origen === Rostro::DEL_CARNET) {
+            return Rostro::updateOrCreate(
+                ['persona_id' => $persona->id, 'origen' => Rostro::DEL_CARNET],
+                $atributos,
+            );
+        }
+
+        $nueva = Rostro::create($atributos + ['persona_id' => $persona->id]);
+
+        $this->recortarMuestras($persona);
+
+        return $nueva;
+    }
+
+    /**
+     * Deja a esa persona en el máximo de muestras, tirando las más viejas.
+     *
+     * La del carnet NO se cuenta ni se tira: es la de referencia, la única que se puede volver a
+     * calcular sola, y si se perdiera habría que reindexar para recuperarla.
+     */
+    private function recortarMuestras(Persona $persona): void
+    {
+        $sobran = Rostro::query()
+            ->where('persona_id', $persona->id)
+            ->where('origen', '!=', Rostro::DEL_CARNET)
+            ->orderByDesc('calculado_en')
+            ->orderByDesc('id')
+            ->get()
+            ->slice(self::MAX_MUESTRAS);
+
+        foreach ($sobran as $vieja) {
+            $vieja->delete();
+        }
     }
 
     /** Quita el rostro de una persona. */
@@ -115,9 +184,12 @@ class Rostros
     public function estado(): array
     {
         $total = $this->indexables()->count();
+
+        // PERSONAS con al menos una muestra, no muestras: ahora puede haber varias por cabeza.
         $indexadas = Rostro::query()
             ->whereHas('persona', fn ($q) => $q->where('activo', true)->where('tipo', Persona::TRABAJADOR))
-            ->count();
+            ->distinct('persona_id')
+            ->count('persona_id');
 
         return [
             'indexadas' => $indexadas,

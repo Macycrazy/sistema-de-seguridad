@@ -14,6 +14,7 @@
                 'Hecho eso, en <b>Marcar</b> aparece el botón de buscar por rostro.',
                 'La puerta <b>propone</b> a quién se parece y rellena la cédula. Marcar sigue siendo cosa del vigilante.',
                 'Si a alguien le cambian la foto en carnets, <b>Comprobar si alguna foto cambió</b> lo dice, y se actualiza solo a esa gente.',
+                '<b>Añadir caras con la cámara</b>: la del carnet puede ser de hace años. Buscas a la persona, se pone delante, y se guardan solas las poses que aporten algo. Cuantas más tenga, mejor se le reconoce.',
                 '<b>Borrar el índice</b> lo deja todo como estaba, y el sistema sigue funcionando igual con el carnet.',
             ]"
             nota="Los 128 números identifican a una persona, así que son un dato personal: quién indexa y quién borra queda en la auditoría." />

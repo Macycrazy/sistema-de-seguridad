@@ -87,8 +87,64 @@ class RostrosTest extends TestCase
         $galeria = app(Rostros::class)->galeria();
 
         $this->assertCount(1, $galeria);
-        $this->assertSame(['cedula', 'nombre', 'descriptor'], array_keys($galeria[0]));
+        $this->assertSame(['cedula', 'nombre', 'descriptores'], array_keys($galeria[0]));
         $this->assertSame($ana->cedula, $galeria[0]['cedula']);
+
+        // Las muestras van juntas por persona: al comparar se usa la que mejor case.
+        $this->assertCount(1, $galeria[0]['descriptores']);
+    }
+
+    #[Test]
+    public function una_persona_puede_tener_varias_caras_y_van_juntas(): void
+    {
+        // La del carnet es de hace años: cada muestra nueva es la misma cara con otra luz, otras
+        // gafas, otro día. Al comparar se usa la que mejor case.
+        $ana = $this->trabajador();
+
+        app(Rostros::class)->guardar($ana, $this->descriptor(0.1), Rostro::DEL_CARNET);
+        app(Rostros::class)->guardar($ana, $this->descriptor(0.2), Rostro::DE_LA_CAMARA);
+        app(Rostros::class)->guardar($ana, $this->descriptor(0.3), Rostro::DE_LA_CAMARA);
+
+        $galeria = app(Rostros::class)->galeria();
+
+        $this->assertCount(1, $galeria, 'Una entrada por persona…');
+        $this->assertCount(3, $galeria[0]['descriptores'], '…con sus tres caras dentro.');
+        $this->assertSame(3, app(Rostros::class)->muestrasDe($ana)->count());
+    }
+
+    #[Test]
+    public function reindexar_sustituye_la_del_carnet_y_no_toca_las_de_la_camara(): void
+    {
+        // Reindexar es «vuelve a mirar su foto», no «olvida lo que aprendiste de él».
+        $ana = $this->trabajador();
+
+        app(Rostros::class)->guardar($ana, $this->descriptor(0.5), Rostro::DE_LA_CAMARA);
+        app(Rostros::class)->guardar($ana, $this->descriptor(0.1), Rostro::DEL_CARNET);
+        app(Rostros::class)->guardar($ana, $this->descriptor(0.9), Rostro::DEL_CARNET);
+
+        $muestras = app(Rostros::class)->muestrasDe($ana);
+
+        $this->assertCount(2, $muestras, 'La del carnet es una sola; la de la cámara sigue.');
+        $this->assertSame(1, $muestras->where('origen', Rostro::DEL_CARNET)->count());
+        $this->assertSame(0.9, $muestras->firstWhere('origen', Rostro::DEL_CARNET)->descriptor[0]);
+    }
+
+    #[Test]
+    public function las_muestras_de_camara_tienen_techo_y_se_tiran_las_mas_viejas(): void
+    {
+        // Cada una cuesta trabajo por cuadro de vídeo y peso al descargar la galería.
+        $ana = $this->trabajador();
+
+        app(Rostros::class)->guardar($ana, $this->descriptor(0.1), Rostro::DEL_CARNET);
+
+        foreach (range(1, Rostros::MAX_MUESTRAS + 3) as $i) {
+            app(Rostros::class)->guardar($ana, $this->descriptor($i / 100), Rostro::DE_LA_CAMARA);
+        }
+
+        $muestras = app(Rostros::class)->muestrasDe($ana);
+
+        $this->assertSame(Rostros::MAX_MUESTRAS, $muestras->where('origen', Rostro::DE_LA_CAMARA)->count());
+        $this->assertSame(1, $muestras->where('origen', Rostro::DEL_CARNET)->count(), 'La del carnet no se tira nunca.');
     }
 
     #[Test]

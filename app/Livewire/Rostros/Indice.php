@@ -3,6 +3,7 @@
 namespace App\Livewire\Rostros;
 
 use App\Models\Persona;
+use App\Models\Rostro;
 use App\Services\Auditoria\Auditoria;
 use App\Services\Carnets\PadronDelCarnet;
 use App\Services\Rostros\Rostros;
@@ -203,6 +204,115 @@ class Indice extends Component
 
         $this->reset('desactualizados', 'comprobado');
         unset($this->estado, $this->pendientes, $this->todos);
+    }
+
+    // --- Muestras con la cámara: la foto del carnet es de hace años ---
+
+    /** A quién se le están tomando muestras, si a alguien. */
+    public ?int $tomandoMuestrasDe = null;
+
+    /** La cédula que se teclea para buscar a esa persona. */
+    public string $cedulaMuestras = '';
+
+    /** La persona a la que se le están tomando muestras. */
+    #[Computed]
+    public function personaDeMuestras(): ?Persona
+    {
+        return $this->tomandoMuestrasDe ? Persona::find($this->tomandoMuestrasDe) : null;
+    }
+
+    /**
+     * Las muestras que ya tiene esa persona, para pintarlas y poder quitarlas.
+     *
+     * @return Collection<int, Rostro>
+     */
+    #[Computed]
+    public function muestras(): Collection
+    {
+        $persona = $this->personaDeMuestras();
+
+        return $persona ? app(Rostros::class)->muestrasDe($persona) : collect();
+    }
+
+    /** Busca a quién se le van a tomar las muestras. */
+    public function buscarParaMuestras(): void
+    {
+        Gate::authorize('gestionar-personal');
+        $this->resetValidation();
+
+        $cedula = Persona::normalizarCedula($this->cedulaMuestras);
+        $persona = $cedula === '' ? null : Persona::where('cedula', $cedula)->where('tipo', Persona::TRABAJADOR)->first();
+
+        if (! $persona) {
+            $this->addError('cedulaMuestras', 'No hay ningún trabajador con esa cédula.');
+
+            return;
+        }
+
+        $this->tomandoMuestrasDe = $persona->id;
+        $this->aviso = '';
+        unset($this->muestras, $this->personaDeMuestras);
+    }
+
+    /**
+     * Los descriptores que ya tiene, para que el navegador compare y no guarde lo que ya está.
+     *
+     * @return array<int, array<int, float>>
+     */
+    public function muestrasParaComparar(): array
+    {
+        Gate::authorize('gestionar-personal');
+
+        return $this->muestras
+            ->map(fn ($rostro) => array_map('floatval', $rostro->descriptor))
+            ->values()
+            ->all();
+    }
+
+    /** Guarda una muestra que el navegador ha decidido que aporta algo. */
+    public function guardarMuestra(array $descriptor): void
+    {
+        Gate::authorize('gestionar-personal');
+
+        $persona = $this->personaDeMuestras();
+
+        if (! $persona) {
+            return;
+        }
+
+        try {
+            app(Rostros::class)->guardar($persona, $descriptor, Rostro::DE_LA_CAMARA);
+        } catch (ValidationException $e) {
+            return;
+        }
+
+        unset($this->muestras, $this->estado);
+    }
+
+    public function terminadoDeTomarMuestras(): void
+    {
+        unset($this->muestras, $this->estado, $this->pendientes, $this->todos);
+    }
+
+    /** Quita una muestra concreta: las demás de esa persona se quedan. */
+    public function olvidarMuestra(int $id): void
+    {
+        Gate::authorize('gestionar-personal');
+
+        $rostro = Rostro::find($id);
+
+        if ($rostro) {
+            app(Rostros::class)->olvidarMuestra($rostro);
+            $this->aviso = 'Muestra quitada.';
+        }
+
+        unset($this->muestras, $this->estado);
+    }
+
+    public function cerrarMuestras(): void
+    {
+        $this->reset('tomandoMuestrasDe', 'cedulaMuestras');
+        unset($this->muestras, $this->personaDeMuestras);
     }
 
     /** Vacía el índice entero: la salida si esto se decide no usar. */

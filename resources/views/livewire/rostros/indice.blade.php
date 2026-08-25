@@ -95,6 +95,106 @@
         </div>
     @endcan
 
+    {{-- MUESTRAS CON LA CÁMARA.
+
+         La foto del carnet es de hace años. Cada muestra nueva es la misma cara con la luz, las
+         gafas y el peinado de hoy, y al comparar se usa la que mejor case: por eso una persona con
+         cuatro muestras se reconoce mucho mejor que con una. --}}
+    @can('gestionar-personal')
+        <div class="mt-6 border-t border-slate-200 pt-5">
+            <p class="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">
+                Añadir caras con la cámara
+            </p>
+            <p class="mt-1 text-sm text-slate-500">
+                La del carnet puede ser de hace años. Cuantas más caras tenga alguien, mejor se le reconoce.
+            </p>
+
+            @unless ($this->personaDeMuestras)
+                <form wire:submit="buscarParaMuestras" class="mt-3 flex flex-wrap items-end gap-3">
+                    <div class="w-44">
+                        <x-campo etiqueta="Cédula" nombre="cedulaMuestras" inputmode="numeric" maxlength="9"
+                                 oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                                 wire:model="cedulaMuestras" :error="$errors->first('cedulaMuestras')" />
+                    </div>
+                    <div class="pb-6">
+                        <x-boton type="submit" tamano="chico">Buscar</x-boton>
+                    </div>
+                </form>
+            @else
+                <div class="mt-3 rounded border border-slate-200 bg-white p-4 shadow-sm"
+                     x-data="muestrasDeRostro($wire)">
+                    <div class="flex flex-wrap items-baseline justify-between gap-2">
+                        <p class="font-semibold text-slate-900">{{ $this->personaDeMuestras->nombre }}</p>
+                        <button type="button" wire:click="cerrarMuestras"
+                                class="text-sm font-semibold text-slate-500 hover:underline">Cambiar de persona</button>
+                    </div>
+
+                    {{-- Lo que ya tiene, y de dónde salió cada una. --}}
+                    <ul class="mt-3 divide-y divide-slate-100 text-sm">
+                        @forelse ($this->muestras as $muestra)
+                            <li class="flex items-center justify-between gap-3 py-2" wire:key="muestra-{{ $muestra->id }}">
+                                <span>
+                                    <span class="font-medium text-slate-800">
+                                        {{ $muestra->origen === \App\Models\Rostro::DEL_CARNET ? 'Del carnet' : 'Tomada con la cámara' }}
+                                    </span>
+                                    <span class="ml-1 font-mono text-xs text-slate-400">
+                                        {{ $muestra->calculado_en?->translatedFormat('d M Y · g:i a') }}
+                                    </span>
+                                </span>
+
+                                <button type="button" wire:click="olvidarMuestra({{ $muestra->id }})"
+                                        class="shrink-0 text-sm font-semibold text-alto hover:underline">Quitar</button>
+                            </li>
+                        @empty
+                            <li class="py-2 text-slate-500">Todavía no tiene ninguna cara guardada.</li>
+                        @endforelse
+                    </ul>
+
+                    <div x-show="!abierto" class="mt-3">
+                        <x-boton type="button" x-on:click="abrir()">Añadir con la cámara</x-boton>
+                        <p class="mt-2 text-xs text-slate-500">
+                            Se guardan solas las que aporten algo distinto. Las que ya estén, o las que no se
+                            parezcan a esta persona, se descartan.
+                        </p>
+                    </div>
+
+                    <div x-show="abierto" x-cloak class="mt-3">
+                        <div class="relative overflow-hidden rounded-xl bg-slate-900" @click="enfocar($event)">
+                            <video x-ref="video" playsinline muted class="h-auto w-full"></video>
+
+                            <div class="absolute inset-x-0 top-0 z-20 flex items-center gap-3 p-3">
+                                <span class="rounded-full bg-black/50 px-3 py-1 font-mono text-xs font-bold text-white backdrop-blur-md">
+                                    <span x-text="guardadas"></span> guardadas
+                                </span>
+
+                                <div class="ml-auto flex items-center gap-3">
+                                    <button type="button" x-show="soportaLinterna" @click.stop="toggleLinterna()" x-cloak
+                                            class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md transition hover:bg-black/60"
+                                            :class="linternaEncendida ? '!bg-yellow-400 !text-black' : ''">
+                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                    </button>
+
+                                    <button type="button" x-show="puedeCambiarCamara" @click.stop="cambiarCamara()" x-cloak
+                                            class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md transition hover:bg-black/60">
+                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <p class="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-slate-900/90 to-transparent
+                                      px-4 pb-4 pt-8 text-center text-sm font-semibold text-white"
+                               x-text="mensaje"></p>
+                        </div>
+
+                        <x-boton type="button" variante="secundario" x-on:click="cerrar()" class="mt-3 w-full">
+                            Terminar
+                        </x-boton>
+                    </div>
+                </div>
+            @endunless
+        </div>
+    @endcan
+
     @if ($fallidas !== [])
         <div class="mt-5 overflow-hidden rounded border-l-4 border-invitado bg-invitado-suave/40">
             <div class="px-4 py-3">

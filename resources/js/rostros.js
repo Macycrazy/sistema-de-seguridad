@@ -369,6 +369,125 @@ export function indiceDeRostros(wire) {
 }
 
 /**
+ * Tomar muestras de la cara de alguien con la cámara.
+ *
+ * Es lo que hace que el reconocimiento aguante el paso del tiempo: la foto del carnet es de hace
+ * años, y cada muestra nueva es la misma cara con la luz, las gafas y el peinado de hoy.
+ *
+ * No guarda todo lo que ve. Una muestra sirve si es PARECIDA PERO NO IDÉNTICA a las que ya hay:
+ *
+ *   · demasiado parecida (por debajo de «yaLaTengo») no aporta nada y solo ocupa sitio;
+ *   · demasiado distinta (por encima de «noEsLaMisma») probablemente no es esa persona —alguien
+ *     se cruzó por delante— y guardarla envenenaría su ficha para siempre.
+ *
+ * En medio está la variedad útil, que es justo lo que se busca.
+ */
+export function muestrasDeRostro(wire) {
+    return {
+        ...controlesDeCamara(),
+
+        abierto: false,
+        mensaje: '',
+        raf: null,
+
+        // Las muestras que ya tiene esa persona, para comparar contra ellas.
+        conocidas: [],
+        guardadas: 0,
+        descartadas: 0,
+
+        // Aporta variedad si está entre estas dos distancias.
+        yaLaTengo: 0.25,
+        noEsLaMisma: 0.62,
+
+        async abrir(deviceId = null) {
+            this.abierto = true;
+            this.mensaje = 'Preparando…';
+            this.guardadas = 0;
+            this.descartadas = 0;
+
+            try {
+                this.conocidas = (await wire.muestrasParaComparar()) || [];
+
+                await motor();
+                await this.encenderCamara(deviceId);
+
+                this.mensaje = 'Mira a la cámara y muévete un poco: de frente, de lado, con y sin gafas.';
+                this.buscar();
+            } catch (e) {
+                this.mensaje = 'No se pudo abrir la cámara: ' + (e.message || e.name);
+            }
+        },
+
+        async reabrirCamara(deviceId) {
+            this.pararBusqueda();
+            this.apagarCamara();
+            await this.abrir(deviceId);
+        },
+
+        async buscar() {
+            const video = this.$refs.video;
+
+            const tick = async () => {
+                if (!this.abierto) return;
+
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    let descriptor = null;
+
+                    try {
+                        descriptor = await descriptorDe(video);
+                    } catch (e) {}
+
+                    if (descriptor) {
+                        await this.valorar(descriptor);
+                    }
+                }
+
+                setTimeout(() => { if (this.abierto) this.raf = requestAnimationFrame(tick); }, 400);
+            };
+
+            tick();
+        },
+
+        /** Decide si esta cara aporta algo y, si aporta, la guarda. */
+        async valorar(descriptor) {
+            if (this.conocidas.length > 0) {
+                const cerca = Math.min(...this.conocidas.map((d) => distancia(descriptor, d)));
+
+                if (cerca < this.yaLaTengo) {
+                    this.mensaje = 'Esa pose ya la tengo. Gira un poco la cara, o cambia la luz.';
+                    return;
+                }
+
+                if (cerca > this.noEsLaMisma) {
+                    this.descartadas++;
+                    this.mensaje = 'Esa cara no se parece a la de esta persona: no la guardo.';
+                    return;
+                }
+            }
+
+            await wire.guardarMuestra(descriptor);
+
+            this.conocidas.push(descriptor);
+            this.guardadas++;
+            this.avisarDeLectura();
+            this.mensaje = 'Guardada (' + this.guardadas + '). Cambia un poco la pose para la siguiente.';
+        },
+
+        pararBusqueda() {
+            if (this.raf) cancelAnimationFrame(this.raf);
+            this.raf = null;
+        },
+
+        cerrar() {
+            this.abierto = false;
+            this.pararBusqueda();
+            this.apagarCamara();
+            wire.terminadoDeTomarMuestras();
+        },
+    };
+}
+
+/**
  * El reconocimiento en la puerta: mira por la cámara y propone a quién se parece.
  *
  * NUNCA marca por su cuenta. Cuando encuentra a alguien rellena la cédula y deja la ficha delante
@@ -454,8 +573,14 @@ export function rostroEnLaPuerta(wire) {
                     }
 
                     if (descriptor) {
+                        // De cada persona, su MEJOR muestra. No la media: el promedio entre la cara
+                        // del carnet de hace años y la de hoy es una cara que no existe, y se
+                        // parecería menos a la persona que cualquiera de las dos.
                         const parecidos = this.galeria
-                            .map((fila) => ({ ...fila, distancia: distancia(descriptor, fila.descriptor) }))
+                            .map((fila) => ({
+                                ...fila,
+                                distancia: Math.min(...fila.descriptores.map((d) => distancia(descriptor, d))),
+                            }))
                             .sort((uno, otro) => uno.distancia - otro.distancia);
 
                         const mejor = parecidos[0];

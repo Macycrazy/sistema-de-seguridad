@@ -17,6 +17,17 @@ class Rostro extends Model
     /** Cuántos números tiene un descriptor. Lo fija el modelo de reconocimiento, no nosotros. */
     public const LARGO = 128;
 
+    /**
+     * De dónde salió la cara.
+     *
+     * La del carnet es la de referencia: hay una por persona y se sustituye al reindexar. Las de la
+     * cámara se acumulan —cada una es la misma cara con otra luz, otras gafas, otro día— y son las
+     * que hacen que el reconocimiento aguante el paso del tiempo.
+     */
+    public const DEL_CARNET = 'carnet';
+
+    public const DE_LA_CAMARA = 'camara';
+
     protected $fillable = [
         'persona_id',
         'descriptor',

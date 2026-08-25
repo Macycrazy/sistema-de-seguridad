@@ -10,12 +10,13 @@
  * funciona sobre HTTPS (o localhost); por eso el puesto se sirve por HTTPS.
  */
 import { controlesDeCamara } from './camara.js';
-import { indiceDeRostros, rostroEnLaPuerta } from './rostros.js';
+import { indiceDeRostros, muestrasDeRostro, rostroEnLaPuerta } from './rostros.js';
 
 document.addEventListener('alpine:init', () => {
     // El reconocimiento de caras vive en su propio archivo y se carga bajo demanda: ver rostros.js.
     window.Alpine.data('indiceDeRostros', indiceDeRostros);
     window.Alpine.data('rostroEnLaPuerta', rostroEnLaPuerta);
+    window.Alpine.data('muestrasDeRostro', muestrasDeRostro);
 
     window.Alpine.data('escanerCarnet', (wire) => ({
         // Linterna, zoom, cambiar de cámara y enfocar al tocar: viven en camara.js, y de ahí los
