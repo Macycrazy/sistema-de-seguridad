@@ -59,6 +59,19 @@ function enVivo(faceapi) {
 
 /** Los 128 números de la cara de un vídeo. Null si no se ve ninguna. */
 async function descriptorDe(elemento) {
+    const encontrada = await caraDe(elemento);
+
+    return encontrada ? encontrada.descriptor : null;
+}
+
+/**
+ * La cara de un vídeo con lo que hace falta para saber si merece la pena fiarse de ella.
+ *
+ * Además de los 128 números vienen el tamaño en pantalla y la confianza de la detección. Una cara
+ * pequeña, de perfil o borrosa da unos números pobres que caen a media distancia de todo el mundo:
+ * son las que provocan que se confunda a dos personas.
+ */
+async function caraDe(elemento) {
     const faceapi = await motor();
 
     const resultado = await faceapi
@@ -66,7 +79,15 @@ async function descriptorDe(elemento) {
         .withFaceLandmarks(true)
         .withFaceDescriptor();
 
-    return resultado ? Array.from(resultado.descriptor) : null;
+    if (!resultado) return null;
+
+    const caja = resultado.detection.box;
+
+    return {
+        descriptor: Array.from(resultado.descriptor),
+        lado: Math.min(caja.width, caja.height),
+        confianza: resultado.detection.score,
+    };
 }
 
 /**
@@ -509,9 +530,34 @@ export function rostroEnLaPuerta(wire) {
         // en un atributo del HTML serían cientos de kilos con las comillas rotas por medio.
         galeria: [],
 
-        // Por debajo de esto se considera la misma persona. 0,5 es prudente: prefiere no decir
-        // nada a decir un nombre equivocado, que en la puerta es lo caro.
-        umbral: 0.5,
+        /*
+         * Las cuatro condiciones que hacen falta para decir un nombre. Todas, no una.
+         *
+         * Con solo la primera —«el más parecido está bastante cerca»— el sistema confunde
+         * personas, y eso es lo peor que puede hacer: un nombre equivocado se cree, mientras que
+         * un «no lo reconozco» solo obliga a usar el carnet.
+         */
+
+        // 1. Estar cerca. Más exigente que antes: con casi trescientas caras en la galería, algo
+        //    a media distancia se parece a demasiada gente.
+        umbral: 0.45,
+
+        // 2. Y estar MÁS cerca que el segundo, con holgura. Si el primero está a 0,44 y el segundo
+        //    a 0,46, elegir el primero es lanzar una moneda: ahí no se dice nada.
+        margen: 0.06,
+
+        // 3. Verse bien. Una cara pequeña o de perfil da unos números pobres que caen a media
+        //    distancia de todo el mundo, y son las que provocan las confusiones.
+        ladoMinimo: 110,
+        confianzaMinima: 0.75,
+
+        // 4. Repetirse. El mismo candidato tiene que ganar dos cuadros seguidos: un cuadro malo
+        //    puede acertar por casualidad, dos seguidos con la misma persona ya no.
+        confirmacionesNecesarias: 2,
+
+        // A quién va ganando y desde cuántos cuadros.
+        candidato: null,
+        vecesSeguidas: 0,
 
         /*
          * Se empieza por la cámara principal —la de atrás—, no por la de selfie.
@@ -530,6 +576,16 @@ export function rostroEnLaPuerta(wire) {
             try {
                 if (this.galeria.length === 0) {
                     this.galeria = (await wire.galeriaParaReconocer()) || [];
+
+                    // Lo estricto que se pone: se ajusta desde Reconocimiento facial, porque el
+                    // punto bueno depende de las fotos que haya y de cuánta gente.
+                    const ajustes = await wire.ajustesDeRostro();
+
+                    if (ajustes) {
+                        this.umbral = ajustes.umbral ?? this.umbral;
+                        this.margen = ajustes.margen ?? this.margen;
+                        this.confirmacionesNecesarias = ajustes.confirmaciones ?? this.confirmacionesNecesarias;
+                    }
                 }
 
                 if (this.galeria.length === 0) {
@@ -564,39 +620,27 @@ export function rostroEnLaPuerta(wire) {
                 if (!this.abierto) return;
 
                 if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                    let descriptor = null;
+                    let cara = null;
 
                     try {
-                        descriptor = await descriptorDe(video);
+                        cara = await caraDe(video);
                     } catch (e) {
                         // Un cuadro que falla no es nada: se intenta con el siguiente.
                     }
 
-                    if (descriptor) {
-                        // De cada persona, su MEJOR muestra. No la media: el promedio entre la cara
-                        // del carnet de hace años y la de hoy es una cara que no existe, y se
-                        // parecería menos a la persona que cualquiera de las dos.
-                        const parecidos = this.galeria
-                            .map((fila) => ({
-                                ...fila,
-                                distancia: Math.min(...fila.descriptores.map((d) => distancia(descriptor, d))),
-                            }))
-                            .sort((uno, otro) => uno.distancia - otro.distancia);
+                    if (cara) {
+                        this.valorar(cara);
 
-                        const mejor = parecidos[0];
-
-                        if (mejor && mejor.distancia <= this.umbral) {
+                        if (this.candidato && this.vecesSeguidas >= this.confirmacionesNecesarias) {
                             // Lo mismo que al leer un carnet: aquí el vigilante está mirando a la
                             // persona que tiene delante, no al teléfono.
                             this.avisarDeLectura();
 
-                            this.mensaje = 'Es ' + mejor.nombre + '. Comprueba la foto.';
-                            wire.rostroReconocido(mejor.cedula, Number(mejor.distancia.toFixed(3)));
+                            this.mensaje = 'Es ' + this.candidato.nombre + '. Comprueba la foto.';
+                            wire.rostroReconocido(this.candidato.cedula, Number(this.candidato.distancia.toFixed(3)));
                             this.cerrar();
                             return;
                         }
-
-                        this.mensaje = 'No reconozco esa cara. Usa el carnet o teclea la cédula.';
                     }
                 }
 
@@ -608,6 +652,74 @@ export function rostroEnLaPuerta(wire) {
             tick();
         },
 
+        /**
+         * Decide si esta cara identifica a alguien, y lo dice cuando NO.
+         *
+         * Que no reconozca es un resultado, no un fallo: obliga a usar el carnet y ahí se acabó.
+         * Decir un nombre equivocado, en cambio, mete a otra persona en el registro. Por eso cada
+         * condición que no se cumple tiene su propio mensaje: así el vigilante sabe si acercarse,
+         * si insistir o si dejarlo.
+         */
+        valorar(cara) {
+            // Se ve mal: unos números pobres caen a media distancia de todo el mundo.
+            if (cara.lado < this.ladoMinimo) {
+                this.olvidarCandidato();
+                this.mensaje = 'Acércate un poco: la cara se ve pequeña.';
+                return;
+            }
+
+            if (cara.confianza < this.confianzaMinima) {
+                this.olvidarCandidato();
+                this.mensaje = 'Mira de frente a la cámara.';
+                return;
+            }
+
+            // De cada persona, su MEJOR muestra. No la media: el promedio entre la cara del carnet
+            // de hace años y la de hoy es una cara que no existe.
+            const parecidos = this.galeria
+                .map((fila) => ({
+                    ...fila,
+                    distancia: Math.min(...fila.descriptores.map((d) => distancia(cara.descriptor, d))),
+                }))
+                .sort((uno, otro) => uno.distancia - otro.distancia);
+
+            const mejor = parecidos[0];
+            const segundo = parecidos[1];
+
+            if (!mejor || mejor.distancia > this.umbral) {
+                this.olvidarCandidato();
+                this.mensaje = 'No reconozco esa cara. Usa el carnet o teclea la cédula.';
+                return;
+            }
+
+            // Dos candidatos igual de cerca: elegir uno sería lanzar una moneda con el nombre de
+            // una persona. Se dicen los dos y decide el vigilante con el carnet.
+            if (segundo && segundo.distancia - mejor.distancia < this.margen) {
+                this.olvidarCandidato();
+                this.mensaje = 'Puede ser ' + mejor.nombre + ' o ' + segundo.nombre + '. Usa el carnet.';
+                return;
+            }
+
+            // Mismo candidato que el cuadro anterior: se acumula. Otro distinto: vuelta a empezar.
+            if (this.candidato && this.candidato.cedula === mejor.cedula) {
+                this.vecesSeguidas++;
+            } else {
+                this.candidato = mejor;
+                this.vecesSeguidas = 1;
+            }
+
+            this.candidato = mejor;
+
+            if (this.vecesSeguidas < this.confirmacionesNecesarias) {
+                this.mensaje = 'Comprobando… no te muevas.';
+            }
+        },
+
+        olvidarCandidato() {
+            this.candidato = null;
+            this.vecesSeguidas = 0;
+        },
+
         pararBusqueda() {
             if (this.raf) cancelAnimationFrame(this.raf);
             this.raf = null;
@@ -615,6 +727,7 @@ export function rostroEnLaPuerta(wire) {
 
         cerrar() {
             this.abierto = false;
+            this.olvidarCandidato();
             this.pararBusqueda();
             this.apagarCamara();
         },

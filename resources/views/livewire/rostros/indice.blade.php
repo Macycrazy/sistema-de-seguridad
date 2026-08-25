@@ -95,6 +95,49 @@
         </div>
     @endcan
 
+    {{-- LO ESTRICTO QUE SE PONE LA PUERTA.
+
+         Confundir a dos personas es lo peor que puede hacer esto: un nombre equivocado se cree y
+         entra en el registro, mientras que un «no lo reconozco» solo obliga a usar el carnet. El
+         punto bueno depende de las fotos que haya y de cuánta gente, así que se ajusta aquí. --}}
+    @can('gestionar-personal')
+        <div class="mt-6 border-t border-slate-200 pt-5">
+            <p class="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">
+                Cuándo se atreve a decir un nombre
+            </p>
+            <p class="mt-1 text-sm text-slate-500">
+                Si confunde a dos personas, baja el parecido o sube el margen. Es preferible que no reconozca
+                a que se equivoque.
+            </p>
+
+            <form wire:submit="fijarAjustes" class="mt-3 flex flex-wrap items-end gap-3">
+                <div class="w-40">
+                    <x-campo etiqueta="Parecido máximo" nombre="umbral" inputmode="decimal"
+                             ayuda="0,30 a 0,70. Más bajo, más estricto." wire:model="umbral" />
+                </div>
+                <div class="w-40">
+                    <x-campo etiqueta="Margen al segundo" nombre="margen" inputmode="decimal"
+                             ayuda="Cuánto más lejos ha de estar el 2.º." wire:model="margen" />
+                </div>
+                <div class="w-40">
+                    <x-campo etiqueta="Veces seguidas" nombre="confirmaciones" inputmode="numeric"
+                             ayuda="Cuadros que ha de ganar el mismo." wire:model="confirmaciones" />
+                </div>
+                <div class="pb-6">
+                    <x-boton type="submit" variante="secundario" tamano="chico">Guardar</x-boton>
+                </div>
+            </form>
+
+            <p class="text-xs leading-relaxed text-slate-500">
+                <b>Parecido máximo</b>: a qué distancia como máximo se da por la misma persona.
+                <b>Margen</b>: si el segundo candidato está casi igual de cerca, no dice nada y pide el carnet —sin
+                esto, dos personas parecidas se resuelven a cara o cruz—.
+                <b>Veces seguidas</b>: un cuadro malo puede acertar por casualidad; dos seguidos con la misma
+                persona, ya no.
+            </p>
+        </div>
+    @endcan
+
     {{-- MUESTRAS CON LA CÁMARA.
 
          La foto del carnet es de hace años. Cada muestra nueva es la misma cara con la luz, las

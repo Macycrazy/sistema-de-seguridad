@@ -811,6 +811,16 @@ class Marcar extends Component
         return $this->galeriaDeRostros;
     }
 
+    /**
+     * Lo estricto que se pone la puerta al decir un nombre. Se ajusta desde Reconocimiento facial.
+     *
+     * @return array{umbral:float, margen:float, confirmaciones:int}
+     */
+    public function ajustesDeRostro(): array
+    {
+        return app(Rostros::class)->ajustes();
+    }
+
     /** Si hay algún rostro indexado: sin eso, la puerta no ofrece buscar por la cara. */
     #[Computed]
     public function hayRostros(): bool

@@ -61,6 +61,73 @@ class Rostros
     /** Hasta dónde se deja subir. Por encima, el peso y los falsos positivos ganan a la ganancia. */
     public const TOPE_MUESTRAS = 20;
 
+    /**
+     * Lo estricto que se pone la puerta al decir un nombre.
+     *
+     * Los tres se ajustan desde la pantalla porque el punto bueno depende de las fotos que haya y
+     * de cuánta gente. Lo que NO se ajusta es la idea: es mejor no reconocer que reconocer mal.
+     * Un «no lo reconozco» obliga a usar el carnet; un nombre equivocado mete a otra persona en el
+     * registro y nadie lo revisa.
+     *
+     *   · umbral   — a qué distancia como máximo se considera la misma persona. Más bajo, más
+     *                estricto. Con casi trescientas caras conviene ser estricto: algo a media
+     *                distancia se parece a demasiada gente.
+     *   · margen   — cuánto más lejos tiene que estar el SEGUNDO candidato. Sin esto, dos personas
+     *                parecidas a 0,44 y 0,46 se resuelven a cara o cruz.
+     *   · confirma — cuántos cuadros seguidos tiene que ganar el mismo. Un cuadro malo acierta por
+     *                casualidad; dos seguidos con la misma persona, ya no.
+     *
+     * @return array{umbral:float, margen:float, confirmaciones:int}
+     */
+    public function ajustes(): array
+    {
+        return [
+            'umbral' => $this->deMilesimas('rostros_umbral', 0.45),
+            'margen' => $this->deMilesimas('rostros_margen', 0.06),
+            'confirmaciones' => (int) ($this->parametro('rostros_confirmaciones') ?? 2),
+        ];
+    }
+
+    /** Guarda lo estricto que se pone la puerta. Los rangos evitan dejarla inservible o crédula. */
+    public function fijarAjustes(float $umbral, float $margen, int $confirmaciones): void
+    {
+        $this->aMilesimas('rostros_umbral', max(0.30, min(0.70, $umbral)));
+        $this->aMilesimas('rostros_margen', max(0.0, min(0.30, $margen)));
+        $this->guardarParametro('rostros_confirmaciones', max(1, min(5, $confirmaciones)));
+    }
+
+    /**
+     * Las distancias son decimales y la tabla «parametros» guarda enteros —la comparten los
+     * umbrales de alerta y las reglas de tiempo, que se cuentan en horas y en personas—. Se
+     * guardan en milésimas: 0,45 se escribe 450.
+     *
+     * Es preferible a añadirle una columna de texto a una tabla que usan otros tres módulos por
+     * un decimal que aquí nunca pasa de tres cifras.
+     */
+    private function deMilesimas(string $clave, float $porOmision): float
+    {
+        $valor = $this->parametro($clave);
+
+        return $valor === null ? $porOmision : round(((int) $valor) / 1000, 3);
+    }
+
+    private function aMilesimas(string $clave, float $valor): void
+    {
+        $this->guardarParametro($clave, (int) round($valor * 1000));
+    }
+
+    private function parametro(string $clave): ?string
+    {
+        $valor = Parametro::query()->where('clave', $clave)->value('valor');
+
+        return $valor === null ? null : (string) $valor;
+    }
+
+    private function guardarParametro(string $clave, int $valor): void
+    {
+        Parametro::updateOrCreate(['clave' => $clave], ['valor' => $valor]);
+    }
+
     /** Cuántas muestras por persona se guardan, según lo configurado. */
     public function maxMuestras(): int
     {

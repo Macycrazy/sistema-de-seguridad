@@ -134,6 +134,27 @@ class RostrosTest extends TestCase
     }
 
     #[Test]
+    public function lo_estricto_que_se_pone_la_puerta_se_ajusta_y_tiene_topes(): void
+    {
+        // Confundir a dos personas es lo peor que puede hacer esto, y el punto bueno depende de
+        // las fotos que haya. Pero no se puede dejar ni inservible ni crédula.
+        $rostros = app(Rostros::class);
+
+        $rostros->fijarAjustes(0.38, 0.10, 3);
+
+        $this->assertSame(0.38, $rostros->ajustes()['umbral']);
+        $this->assertSame(0.10, $rostros->ajustes()['margen']);
+        $this->assertSame(3, $rostros->ajustes()['confirmaciones']);
+
+        // Un umbral altísimo reconocería a cualquiera como cualquiera.
+        $rostros->fijarAjustes(9.9, 9.9, 99);
+
+        $this->assertSame(0.70, $rostros->ajustes()['umbral']);
+        $this->assertSame(0.30, $rostros->ajustes()['margen']);
+        $this->assertSame(5, $rostros->ajustes()['confirmaciones']);
+    }
+
+    #[Test]
     public function la_galeria_va_redondeada_para_que_no_pese_de_mas(): void
     {
         // Viaja entera al navegador cada vez que se abre la cámara. Las distancias entre caras se

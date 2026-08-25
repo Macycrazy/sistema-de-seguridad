@@ -40,9 +40,45 @@ class Indice extends Component
         Gate::authorize('ver-personal');
     }
 
+    /** Lo estricto que se pone la puerta al decir un nombre. */
+    public string $umbral = '';
+
+    public string $margen = '';
+
+    public string $confirmaciones = '';
+
     public function mount(): void
     {
         $this->maxMuestras = (string) app(Rostros::class)->maxMuestras();
+
+        $ajustes = app(Rostros::class)->ajustes();
+        $this->umbral = (string) $ajustes['umbral'];
+        $this->margen = (string) $ajustes['margen'];
+        $this->confirmaciones = (string) $ajustes['confirmaciones'];
+    }
+
+    /**
+     * Guarda lo estricto que se pone la puerta.
+     *
+     * Hace falta poder ajustarlo porque el punto bueno depende de las fotos que haya y de cuánta
+     * gente: con casi trescientas caras, lo que valía para veinte confunde personas.
+     */
+    public function fijarAjustes(): void
+    {
+        Gate::authorize('gestionar-personal');
+
+        app(Rostros::class)->fijarAjustes(
+            (float) str_replace(',', '.', $this->umbral),
+            (float) str_replace(',', '.', $this->margen),
+            (int) $this->confirmaciones,
+        );
+
+        $ajustes = app(Rostros::class)->ajustes();
+        $this->umbral = (string) $ajustes['umbral'];
+        $this->margen = (string) $ajustes['margen'];
+        $this->confirmaciones = (string) $ajustes['confirmaciones'];
+
+        $this->aviso = 'Guardado. La puerta lo usará la próxima vez que abra la cámara.';
     }
 
     /** @return array{indexadas:int, total:int, faltan:int} */
