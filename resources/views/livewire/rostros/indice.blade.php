@@ -109,6 +109,26 @@
                 La del carnet puede ser de hace años. Cuantas más caras tenga alguien, mejor se le reconoce.
             </p>
 
+            {{-- Cuántas por persona. Lo que limita no es el reconocimiento: es que la galería
+                 viaja entera al navegador —unos 250 kB por muestra con este personal— y que
+                 cuantas más haya, más fácil es que una cara ajena caiga cerca de alguna. --}}
+            @can('gestionar-personal')
+                <form wire:submit="fijarMaxMuestras" class="mt-3 flex flex-wrap items-end gap-3">
+                    <div class="w-40">
+                        <x-campo etiqueta="Caras por persona" nombre="maxMuestras" inputmode="numeric"
+                                 ayuda="Entre 1 y {{ \App\Services\Rostros\Rostros::TOPE_MUESTRAS }}."
+                                 wire:model="maxMuestras" />
+                    </div>
+                    <div class="pb-6">
+                        <x-boton type="submit" variante="secundario" tamano="chico">Guardar</x-boton>
+                    </div>
+                    <p class="pb-6 text-xs text-slate-500 sm:max-w-md">
+                        De una a tres o cuatro está casi toda la mejora. Más arriba pesa más al abrir la cámara
+                        y aumenta el riesgo de confundir a dos personas parecidas.
+                    </p>
+                </form>
+            @endcan
+
             @unless ($this->personaDeMuestras)
                 <form wire:submit="buscarParaMuestras" class="mt-3 flex flex-wrap items-end gap-3">
                     <div class="w-44">

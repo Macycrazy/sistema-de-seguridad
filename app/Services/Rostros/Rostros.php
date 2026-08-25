@@ -2,6 +2,7 @@
 
 namespace App\Services\Rostros;
 
+use App\Models\Parametro;
 use App\Models\Persona;
 use App\Models\Rostro;
 use App\Services\Carnets\PadronDelCarnet;
@@ -38,13 +39,45 @@ class Rostros
     }
 
     /**
-     * Cuántas muestras se guardan como máximo por persona.
+     * Cuántas muestras por persona si nadie lo cambia.
      *
-     * Cada una es otra oportunidad de reconocerla, pero también más trabajo por cuadro de vídeo y
-     * más peso al descargar la galería. Seis cubre de sobra la variedad de una misma cara —luz,
-     * gafas, barba— sin que la puerta se note más lenta.
+     * Seis no es una ley, es un punto de partida. Lo que de verdad limita son dos cosas:
+     *
+     *   · EL PESO. La galería se descarga entera al abrir la cámara. Con 296 personas, cada
+     *     muestra más son unos 250 kB; a seis son 1,5 MB, a doce 3 MB. En red local no se nota, en
+     *     un wifi flojo sí.
+     *   · LOS FALSOS POSITIVOS. Al comparar se toma la MEJOR de las muestras de cada quien, y
+     *     cuantas más haya, más fácil es que alguna caiga cerca por casualidad. Muchas muestras
+     *     reconocen mejor a la persona y también se parecen más a los demás; pasado cierto punto
+     *     habría que exigir más para compensar.
+     *
+     * La ganancia, en cambio, no crece igual: de una a tres o cuatro está casi toda: es donde
+     * entran la otra luz, las gafas y el otro peinado. De ahí para arriba, más de lo mismo.
+     *
+     * Se puede subir desde la pantalla; ver «maxMuestras».
      */
-    public const MAX_MUESTRAS = 6;
+    public const MAX_MUESTRAS_POR_OMISION = 6;
+
+    /** Hasta dónde se deja subir. Por encima, el peso y los falsos positivos ganan a la ganancia. */
+    public const TOPE_MUESTRAS = 20;
+
+    /** Cuántas muestras por persona se guardan, según lo configurado. */
+    public function maxMuestras(): int
+    {
+        $valor = (int) (Parametro::query()->where('clave', 'rostros_max_muestras')->value('valor')
+            ?? self::MAX_MUESTRAS_POR_OMISION);
+
+        return max(1, min(self::TOPE_MUESTRAS, $valor));
+    }
+
+    /** Cambia cuántas muestras se guardan por persona. */
+    public function fijarMaxMuestras(int $cuantas): void
+    {
+        Parametro::updateOrCreate(
+            ['clave' => 'rostros_max_muestras'],
+            ['valor' => max(1, min(self::TOPE_MUESTRAS, $cuantas))],
+        );
+    }
 
     /**
      * La galería para comparar en la puerta: cédula, nombre y TODAS sus muestras.
@@ -68,7 +101,10 @@ class Rostros
                 'cedula' => (string) $cedula,
                 'nombre' => (string) $muestras->first()->persona->nombre,
                 'descriptores' => $muestras
-                    ->map(fn (Rostro $rostro) => array_map('floatval', $rostro->descriptor))
+                    // Redondeados a cuatro decimales: la galería viaja entera al navegador y así
+                    // pesa un tercio. Las distancias entre caras se juegan en el segundo y el
+                    // tercer decimal, así que el cuarto no cambia ninguna decisión.
+                    ->map(fn (Rostro $rostro) => array_map(fn ($n) => round((float) $n, 4), $rostro->descriptor))
                     ->values()
                     ->all(),
             ])
@@ -154,7 +190,7 @@ class Rostros
             ->orderByDesc('calculado_en')
             ->orderByDesc('id')
             ->get()
-            ->slice(self::MAX_MUESTRAS);
+            ->slice($this->maxMuestras());
 
         foreach ($sobran as $vieja) {
             $vieja->delete();

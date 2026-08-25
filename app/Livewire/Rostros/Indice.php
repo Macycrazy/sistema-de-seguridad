@@ -40,6 +40,11 @@ class Indice extends Component
         Gate::authorize('ver-personal');
     }
 
+    public function mount(): void
+    {
+        $this->maxMuestras = (string) app(Rostros::class)->maxMuestras();
+    }
+
     /** @return array{indexadas:int, total:int, faltan:int} */
     #[Computed]
     public function estado(): array
@@ -232,6 +237,22 @@ class Indice extends Component
         $persona = $this->personaDeMuestras();
 
         return $persona ? app(Rostros::class)->muestrasDe($persona) : collect();
+    }
+
+    /** Cuántas caras se guardan por persona. Se puede subir; ver Rostros::MAX_MUESTRAS_POR_OMISION. */
+    public string $maxMuestras = '';
+
+    public function fijarMaxMuestras(): void
+    {
+        Gate::authorize('gestionar-personal');
+
+        $cuantas = (int) $this->maxMuestras;
+
+        app(Rostros::class)->fijarMaxMuestras($cuantas);
+        $this->maxMuestras = (string) app(Rostros::class)->maxMuestras();
+
+        $this->aviso = 'A partir de ahora se guardan hasta '.$this->maxMuestras.' caras por persona.';
+        unset($this->muestras);
     }
 
     /** Busca a quién se le van a tomar las muestras. */

@@ -113,6 +113,40 @@ class RostrosTest extends TestCase
     }
 
     #[Test]
+    public function el_tope_de_muestras_se_puede_subir_desde_los_ajustes(): void
+    {
+        // Seis no es una ley: lo que limita son el peso de la galería y los falsos positivos, y
+        // quien administra puede decidir dónde está su punto.
+        $ana = $this->trabajador();
+
+        app(Rostros::class)->fijarMaxMuestras(10);
+        $this->assertSame(10, app(Rostros::class)->maxMuestras());
+
+        foreach (range(1, 12) as $i) {
+            app(Rostros::class)->guardar($ana, $this->descriptor($i / 100), Rostro::DE_LA_CAMARA);
+        }
+
+        $this->assertSame(10, app(Rostros::class)->muestrasDe($ana)->count());
+
+        // Y no se deja pasar del tope duro.
+        app(Rostros::class)->fijarMaxMuestras(999);
+        $this->assertSame(Rostros::TOPE_MUESTRAS, app(Rostros::class)->maxMuestras());
+    }
+
+    #[Test]
+    public function la_galeria_va_redondeada_para_que_no_pese_de_mas(): void
+    {
+        // Viaja entera al navegador cada vez que se abre la cámara. Las distancias entre caras se
+        // juegan en el segundo y el tercer decimal, así que el cuarto no cambia ninguna decisión.
+        $ana = $this->trabajador();
+        app(Rostros::class)->guardar($ana, array_fill(0, Rostro::LARGO, 0.123456789));
+
+        $numero = app(Rostros::class)->galeria()[0]['descriptores'][0][0];
+
+        $this->assertSame(0.1235, $numero);
+    }
+
+    #[Test]
     public function reindexar_sustituye_la_del_carnet_y_no_toca_las_de_la_camara(): void
     {
         // Reindexar es «vuelve a mirar su foto», no «olvida lo que aprendiste de él».
@@ -137,13 +171,13 @@ class RostrosTest extends TestCase
 
         app(Rostros::class)->guardar($ana, $this->descriptor(0.1), Rostro::DEL_CARNET);
 
-        foreach (range(1, Rostros::MAX_MUESTRAS + 3) as $i) {
+        foreach (range(1, Rostros::MAX_MUESTRAS_POR_OMISION + 3) as $i) {
             app(Rostros::class)->guardar($ana, $this->descriptor($i / 100), Rostro::DE_LA_CAMARA);
         }
 
         $muestras = app(Rostros::class)->muestrasDe($ana);
 
-        $this->assertSame(Rostros::MAX_MUESTRAS, $muestras->where('origen', Rostro::DE_LA_CAMARA)->count());
+        $this->assertSame(Rostros::MAX_MUESTRAS_POR_OMISION, $muestras->where('origen', Rostro::DE_LA_CAMARA)->count());
         $this->assertSame(1, $muestras->where('origen', Rostro::DEL_CARNET)->count(), 'La del carnet no se tira nunca.');
     }
 
