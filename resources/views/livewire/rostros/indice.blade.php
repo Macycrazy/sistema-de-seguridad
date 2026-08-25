@@ -192,27 +192,6 @@
                                 class="text-sm font-semibold text-slate-500 hover:underline">Cambiar de persona</button>
                     </div>
 
-                    {{-- Lo que ya tiene, y de dónde salió cada una. --}}
-                    <ul class="mt-3 divide-y divide-slate-100 text-sm">
-                        @forelse ($this->muestras as $muestra)
-                            <li class="flex items-center justify-between gap-3 py-2" wire:key="muestra-{{ $muestra->id }}">
-                                <span>
-                                    <span class="font-medium text-slate-800">
-                                        {{ $muestra->origen === \App\Models\Rostro::DEL_CARNET ? 'Del carnet' : 'Tomada con la cámara' }}
-                                    </span>
-                                    <span class="ml-1 font-mono text-xs text-slate-400">
-                                        {{ $muestra->calculado_en?->translatedFormat('d M Y · g:i a') }}
-                                    </span>
-                                </span>
-
-                                <button type="button" wire:click="olvidarMuestra({{ $muestra->id }})"
-                                        class="shrink-0 text-sm font-semibold text-alto hover:underline">Quitar</button>
-                            </li>
-                        @empty
-                            <li class="py-2 text-slate-500">Todavía no tiene ninguna cara guardada.</li>
-                        @endforelse
-                    </ul>
-
                     <div x-show="!abierto" class="mt-3">
                         <x-boton type="button" x-on:click="abrir()">Añadir con la cámara</x-boton>
                         <p class="mt-2 text-xs text-slate-500">
@@ -253,6 +232,31 @@
                             Terminar
                         </x-boton>
                     </div>
+                    {{-- Lo que ya tiene, DEBAJO de la cámara: mientras alguien se está
+                         grabando lo que quiere ver es su cara, no una lista. --}}
+                    <div class="mt-4 border-t border-slate-100 pt-3">
+                    <p class="font-mono text-[0.625rem] font-semibold uppercase tracking-widest text-slate-500">Caras guardadas</p>
+                    <ul class="mt-3 divide-y divide-slate-100 text-sm">
+                        @forelse ($this->muestras as $muestra)
+                            <li class="flex items-center justify-between gap-3 py-2" wire:key="muestra-{{ $muestra->id }}">
+                                <span>
+                                    <span class="font-medium text-slate-800">
+                                        {{ $muestra->origen === \App\Models\Rostro::DEL_CARNET ? 'Del carnet' : 'Tomada con la cámara' }}
+                                    </span>
+                                    <span class="ml-1 font-mono text-xs text-slate-400">
+                                        {{ $muestra->calculado_en?->translatedFormat('d M Y · g:i a') }}
+                                    </span>
+                                </span>
+
+                                <button type="button" wire:click="olvidarMuestra({{ $muestra->id }})"
+                                        class="shrink-0 text-sm font-semibold text-alto hover:underline">Quitar</button>
+                            </li>
+                        @empty
+                            <li class="py-2 text-slate-500">Todavía no tiene ninguna cara guardada.</li>
+                        @endforelse
+                    </ul>
+                    </div>
+
                 </div>
             @endunless
         </div>
