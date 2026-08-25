@@ -30,7 +30,9 @@ Route::middleware('auth')->group(function () {
     })->name('inicio');
 
     // Herramienta del equipo, no del puesto: no cuelga del inicio ni del menú, pero sigue viva.
-    Route::view('/diseno', 'diseno')->name('diseno');
+    // Guía de estilos y maqueta: herramientas de quien construye el sistema, no del turno. No
+    // enseñan datos de nadie, pero tampoco tiene por qué llegar ahí un vigilante buscando el menú.
+    Route::view('/diseno', 'diseno')->middleware('can:ver-ajustes')->name('diseno');
 
     // La propia clave. Es lo único que se abre con una clave sin cambiar todavía.
     Route::view('/clave', 'clave')->name('clave');
@@ -43,7 +45,7 @@ Route::middleware('auth')->group(function () {
 
     // MAQUETA · escanear la cédula con la cámara del teléfono. Es para enseñar la idea y
     // discutirla; no registra movimientos. No forma parte de lo que hay que entregar.
-    Route::view('/maqueta/escaneo', 'maqueta-escaneo')->name('maqueta.escaneo');
+    Route::view('/maqueta/escaneo', 'maqueta-escaneo')->middleware('can:ver-ajustes')->name('maqueta.escaneo');
 
     // Las fotos no están en una carpeta pública: salen solo por aquí. El permiso lo revisa el
     // propio controlador —con el gate «ver-foto»—, porque también hay que mirar de QUIÉN es la

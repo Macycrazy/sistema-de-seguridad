@@ -137,7 +137,7 @@ class PantallaEstacionamientoTest extends TestCase
         // El botón se veía siempre pero el formulario estaba escondido tras «si hay puestos»:
         // sin plazas cargadas se pulsaba y no pasaba nada. El puesto es opcional desde que un
         // vehículo puede entrar sin plaza.
-        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
 
         $this->assertSame(0, Puesto::count());
 
@@ -153,7 +153,7 @@ class PantallaEstacionamientoTest extends TestCase
     {
         // Cargarlo en la flota es catálogo, no entrada. Antes había que cerrar la flota, abrir
         // «Anotar vehículo» y buscarlo en el desplegable, sin que nada lo dijera.
-        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
 
         $flota = VehiculoDeFlota::create(['placa' => 'EMP001', 'tipo_vehiculo' => DatosVehiculo::CARRO]);
 
@@ -173,7 +173,7 @@ class PantallaEstacionamientoTest extends TestCase
     #[Test]
     public function un_vehiculo_de_la_flota_que_ya_esta_dentro_no_se_ofrece_para_anotar(): void
     {
-        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
 
         $flota = VehiculoDeFlota::create(['placa' => 'EMP001', 'tipo_vehiculo' => DatosVehiculo::CARRO]);
         $this->estadia('EMP001', ['flota_id' => $flota->id]);
@@ -270,6 +270,44 @@ class PantallaEstacionamientoTest extends TestCase
             ->set('busqueda', 'XYZ789')
             ->assertSee('Ya salió')
             ->assertDontSee('sigue dentro');
+    }
+
+    #[Test]
+    public function el_vigilante_no_administra_el_catalogo_de_la_flota(): void
+    {
+        // La pantalla es suya y no pide permiso, porque anotar y sacar vehículos es su trabajo.
+        // Pero dar de alta o borrar un vehículo de la empresa es tocar un catálogo, igual que las
+        // plazas: eso lo administra quien administra el estacionamiento.
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
+
+        $flota = VehiculoDeFlota::create(['codigo' => null, 'placa' => 'EMP001', 'tipo_vehiculo' => DatosVehiculo::CARRO]);
+
+        $panel = Livewire::test(Panel::class);
+
+        // El botón no se le ofrece…
+        $panel->assertDontSee('Flota de la empresa');
+
+        // …y si lo intenta igualmente, el servidor lo para.
+        $panel->call('abrirFlota')->assertForbidden();
+
+        Livewire::test(Panel::class)->call('eliminarFlota', $flota->id)->assertForbidden();
+
+        $this->assertSame(1, VehiculoDeFlota::count(), 'El catálogo sigue intacto.');
+    }
+
+    #[Test]
+    public function el_vigilante_si_puede_anotar_y_sacar_vehiculos(): void
+    {
+        // Lo que NO cambia: eso es su trabajo y no pide permiso especial.
+        $this->actingAs(User::factory()->create(['rol' => Rol::vigilante()]));
+
+        Livewire::test(Panel::class)
+            ->call('abrirFijo')
+            ->set('placaFija', 'AB123CD')
+            ->call('agregarFijo')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('vehiculos_fijos', ['placa' => 'AB123CD', 'salio_en' => null]);
     }
 
     #[Test]

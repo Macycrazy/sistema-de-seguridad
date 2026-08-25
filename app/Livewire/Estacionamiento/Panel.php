@@ -12,6 +12,7 @@ use App\Services\Estacionamiento\Flota;
 use App\Services\Estacionamiento\VehiculosFijos;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -479,8 +480,25 @@ class Panel extends Component
         $this->flotaFija = (string) $flotaId;
     }
 
+    /**
+     * El CATÁLOGO de la flota se administra, no se opera.
+     *
+     * Esta pantalla no pide permiso —es la del guardia, como la de marcar— y eso está bien para
+     * anotar vehículos y sacarlos, que es su trabajo. Pero dar de alta o borrar un vehículo de la
+     * empresa es tocar un catálogo, igual que las plazas del estacionamiento: se pide el mismo
+     * permiso que para aquéllas.
+     *
+     * Lo que NO se toca: anotar la entrada de un vehículo de la flota sigue siendo operación, y el
+     * guardia la hace sin permiso especial.
+     */
+    private function exigirGestionDelCatalogo(): void
+    {
+        Gate::authorize('gestionar-puestos');
+    }
+
     public function abrirFlota(): void
     {
+        $this->exigirGestionDelCatalogo();
         $this->reset('placaFlota', 'tipoFlota', 'marcaFlota', 'colorFlota', 'notaFlota', 'aviso');
         $this->resetValidation();
         $this->gestionandoFlota = true;
@@ -495,6 +513,7 @@ class Panel extends Component
 
     public function guardarFlota(): void
     {
+        $this->exigirGestionDelCatalogo();
         $this->resetValidation();
 
         try {
@@ -512,6 +531,8 @@ class Panel extends Component
 
     public function eliminarFlota(int $id): void
     {
+        $this->exigirGestionDelCatalogo();
+
         app(Flota::class)->eliminar(VehiculoDeFlota::findOrFail($id));
         $this->aviso = 'Vehículo quitado de la flota.';
         unset($this->flota, $this->flotaDisponible);

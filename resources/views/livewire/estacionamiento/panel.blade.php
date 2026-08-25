@@ -104,9 +104,13 @@
     {{-- Lo que hay dentro (o lo que coincide con la placa buscada). Cada vehículo es una estadía:
          se le asigna el puesto y se saca desde aquí, con su conductor. --}}
     <div class="mt-3 flex flex-wrap items-center justify-end gap-2">
-        @unless ($gestionandoFlota)
-            <x-boton variante="secundario" wire:click="abrirFlota">Flota de la empresa</x-boton>
-        @endunless
+        {{-- El catálogo de la flota es administración, no operación: el guardia anota y saca
+             vehículos, pero dar de alta uno de la empresa es tocar un catálogo. --}}
+        @can('gestionar-puestos')
+            @unless ($gestionandoFlota)
+                <x-boton variante="secundario" wire:click="abrirFlota">Flota de la empresa</x-boton>
+            @endunless
+        @endcan
         @unless ($agregandoFijo)
             <x-boton wire:click="abrirFijo">Anotar vehículo</x-boton>
         @endunless
