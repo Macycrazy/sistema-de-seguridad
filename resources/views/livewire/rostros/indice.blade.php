@@ -102,18 +102,36 @@
          funciona como siempre —cédula y carnet— y la cara se prueba desde aquí. --}}
     @can('gestionar-personal')
         <div class="mt-6 border-t border-slate-200 pt-5">
-            <label class="flex cursor-pointer items-start gap-3 rounded border px-4 py-3 transition
+            {{-- Un interruptor y no una casilla: lo que se enciende es una función de la puerta,
+                 no un dato que se guarda con un formulario. La casilla de verdad sigue ahí debajo
+                 —oculta— para que funcione con el teclado y lo lea un lector de pantalla. --}}
+            <label class="flex cursor-pointer items-center gap-4 rounded border px-4 py-3 transition
                           {{ $enLaPuerta ? 'border-parte1 bg-parte1-suave' : 'border-slate-200 bg-white' }}">
                 <input type="checkbox" wire:model.live="enLaPuerta" wire:change="alternarEnLaPuerta"
-                       class="mt-0.5 h-5 w-5 rounded border-slate-300 text-parte1 focus:ring-2 focus:ring-parte1/40">
-                <span>
-                    <span class="block font-semibold text-slate-900">Ofrecer «Buscar por la cara» en la puerta</span>
+                       class="peer sr-only">
+
+                <span aria-hidden="true"
+                      class="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition
+                             peer-focus-visible:ring-2 peer-focus-visible:ring-parte1/40 peer-focus-visible:ring-offset-2
+                             {{ $enLaPuerta ? 'bg-parte1' : 'bg-slate-300' }}">
+                    <span class="h-5 w-5 rounded-full bg-white shadow transition-transform
+                                 {{ $enLaPuerta ? 'translate-x-6' : 'translate-x-1' }}"></span>
+                </span>
+
+                <span class="min-w-0">
+                    <span class="block font-semibold text-slate-900">
+                        «Buscar por la cara» en la puerta
+                        <span class="ml-1 font-mono text-[0.625rem] uppercase tracking-widest
+                                     {{ $enLaPuerta ? 'text-parte1' : 'text-slate-400' }}">
+                            {{ $enLaPuerta ? 'encendido' : 'apagado' }}
+                        </span>
+                    </span>
                     <span class="mt-0.5 block text-sm text-slate-600">
                         @if ($enLaPuerta)
-                            Encendido: el vigilante ve el botón debajo del carnet.
+                            El vigilante ve el botón debajo del carnet.
                         @else
-                            Apagado: la puerta funciona con cédula y carnet, como siempre. Aquí abajo se puede
-                            probar el reconocimiento sin que estorbe al turno.
+                            La puerta funciona con cédula y carnet, como siempre. Aquí abajo se prueba el
+                            reconocimiento sin que estorbe al turno.
                         @endif
                     </span>
                 </span>
