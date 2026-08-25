@@ -825,7 +825,10 @@ class Marcar extends Component
     #[Computed]
     public function hayRostros(): bool
     {
-        return Rostro::query()->exists();
+        // Hacen falta las dos cosas: que esté encendido en Reconocimiento facial —viene apagado
+        // mientras se prueba— y que haya alguna cara indexada, porque sin galería no hay con qué
+        // comparar y un botón que no puede funcionar estorba más que ayuda.
+        return app(Rostros::class)->activoEnLaPuerta() && Rostro::query()->exists();
     }
 
     /**

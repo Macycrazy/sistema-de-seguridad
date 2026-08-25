@@ -11,7 +11,7 @@
             que="Deja que la puerta proponga quién es quien tiene delante, mirando por la cámara. Es una ayuda para el vigilante, no un sustituto: él confirma con la foto."
             :pasos="[
                 '<b>Indexar</b> recorre las fotos del personal y saca de cada cara 128 números. Se hace en este equipo: ninguna foto sale de aquí.',
-                'Hecho eso, en <b>Marcar</b> aparece el botón de buscar por rostro.',
+                'El botón en la puerta viene <b>apagado</b>: se enciende aquí cuando el reconocimiento convenza. Mientras, se prueba desde esta pantalla sin estorbar al turno.',
                 'La puerta <b>propone</b> a quién se parece y rellena la cédula. Marcar sigue siendo cosa del vigilante.',
                 'Si a alguien le cambian la foto en carnets, <b>Comprobar si alguna foto cambió</b> lo dice, y se actualiza solo a esa gente.',
                 '<b>Añadir caras con la cámara</b>: la del carnet puede ser de hace años. Buscas a la persona, se pone delante, y se guardan solas las poses que aporten algo. Cuantas más tenga, mejor se le reconoce.',

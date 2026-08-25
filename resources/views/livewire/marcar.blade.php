@@ -54,6 +54,95 @@
             de carnets y trae la ficha. La cámara solo funciona por HTTPS —por eso el puesto se sirve
             así—; el lector va empaquetado (resources/js/app.js), sin CDN.
         --}}
+        {{-- LA CÉDULA, PRIMERO.
+
+             Es lo que siempre funciona: no depende de que traiga el carnet, ni de la cámara, ni de
+             la luz. La cámara y la cara van debajo, como atajos para cuando ayudan. --}}
+        <form wire:submit="buscar">
+            {{--
+                «live.debounce» busca sola en cuanto se deja de teclear, sin pulsar nada. Los
+                400 ms son el rato que se espera: bastante para no consultar en cada tecla, y
+                poco para que no se note la espera.
+
+                El formulario se queda igualmente: el lector de carnets termina con un Enter, y
+                quien tenga la costumbre de pulsarlo no tiene por qué perderla.
+            --}}
+            {{--
+                El campo solo admite dígitos, y como máximo los de una cédula.
+
+                «inputmode» solo elige el teclado del teléfono: no impide teclear nada. Lo que de
+                verdad lo limita son «maxlength» y el «oninput», que borra al instante cualquier
+                cosa que no sea un dígito — también lo que se intente pegar.
+
+                Esto es comodidad para quien teclea, NO seguridad: el servidor vuelve a revisarlo
+                en Marcaje::exigirCedulaValida(), porque cualquiera puede enviar lo que quiera sin
+                pasar por esta pantalla.
+            --}}
+            {{--
+                La letra va DELANTE del número, como en el documento y como se dice en voz alta:
+                «uve doce millones…». Es un desplegable y no algo que se teclee, para que el
+                vigilante solo escoja.
+
+                Cambiarla vuelve a buscar: el mismo número con otra letra es otra persona, así que
+                la ficha que hubiera en pantalla deja de valer en cuanto se toca.
+            --}}
+            {{-- Se alinean por ARRIBA y no por abajo: debajo del campo de la cédula va su renglón
+                 de ayuda, así que alineando por abajo la casilla de la letra quedaba un renglón
+                 más baja que la de al lado.
+
+                 Las dos casillas miden lo mismo de alto —h-16— para que la fila sea una fila y no
+                 dos cosas puestas juntas. Y el rótulo va con «tracking-tight» porque
+                 «NACIONALIDAD» es larga: con el espaciado de los demás se partiría en dos
+                 renglones y volvería a descuadrar la fila. --}}
+            <div class="flex items-start gap-3">
+                <div class="w-24 shrink-0">
+                    <label for="nacionalidad"
+                           class="mb-1.5 block font-mono text-xs font-semibold uppercase tracking-tight text-slate-500">
+                        Nacionalidad
+                    </label>
+
+                    <select id="nacionalidad" name="nacionalidad" wire:model.live="nacionalidad"
+                            class="block h-16 w-full rounded border-2 border-parte1 bg-white px-2 text-center
+                                   font-mono text-2xl font-semibold text-slate-900
+                                   focus:border-parte1 focus:outline-none focus:ring-4 focus:ring-parte1/25">
+                        @foreach (\App\Models\Persona::NACIONALIDADES as $letra => $nombre)
+                            <option value="{{ $letra }}" title="{{ $nombre }}">{{ $letra }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="min-w-0 flex-1">
+            <x-campo
+                etiqueta="Cédula"
+                nombre="cedula"
+                tamano="puerta"
+                autofocus
+                autocomplete="off"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                maxlength="{{ $this->maximoDigitos() }}"
+                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, {{ $this->maximoDigitos() }})"
+                wire:model.live.debounce.400ms="cedula"
+                :error="$errors->first('cedula')"
+                ayuda="Introduce la cédula"
+            />
+                </div>
+            </div>
+
+            <button type="submit" class="sr-only">Buscar</button>
+
+            {{-- Señal de que el sistema está mirando. Sin esto, el rato entre dejar de teclear
+                 y ver la ficha parece que no pasa nada. --}}
+            <p wire:loading.delay.shortest wire:target="cedula"
+               class="mt-2 font-mono text-xs uppercase tracking-widest text-slate-400">
+                Buscando…
+            </p>
+        </form>
+
+        <p class="mb-3 mt-5 border-t border-slate-100 pt-4 text-center font-mono text-[0.625rem] font-bold uppercase tracking-widest text-slate-400">
+            o, si lo trae encima
+        </p>
+
         <div x-data="escanerCarnet($wire)" class="mb-4 border-b border-slate-100 pb-4">
             <div x-show="!abierto">
                 <x-boton type="button" x-on:click="abrir()" class="w-full">
@@ -66,7 +155,7 @@
                     Escanear carnet con la cámara
                 </x-boton>
                 <p class="mt-2 text-center font-mono text-xs uppercase tracking-widest text-slate-400">
-                    o teclea la cédula abajo
+                    más rápido que teclear, si trae el carnet
                 </p>
             </div>
 
@@ -182,7 +271,7 @@
                         Buscar por la cara
                     </x-boton>
                     <p class="mt-2 text-center font-mono text-xs uppercase tracking-widest text-slate-400">
-                        para quien no trae el carnet
+                        para quien no trae el carnet ni recuerda su cédula
                     </p>
                 </div>
 
@@ -247,86 +336,6 @@
             </div>
         @endif
 
-        <form wire:submit="buscar">
-            {{--
-                «live.debounce» busca sola en cuanto se deja de teclear, sin pulsar nada. Los
-                400 ms son el rato que se espera: bastante para no consultar en cada tecla, y
-                poco para que no se note la espera.
-
-                El formulario se queda igualmente: el lector de carnets termina con un Enter, y
-                quien tenga la costumbre de pulsarlo no tiene por qué perderla.
-            --}}
-            {{--
-                El campo solo admite dígitos, y como máximo los de una cédula.
-
-                «inputmode» solo elige el teclado del teléfono: no impide teclear nada. Lo que de
-                verdad lo limita son «maxlength» y el «oninput», que borra al instante cualquier
-                cosa que no sea un dígito — también lo que se intente pegar.
-
-                Esto es comodidad para quien teclea, NO seguridad: el servidor vuelve a revisarlo
-                en Marcaje::exigirCedulaValida(), porque cualquiera puede enviar lo que quiera sin
-                pasar por esta pantalla.
-            --}}
-            {{--
-                La letra va DELANTE del número, como en el documento y como se dice en voz alta:
-                «uve doce millones…». Es un desplegable y no algo que se teclee, para que el
-                vigilante solo escoja.
-
-                Cambiarla vuelve a buscar: el mismo número con otra letra es otra persona, así que
-                la ficha que hubiera en pantalla deja de valer en cuanto se toca.
-            --}}
-            {{-- Se alinean por ARRIBA y no por abajo: debajo del campo de la cédula va su renglón
-                 de ayuda, así que alineando por abajo la casilla de la letra quedaba un renglón
-                 más baja que la de al lado.
-
-                 Las dos casillas miden lo mismo de alto —h-16— para que la fila sea una fila y no
-                 dos cosas puestas juntas. Y el rótulo va con «tracking-tight» porque
-                 «NACIONALIDAD» es larga: con el espaciado de los demás se partiría en dos
-                 renglones y volvería a descuadrar la fila. --}}
-            <div class="flex items-start gap-3">
-                <div class="w-24 shrink-0">
-                    <label for="nacionalidad"
-                           class="mb-1.5 block font-mono text-xs font-semibold uppercase tracking-tight text-slate-500">
-                        Nacionalidad
-                    </label>
-
-                    <select id="nacionalidad" name="nacionalidad" wire:model.live="nacionalidad"
-                            class="block h-16 w-full rounded border-2 border-parte1 bg-white px-2 text-center
-                                   font-mono text-2xl font-semibold text-slate-900
-                                   focus:border-parte1 focus:outline-none focus:ring-4 focus:ring-parte1/25">
-                        @foreach (\App\Models\Persona::NACIONALIDADES as $letra => $nombre)
-                            <option value="{{ $letra }}" title="{{ $nombre }}">{{ $letra }}</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="min-w-0 flex-1">
-            <x-campo
-                etiqueta="Cédula"
-                nombre="cedula"
-                tamano="puerta"
-                autofocus
-                autocomplete="off"
-                inputmode="numeric"
-                pattern="[0-9]*"
-                maxlength="{{ $this->maximoDigitos() }}"
-                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, {{ $this->maximoDigitos() }})"
-                wire:model.live.debounce.400ms="cedula"
-                :error="$errors->first('cedula')"
-                ayuda="Introduce la cédula"
-            />
-                </div>
-            </div>
-
-            <button type="submit" class="sr-only">Buscar</button>
-
-            {{-- Señal de que el sistema está mirando. Sin esto, el rato entre dejar de teclear
-                 y ver la ficha parece que no pasa nada. --}}
-            <p wire:loading.delay.shortest wire:target="cedula"
-               class="mt-2 font-mono text-xs uppercase tracking-widest text-slate-400">
-                Buscando…
-            </p>
-        </form>
     </x-tarjeta>
 
     {{-- Pantalla en blanco: la guía sola. Mientras no haya nadie en pantalla ni se esté anotando
@@ -986,7 +995,7 @@
             <ol class="mt-5 space-y-4">
                 <li class="flex items-start gap-3">
                     <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-marca text-sm font-bold text-white">1</span>
-                    <p class="text-slate-700"><b class="font-semibold text-slate-900">Escanea el carnet</b> con la cámara, o escribe la cédula.</p>
+                    <p class="text-slate-700"><b class="font-semibold text-slate-900">Escribe la cédula</b>, que es lo que siempre funciona. Si trae el carnet, escanearlo es más rápido.</p>
                 </li>
                 <li class="flex items-start gap-3">
                     <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-marca text-sm font-bold text-white">2</span>

@@ -282,6 +282,7 @@ class RostrosTest extends TestCase
     {
         $this->entrandoComo();
         app(Rostros::class)->guardar($this->trabajador(), $this->descriptor());
+        app(Rostros::class)->activarEnLaPuerta(true);
 
         $html = Livewire::test(Marcar::class)->html();
 
@@ -352,11 +353,33 @@ class RostrosTest extends TestCase
     }
 
     #[Test]
-    public function con_rostros_indexados_si_lo_ofrece(): void
+    public function con_rostros_indexados_pero_apagado_la_puerta_no_lo_ofrece(): void
     {
+        // Viene apagado mientras se prueba: el reconocimiento es lo único que puede equivocarse
+        // diciendo el nombre de OTRA persona, y hasta que haya confianza la puerta va como siempre.
         $this->entrandoComo();
         app(Rostros::class)->guardar($this->trabajador(), $this->descriptor());
 
+        Livewire::test(Marcar::class)->assertDontSee('Buscar por la cara');
+    }
+
+    #[Test]
+    public function con_rostros_indexados_y_encendido_si_lo_ofrece(): void
+    {
+        $this->entrandoComo();
+        app(Rostros::class)->guardar($this->trabajador(), $this->descriptor());
+        app(Rostros::class)->activarEnLaPuerta(true);
+
         Livewire::test(Marcar::class)->assertSee('Buscar por la cara');
+    }
+
+    #[Test]
+    public function encendido_pero_sin_ninguna_cara_tampoco_lo_ofrece(): void
+    {
+        // Sin galería no hay con qué comparar, y un botón que no puede funcionar estorba.
+        $this->entrandoComo();
+        app(Rostros::class)->activarEnLaPuerta(true);
+
+        Livewire::test(Marcar::class)->assertDontSee('Buscar por la cara');
     }
 }

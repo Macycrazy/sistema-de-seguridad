@@ -95,6 +95,32 @@
         </div>
     @endcan
 
+    {{-- EL INTERRUPTOR DE LA PUERTA.
+
+         Apagado mientras se prueba. El reconocimiento es lo único de todo el sistema que puede
+         equivocarse diciendo el nombre de OTRA persona, así que hasta que haya confianza la puerta
+         funciona como siempre —cédula y carnet— y la cara se prueba desde aquí. --}}
+    @can('gestionar-personal')
+        <div class="mt-6 border-t border-slate-200 pt-5">
+            <label class="flex cursor-pointer items-start gap-3 rounded border px-4 py-3 transition
+                          {{ $enLaPuerta ? 'border-parte1 bg-parte1-suave' : 'border-slate-200 bg-white' }}">
+                <input type="checkbox" wire:model.live="enLaPuerta" wire:change="alternarEnLaPuerta"
+                       class="mt-0.5 h-5 w-5 rounded border-slate-300 text-parte1 focus:ring-2 focus:ring-parte1/40">
+                <span>
+                    <span class="block font-semibold text-slate-900">Ofrecer «Buscar por la cara» en la puerta</span>
+                    <span class="mt-0.5 block text-sm text-slate-600">
+                        @if ($enLaPuerta)
+                            Encendido: el vigilante ve el botón debajo del carnet.
+                        @else
+                            Apagado: la puerta funciona con cédula y carnet, como siempre. Aquí abajo se puede
+                            probar el reconocimiento sin que estorbe al turno.
+                        @endif
+                    </span>
+                </span>
+            </label>
+        </div>
+    @endcan
+
     {{-- LO ESTRICTO QUE SE PONE LA PUERTA.
 
          Confundir a dos personas es lo peor que puede hacer esto: un nombre equivocado se cree y

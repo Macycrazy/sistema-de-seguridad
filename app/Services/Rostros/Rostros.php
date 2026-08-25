@@ -62,6 +62,27 @@ class Rostros
     public const TOPE_MUESTRAS = 20;
 
     /**
+     * Si la puerta ofrece buscar por la cara.
+     *
+     * Apagado mientras se prueba, y a propósito. El reconocimiento es lo último que se ha
+     * construido y lo único que puede equivocarse diciendo el nombre de otra persona; hasta que
+     * haya confianza en él, la puerta funciona como siempre —cédula y carnet— y la cara se prueba
+     * desde Reconocimiento facial sin estorbar al turno.
+     *
+     * Es un interruptor y no código comentado: se enciende y se apaga sin desplegar nada, que es
+     * lo que hace falta para probar algo en producción.
+     */
+    public function activoEnLaPuerta(): bool
+    {
+        return $this->parametro('rostros_en_la_puerta') === '1';
+    }
+
+    public function activarEnLaPuerta(bool $activo): void
+    {
+        $this->guardarParametro('rostros_en_la_puerta', $activo ? 1 : 0);
+    }
+
+    /**
      * Lo estricto que se pone la puerta al decir un nombre.
      *
      * Los tres se ajustan desde la pantalla porque el punto bueno depende de las fotos que haya y

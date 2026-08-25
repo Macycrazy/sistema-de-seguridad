@@ -40,6 +40,9 @@ class Indice extends Component
         Gate::authorize('ver-personal');
     }
 
+    /** Si la puerta ofrece buscar por la cara. Apagado mientras se prueba. */
+    public bool $enLaPuerta = false;
+
     /** Lo estricto que se pone la puerta al decir un nombre. */
     public string $umbral = '';
 
@@ -55,6 +58,19 @@ class Indice extends Component
         $this->umbral = (string) $ajustes['umbral'];
         $this->margen = (string) $ajustes['margen'];
         $this->confirmaciones = (string) $ajustes['confirmaciones'];
+        $this->enLaPuerta = app(Rostros::class)->activoEnLaPuerta();
+    }
+
+    /** Enciende o apaga el botón de la cara en la puerta. */
+    public function alternarEnLaPuerta(): void
+    {
+        Gate::authorize('gestionar-personal');
+
+        app(Rostros::class)->activarEnLaPuerta($this->enLaPuerta);
+
+        $this->aviso = $this->enLaPuerta
+            ? 'La puerta ya ofrece buscar por la cara.'
+            : 'La puerta deja de ofrecer buscar por la cara. Se sigue pudiendo probar desde aquí.';
     }
 
     /**
