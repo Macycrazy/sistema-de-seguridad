@@ -48,6 +48,19 @@
 
                 createdb -h 127.0.0.1 -p 5433 -U tu_usuario registro_accesos_pruebas
         -->
+        <!--
+            El enlace con el sistema de carnets, APAGADO en las pruebas.
+
+            Sin esto, una prueba cambia de resultado según lo que tenga en su .env quien la corra:
+            con CARNETS_TOKEN puesto, el código pide las fotos a la API de verdad —que ni responde
+            desde una máquina de desarrollo ni debe responder— y la prueba falla sin que nada esté
+            roto. Cada prueba pone con «config()» la vía que quiere probar.
+        -->
+        <env name="CARNETS_TOKEN" value=""/>
+        <env name="CARNETS_URL" value=""/>
+        <env name="CARNETS_API" value=""/>
+        <env name="CARNETS_FOTOS" value=""/>
+
         <env name="DB_CONNECTION" value="pgsql"/>
         <env name="DB_DATABASE" value="registro_accesos_pruebas"/>
         <env name="DB_URL" value=""/>

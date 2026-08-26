@@ -42,12 +42,26 @@ class DiagnosticarRostros extends Command
         $problemas += $this->linea('Hay personal que indexar', $indexables->isNotEmpty(),
             'No hay ningún trabajador activo. Solo se indexa al personal, no a los visitantes.');
 
-        // 4. Sin fotos no hay caras que mirar: es lo que más falla al estrenar.
+        /*
+         * 4. Sin fotos no hay caras que mirar: es lo que más falla al estrenar.
+         *
+         * Y hay DOS vías, no una. Desde que el carnets sacó sus fotos de la carpeta pública, lo
+         * normal es pedirlas por su API con un token; la carpeta o la URL directa siguen valiendo
+         * para un carnets que aún no lo haya hecho. Basta con una de las dos, así que exigir la
+         * vieja marcaría en rojo una instalación perfectamente correcta.
+         */
+        $token = trim((string) config('carnets.token'));
         $origen = trim((string) config('carnets.fotos'));
-        $problemas += $this->linea('CARNETS_FOTOS está configurado', $origen !== '',
-            'Vacío en el .env. Pon la carpeta o la URL de las fotos del carnets y corre «php artisan config:clear».');
+        $hayDeDonde = $token !== '' || $origen !== '';
 
-        if ($origen !== '' && $indexables->isNotEmpty()) {
+        $problemas += $this->linea('Hay de dónde traer las fotos', $hayDeDonde,
+            'Falta CARNETS_TOKEN (la API del carnets) o CARNETS_FOTOS (su carpeta o URL). Pon uno de los dos en el .env y corre «php artisan config:clear».');
+
+        if ($hayDeDonde) {
+            $this->line('       <fg=gray>Por '.($token !== '' ? 'la API del carnets (CARNETS_TOKEN)' : 'CARNETS_FOTOS: '.$origen).'</>');
+        }
+
+        if ($hayDeDonde && $indexables->isNotEmpty()) {
             $this->newLine();
             $this->line('Probando a traer fotos de verdad (las tres primeras):');
 
@@ -64,7 +78,9 @@ class DiagnosticarRostros extends Command
             }
 
             $problemas += $this->linea('Las fotos del carnets llegan', $conFoto > 0,
-                'Ninguna de las tres llegó. Revisa CARNETS_FOTOS: si es una carpeta, que exista y se pueda leer; si es una URL, que este servidor la alcance.');
+                $token !== ''
+                    ? 'Ninguna de las tres llegó. Comprueba el token con «php artisan padron:cotejar», y que la IP de este servidor esté permitida allá.'
+                    : 'Ninguna de las tres llegó. Revisa CARNETS_FOTOS: si es una carpeta, que exista y se pueda leer; si es una URL, que este servidor la alcance.');
         }
 
         $this->newLine();

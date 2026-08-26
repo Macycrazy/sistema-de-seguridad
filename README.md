@@ -381,13 +381,21 @@ CARNETS_FOTOS=https://carnet.ciip.com.ve/imgs/usuarios   # una URL, o una carpet
 CARNETS_TOKEN=                                           # el token de su API (X-API-Token)
 ```
 
-`CARNETS_FOTOS` acepta las dos formas y el sistema distingue una de otra solo: una **carpeta**
-cuando los dos están en la misma máquina, o una **URL** cuando el carnets vive en otro servidor. La
-petición sale del servidor de seguridad, no del navegador, así que funciona aunque el puesto vaya
-por VPN.
+**Las fotos tienen dos vías, y con token gana la API.** El carnets sacó sus fotos de la carpeta
+pública —cualquiera con una cédula se descargaba la de esa persona— y ahora las sirve solo por
+ruta. Con `CARNETS_TOKEN` puesto se piden a `/api/seguridad/personal/{cedula}/foto`, que es la
+única que queda; sin token se sigue usando `CARNETS_FOTOS`, para un carnets que aún no lo haya
+movido.
 
-Sin `CARNETS_TOKEN` el sistema sigue funcionando: se pierden el cotejo del padrón y el saber a
-quién le cambió la foto; las fotos se siguen pidiendo por la vía de siempre.
+`CARNETS_FOTOS` acepta las dos formas y el sistema distingue una de otra solo: una **carpeta**
+cuando los dos están en la misma máquina, o una **URL** cuando el carnets vive en otro servidor. En
+los dos casos la petición sale del servidor de seguridad, no del navegador, así que funciona aunque
+el puesto vaya por VPN.
+
+Sin `CARNETS_TOKEN` se pierden además el cotejo del padrón y el saber a quién le cambió la foto.
+
+Si las caras dejan de salir en la puerta, `php artisan rostros:diagnostico` dice por cuál de las
+dos vías está pidiendo y si llegan.
 
 **Después de cambiar el `.env` en un servidor con la config cacheada**: `php artisan config:clear &&
 php artisan config:cache`. Es la causa típica de «puse el token y me sigue dando 401».
