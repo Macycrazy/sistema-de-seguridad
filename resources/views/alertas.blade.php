@@ -10,6 +10,7 @@
             titulo="Alertas"
             que="Lo que ahora mismo merece que alguien mire: quien lleva demasiado tiempo dentro, o cuando se pasa un aforo."
             :pasos="[
+                'Una <b>permanencia larga</b> casi siempre es que nadie le marcó la salida: «Ya salió» registra la salida que faltó, sin borrar nada. Si de verdad sigue dentro, «Sigue dentro» calla el aviso hasta mañana.',
                 'Cada alerta dice <b>qué pasa</b> y a quién afecta.',
                 'Las <b>urgentes</b> van primero.',
                 'Los límites (horas dentro, aforos) se ajustan en <b>Ajustes → Umbrales de alerta</b>.',

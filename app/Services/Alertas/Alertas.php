@@ -93,6 +93,11 @@ final class Alertas
             ->sortBy('desde')
             ->values();
 
+        // Los que alguien ya miró y silenció: siguen dentro de verdad —el guardia de noche, un
+        // turno largo— y su aviso volverá mañana si aún están.
+        $silenciados = app(CierreDeOlvidos::class)->silenciados();
+        $largos = $largos->reject(fn ($fila) => $silenciados->contains($fila['persona_id']))->values();
+
         if ($largos->isNotEmpty()) {
             $personas = Persona::whereIn('id', $largos->pluck('persona_id'))->get()->keyBy('id');
 

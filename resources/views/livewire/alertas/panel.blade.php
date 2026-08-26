@@ -4,6 +4,27 @@
 @endphp
 
 <div>
+    @if ($aviso !== '')
+        <x-aviso class="mb-4" wire:key="aviso">{{ $aviso }}</x-aviso>
+    @endif
+
+    {{-- Las permanencias largas casi siempre son olvidos de marcar la salida, y se acumulan: con
+         treinta y nueve encendidas la pantalla deja de mirarse, y esa gente además sigue contando
+         como «dentro». Cerrarlas de una vez es lo único que alguien va a hacer de verdad. --}}
+    @if ($this->permanencias->count() > 1)
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded border border-invitado/40 bg-invitado-suave/40 px-4 py-3">
+            <p class="text-sm text-slate-700">
+                <b>{{ $this->permanencias->count() }}</b> personas llevan demasiado dentro. Casi siempre es que
+                nadie les marcó la salida.
+            </p>
+
+            <x-boton variante="secundario" tamano="chico"
+                     wire:click="cerrarTodosLosOlvidos"
+                     wire:confirm="Se registrará la salida que faltó de {{ $this->permanencias->count() }} personas. No se borra nada: sus entradas y su histórico se conservan.">
+                Registrar la salida de todas
+            </x-boton>
+        </div>
+    @endif
     {{-- Cabecera: cuántas hay y el botón de recalcular. --}}
     <div class="flex flex-wrap items-center justify-between gap-3">
         <p class="flex items-baseline gap-3">
@@ -55,6 +76,23 @@
                             </span>
                         </div>
                         <p class="mt-1 text-sm text-slate-600">{{ $alerta->detalle }}</p>
+
+                        {{-- Dos salidas, porque son dos cosas distintas que se ven igual: o esa
+                             persona se fue y nadie la marcó —lo normal—, o de verdad sigue dentro
+                             (el guardia de noche, un turno largo) y lo que sobra es el aviso. --}}
+                        @if ($alerta->tipo === \App\Services\Alertas\Alerta::PERMANENCIA && $alerta->personaId)
+                            <p class="mt-2 flex flex-wrap gap-4">
+                                <button type="button" wire:click="cerrarOlvido('{{ $alerta->personaId }}')"
+                                        class="text-sm font-semibold text-parte2 hover:underline">
+                                    Ya salió: registrar su salida
+                                </button>
+
+                                <button type="button" wire:click="silenciar('{{ $alerta->personaId }}')"
+                                        class="text-sm font-semibold text-slate-500 hover:underline">
+                                    Sigue dentro: callar hasta mañana
+                                </button>
+                            </p>
+                        @endif
                     </div>
                 </li>
             @endforeach

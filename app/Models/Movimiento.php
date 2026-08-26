@@ -101,6 +101,9 @@ class Movimiento extends Model
         // Si al marcar se dijo que iba a pie. Nulo en los asientos de antes de la columna: de
         // aquellos no se sabe. Ver la migración 2026_08_24_120000.
         'a_pie',
+        // Si se registró desde el panel para cerrar un olvido, y no en la puerta. Ver la
+        // migración 2026_08_26_120000.
+        'es_correccion',
     ];
 
     protected function casts(): array
@@ -108,6 +111,7 @@ class Movimiento extends Model
         return [
             'ocurrio_en' => 'datetime',
             'a_pie' => 'boolean',
+            'es_correccion' => 'boolean',
         ];
     }
 

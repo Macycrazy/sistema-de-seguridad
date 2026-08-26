@@ -79,6 +79,12 @@ class Auditoria
 
     public const IDENTIFICO_POR_ROSTRO = 'identifico-por-rostro';
 
+    // Las entradas que se quedan abiertas porque nadie marcó la salida: cerrarlas es tocar el
+    // registro desde fuera de la puerta, así que tiene que constar quién y cuándo.
+    public const CERRO_OLVIDO = 'cerro-olvido';
+
+    public const SILENCIO_ALERTA = 'silencio-alerta';
+
     /** La acción, en frase, para la pantalla. */
     public const ETIQUETAS = [
         self::INGRESO_CORRECTO => 'Entró al sistema',
@@ -109,6 +115,8 @@ class Auditoria
         self::INDEXO_ROSTROS => 'Indexó rostros',
         self::BORRO_ROSTROS => 'Borró el índice de rostros',
         self::IDENTIFICO_POR_ROSTRO => 'Identificó a alguien por la cara',
+        self::CERRO_OLVIDO => 'Cerró una salida que faltaba',
+        self::SILENCIO_ALERTA => 'Silenció un aviso',
     ];
 
     /**
