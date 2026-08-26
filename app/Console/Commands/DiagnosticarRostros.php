@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\Carnets\FotoDelCarnet;
+use App\Services\Carnets\PadronDelCarnet;
 use App\Services\Rostros\Rostros;
 use Illuminate\Console\Command;
 
@@ -20,7 +21,7 @@ class DiagnosticarRostros extends Command
 
     protected $description = 'Comprueba qué le falta al reconocimiento facial para funcionar';
 
-    public function handle(Rostros $rostros, FotoDelCarnet $fotos): int
+    public function handle(Rostros $rostros, FotoDelCarnet $fotos, PadronDelCarnet $padron): int
     {
         $this->newLine();
         $problemas = 0;
@@ -61,7 +62,49 @@ class DiagnosticarRostros extends Command
             $this->line('       <fg=gray>Por '.($token !== '' ? 'la API del carnets (CARNETS_TOKEN)' : 'CARNETS_FOTOS: '.$origen).'</>');
         }
 
-        if ($hayDeDonde && $indexables->isNotEmpty()) {
+        /*
+         * Por la API se puede preguntar mejor, y hay que hacerlo: probar tres personas al azar
+         * confunde dos cosas que no se parecen —que el token esté mal puesto y que a esas tres no
+         * les hayan cargado foto— y las dos salían como «no llegan».
+         *
+         * El padrón dice quién TIENE foto, así que primero se comprueba que responde (eso ya
+         * descarta token e IP) y después se piden fotos de gente que debería tenerla.
+         */
+        if ($token !== '') {
+            $this->newLine();
+
+            $prueba = $padron->probar();
+            $problemas += $this->linea('El carnets acepta este token', $prueba['ok'], $prueba['mensaje']);
+
+            if ($prueba['ok']) {
+                $conFoto = collect($padron->personal())->filter(fn ($f) => ($f['foto']['existe'] ?? false) === true);
+
+                $this->line('       <fg=gray>'.$conFoto->count().' de '.($prueba['total'] ?? 0).' fichas del carnets tienen foto cargada</>');
+
+                if ($conFoto->isEmpty()) {
+                    $problemas++;
+                    $this->line('       <fg=yellow>Ninguna ficha del carnets tiene foto: no hay caras que indexar hasta que las carguen allá.</>');
+                } else {
+                    $this->newLine();
+                    $this->line('Probando a traer tres de las que SÍ tienen foto:');
+
+                    $llegaron = 0;
+
+                    foreach ($conFoto->take(3) as $ficha) {
+                        $foto = $fotos->bytes((string) $ficha['cedula']);
+                        $llegaron += $foto ? 1 : 0;
+
+                        $this->line(sprintf('  %-28s %s',
+                            mb_substr((string) ($ficha['nombre_completo'] ?? $ficha['cedula']), 0, 28),
+                            $foto ? '<fg=green>llega ('.number_format(strlen($foto['bytes']) / 1024).' kB)</>' : '<fg=red>no llega</>',
+                        ));
+                    }
+
+                    $problemas += $this->linea('Las fotos del carnets llegan', $llegaron > 0,
+                        'El padrón dice que tienen foto pero no llegan: el carnets responde al token pero no sirve la imagen. Revisa allá con «php artisan seguridad:fotos».');
+                }
+            }
+        } elseif ($hayDeDonde && $indexables->isNotEmpty()) {
             $this->newLine();
             $this->line('Probando a traer fotos de verdad (las tres primeras):');
 
@@ -78,9 +121,7 @@ class DiagnosticarRostros extends Command
             }
 
             $problemas += $this->linea('Las fotos del carnets llegan', $conFoto > 0,
-                $token !== ''
-                    ? 'Ninguna de las tres llegó. Comprueba el token con «php artisan padron:cotejar», y que la IP de este servidor esté permitida allá.'
-                    : 'Ninguna de las tres llegó. Revisa CARNETS_FOTOS: si es una carpeta, que exista y se pueda leer; si es una URL, que este servidor la alcance.');
+                'Ninguna de las tres llegó. Revisa CARNETS_FOTOS: si es una carpeta, que exista y se pueda leer; si es una URL, que este servidor la alcance. Puede ser también que a esas tres no les hayan cargado foto.');
         }
 
         $this->newLine();
