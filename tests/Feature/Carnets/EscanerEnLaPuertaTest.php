@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Carnets;
 
+use App\Livewire\Ajustes\AtajosDeLaPuerta;
 use App\Livewire\Asociacion\Carnets;
 use App\Livewire\Marcar;
 use App\Models\User;
@@ -47,14 +48,18 @@ class EscanerEnLaPuertaTest extends TestCase
     }
 
     #[Test]
-    public function se_apaga_desde_asociacion_con_carnets(): void
+    public function se_apaga_desde_ajustes_y_asociacion_dice_donde(): void
     {
+        // El interruptor vivía en Asociación con carnets y ahora está con los otros dos: la
+        // pregunta «¿qué se le ofrece al vigilante?» se responde en un solo sitio. Ahí queda la
+        // señal, para que nadie lo busque donde estaba.
         $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
 
-        Livewire::test(Carnets::class)
-            ->assertSet('escanerEnLaPuerta', true)
-            ->set('escanerEnLaPuerta', false)
-            ->call('alternarEscaner')
+        $this->get(route('asociacion'))->assertOk()->assertSee('Qué ofrece la puerta');
+
+        Livewire::test(AtajosDeLaPuerta::class)
+            ->set('escaner', false)
+            ->call('alternar', 'escaner')
             ->assertHasNoErrors();
 
         $this->assertFalse(app(AjustesDeLaPuerta::class)->escanerDeCarnet());

@@ -3,7 +3,6 @@
 namespace App\Livewire\Asociacion;
 
 use App\Services\Carnets\Verificador;
-use App\Services\Puerta\AjustesDeLaPuerta;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
@@ -25,9 +24,6 @@ class Carnets extends Component
 
     public string $qr = '';
 
-    /** Si la puerta ofrece escanear el carnet con la cámara. */
-    public bool $escanerEnLaPuerta = true;
-
     /** @var array<string, mixed> */
     public array $conexion = [];
 
@@ -39,23 +35,8 @@ class Carnets extends Component
         Gate::authorize('gestionar-ajustes');
     }
 
-    /**
-     * Enciende o apaga el escáner de la puerta.
-     *
-     * Aquí y no en Ajustes porque es donde se comprueba que el carnets responde: si el escáner no
-     * sirve —el carnets caído, un puesto sin cámara decente, una entrada a contraluz— este es el
-     * sitio donde alguien lo está averiguando.
-     */
-    public function alternarEscaner(): void
-    {
-        Gate::authorize('gestionar-ajustes');
-
-        app(AjustesDeLaPuerta::class)->activarEscanerDeCarnet($this->escanerEnLaPuerta);
-    }
-
     public function mount(): void
     {
-        $this->escanerEnLaPuerta = app(AjustesDeLaPuerta::class)->escanerDeCarnet();
         $this->url = app(Verificador::class)->urlPorOmision();
     }
 

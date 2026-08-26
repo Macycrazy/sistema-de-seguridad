@@ -17,9 +17,46 @@ use App\Models\Parametro;
  */
 class AjustesDeLaPuerta
 {
+    private const CEDULA = 'puerta_tecleo_cedula';
+
     private const ESCANER = 'puerta_escaner_qr';
 
     private const ROSTRO = 'rostros_en_la_puerta';
+
+    /**
+     * Si se ofrece teclear la cédula.
+     *
+     * Encendido por omisión, y es el que menos debería apagarse: no depende de que la persona
+     * traiga el carnet, ni de la cámara, ni de la luz, ni de estar indexada. Se puede quitar en un
+     * puesto donde de verdad todo el mundo pase el carnet y el campo solo estorbe, pero nunca
+     * dejando la puerta sin ninguna vía —ver «sePuedeApagar».
+     */
+    public function tecleoDeCedula(): bool
+    {
+        return $this->valor(self::CEDULA, true);
+    }
+
+    public function activarTecleoDeCedula(bool $activo): void
+    {
+        $this->guardar(self::CEDULA, $activo);
+    }
+
+    /**
+     * Si se puede apagar esa vía sin dejar la puerta inservible.
+     *
+     * La regla: tiene que quedar encendida al menos una de las dos FIABLES —teclear la cédula o
+     * escanear el carnet—. El reconocimiento facial no cuenta para esto aunque esté encendido: se
+     * queda sin servir el día que alguien vacíe el índice, y entonces la puerta no tendría por
+     * dónde marcar a nadie.
+     */
+    public function sePuedeApagar(string $cual): bool
+    {
+        return match ($cual) {
+            'cedula' => $this->escanerDeCarnet(),
+            'escaner' => $this->tecleoDeCedula(),
+            default => true,
+        };
+    }
 
     /**
      * Si se ofrece escanear el carnet con la cámara.

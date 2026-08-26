@@ -57,7 +57,11 @@
         {{-- LA CÉDULA, PRIMERO.
 
              Es lo que siempre funciona: no depende de que traiga el carnet, ni de la cámara, ni de
-             la luz. La cámara y la cara van debajo, como atajos para cuando ayudan. --}}
+             la luz. La cámara y la cara van debajo, como atajos para cuando ayudan.
+
+             Se puede quitar desde Ajustes en un puesto donde todo el mundo pase el carnet, pero
+             nunca a la vez que el escáner. --}}
+        @if ($this->hayTecleo)
         <form wire:submit="buscar">
             {{--
                 «live.debounce» busca sola en cuanto se deja de teclear, sin pulsar nada. Los
@@ -139,9 +143,11 @@
             </p>
         </form>
 
+        @endif
+
         @if ($this->hayEscaner)
         <p class="mb-3 mt-5 border-t border-slate-100 pt-4 text-center font-mono text-[0.625rem] font-bold uppercase tracking-widest text-slate-400">
-            o, si lo trae encima
+            {{ $this->hayTecleo ? 'o, si lo trae encima' : 'pasa el carnet por la cámara' }}
         </p>
 
         <div x-data="escanerCarnet($wire)" class="mb-4 border-b border-slate-100 pb-4">

@@ -141,10 +141,17 @@ Teclear la cédula es lo único que **siempre** funciona: no depende de que la p
 carnet, ni de la cámara, ni de la luz, ni de estar indexada. Por eso abre la pantalla, y lo demás
 va debajo como lo que es.
 
-| Atajo | Por omisión | Dónde se cambia |
-|---|---|---|
-| Escanear el carnet con la cámara | **encendido** | Administración → Asociación con carnets |
-| Buscar por la cara | **apagado** | Administración → Reconocimiento facial |
+Los tres se encienden y se apagan en **Administración → Ajustes → Qué ofrece la puerta**:
+
+| Atajo | Por omisión |
+|---|---|
+| Teclear la cédula | **encendido** |
+| Escanear el carnet con la cámara | **encendido** |
+| Buscar por la cara | **apagado** |
+
+**Los dos primeros no se pueden apagar a la vez**: la puerta se quedaría sin ninguna forma de
+marcar a nadie, y eso se descubriría en mitad de un turno. La cara no cuenta para esa regla —se
+queda sin servir el día que alguien vacíe el índice—.
 
 Son interruptores y no código comentado: **se cambian sin desplegar nada**. Un puesto sin cámara
 decente o una entrada a contraluz convierten un atajo en un botón que estorba encima del campo que

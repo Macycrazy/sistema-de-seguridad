@@ -873,6 +873,18 @@ class Marcar extends Component
         return app(AjustesDeLaPuerta::class)->escanerDeCarnet();
     }
 
+    /**
+     * Si se ofrece teclear la cédula.
+     *
+     * Se puede quitar en un puesto donde todo el mundo pase el carnet y el campo solo estorbe,
+     * pero nunca a la vez que el escáner: la puerta se quedaría sin forma de marcar a nadie.
+     */
+    #[Computed]
+    public function hayTecleo(): bool
+    {
+        return app(AjustesDeLaPuerta::class)->tecleoDeCedula();
+    }
+
     /** Elegir con qué entra: a pie, uno de los suyos, u «otro» para teclear una placa. */
     public function elegirVehiculo(string $cual): void
     {

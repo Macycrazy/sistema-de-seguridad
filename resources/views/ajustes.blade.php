@@ -18,7 +18,12 @@
     </div>
     <p class="mt-1 text-sm text-slate-500">Reglas de tiempo, umbrales de alerta y retención de datos.</p>
 
-    <h2 class="mt-8 font-mono text-xs font-bold uppercase tracking-widest text-slate-500">Reglas de tiempo</h2>
+    <h2 class="mt-8 font-mono text-xs font-bold uppercase tracking-widest text-slate-500">Qué ofrece la puerta</h2>
+    <div class="mt-3">
+        <livewire:ajustes.atajos-de-la-puerta />
+    </div>
+
+    <h2 class="mt-10 font-mono text-xs font-bold uppercase tracking-widest text-slate-500">Reglas de tiempo</h2>
     <div class="mt-3">
         <livewire:ajustes.lista-de-tiempos />
     </div>
