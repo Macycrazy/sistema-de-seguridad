@@ -17,6 +17,7 @@ use App\Services\Estacionamiento\Flota;
 use App\Services\Estacionamiento\VehiculoEnLaPuerta;
 use App\Services\Marcaje;
 use App\Services\Pases\Pases;
+use App\Services\Puerta\AjustesDeLaPuerta;
 use App\Services\Rostros\Rostros;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -858,6 +859,18 @@ class Marcar extends Component
     public function hayPasesCargados(): bool
     {
         return Pase::query()->activos()->exists();
+    }
+
+    /**
+     * Si se ofrece escanear el carnet con la cámara.
+     *
+     * Se apaga desde Asociación con carnets. Un puesto sin cámara decente, o una entrada a
+     * contraluz, hacen del escáner un botón que nadie usa y que estorba encima de la cédula.
+     */
+    #[Computed]
+    public function hayEscaner(): bool
+    {
+        return app(AjustesDeLaPuerta::class)->escanerDeCarnet();
     }
 
     /** Elegir con qué entra: a pie, uno de los suyos, u «otro» para teclear una placa. */

@@ -6,6 +6,7 @@ use App\Models\Parametro;
 use App\Models\Persona;
 use App\Models\Rostro;
 use App\Services\Carnets\PadronDelCarnet;
+use App\Services\Puerta\AjustesDeLaPuerta;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -74,12 +75,12 @@ class Rostros
      */
     public function activoEnLaPuerta(): bool
     {
-        return $this->parametro('rostros_en_la_puerta') === '1';
+        return app(AjustesDeLaPuerta::class)->reconocimientoFacial();
     }
 
     public function activarEnLaPuerta(bool $activo): void
     {
-        $this->guardarParametro('rostros_en_la_puerta', $activo ? 1 : 0);
+        app(AjustesDeLaPuerta::class)->activarReconocimientoFacial($activo);
     }
 
     /**

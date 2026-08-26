@@ -139,6 +139,7 @@
             </p>
         </form>
 
+        @if ($this->hayEscaner)
         <p class="mb-3 mt-5 border-t border-slate-100 pt-4 text-center font-mono text-[0.625rem] font-bold uppercase tracking-widest text-slate-400">
             o, si lo trae encima
         </p>
@@ -258,6 +259,8 @@
              ficha con su foto delante del vigilante. Marcar sigue siendo cosa suya. Un parecido no
              es una identificación —con hermanos, o con mala luz, se equivoca—, y por eso esto
              acaba donde acaba teclear una cédula y no un paso más allá. --}}
+        @endif
+
         @if ($this->hayRostros)
             <div x-data="rostroEnLaPuerta($wire)" class="mb-4 border-b border-slate-100 pb-4">
                 <div x-show="!abierto">

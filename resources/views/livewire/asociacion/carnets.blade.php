@@ -1,4 +1,42 @@
 <div class="max-w-2xl">
+{{-- EL LECTOR DE LA PUERTA.
+
+     Teclear la cédula es lo que siempre funciona; escanear el carnet es un atajo. Y un atajo que
+     no encaja en un puesto —una tableta sin cámara decente, una entrada a contraluz, un carnets
+     que no responde— estorba encima del campo que sí sirve. Se apaga aquí, que es donde se está
+     comprobando si el carnets responde. --}}
+@can('gestionar-ajustes')
+    <label class="mb-5 flex cursor-pointer items-center gap-4 rounded border px-4 py-3 transition
+                  {{ $escanerEnLaPuerta ? 'border-parte1 bg-parte1-suave' : 'border-slate-200 bg-white' }}">
+        <input type="checkbox" wire:model.live="escanerEnLaPuerta" wire:change="alternarEscaner" class="peer sr-only">
+
+        <span aria-hidden="true"
+              class="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition
+                     peer-focus-visible:ring-2 peer-focus-visible:ring-parte1/40 peer-focus-visible:ring-offset-2
+                     {{ $escanerEnLaPuerta ? 'bg-parte1' : 'bg-slate-300' }}">
+            <span class="h-5 w-5 rounded-full bg-white shadow transition-transform
+                         {{ $escanerEnLaPuerta ? 'translate-x-6' : 'translate-x-1' }}"></span>
+        </span>
+
+        <span class="min-w-0">
+            <span class="block font-semibold text-slate-900">
+                «Escanear carnet con la cámara» en la puerta
+                <span class="ml-1 font-mono text-[0.625rem] uppercase tracking-widest
+                             {{ $escanerEnLaPuerta ? 'text-parte1' : 'text-slate-400' }}">
+                    {{ $escanerEnLaPuerta ? 'encendido' : 'apagado' }}
+                </span>
+            </span>
+            <span class="mt-0.5 block text-sm text-slate-600">
+                @if ($escanerEnLaPuerta)
+                    El vigilante ve el botón debajo de la cédula.
+                @else
+                    La puerta solo pide la cédula. Apágalo si en ese puesto el escáner no sirve.
+                @endif
+            </span>
+        </span>
+    </label>
+@endcan
+
     <p class="text-sm text-slate-600">
         La dirección del sistema de carnets en la red interna. La prueba la lanza el <strong>servidor</strong>
         de este sistema, no tu navegador: si estás detrás de una VPN, dará «no respondió» aunque todo

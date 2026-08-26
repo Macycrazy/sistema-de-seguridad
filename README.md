@@ -4,14 +4,15 @@ Sistema para el puesto de vigilancia: se teclea una cédula, el sistema dice si 
 pertenece al personal o es un invitado, y con un botón se deja constancia de la **entrada** o la
 **salida**. Reemplaza la hoja de cálculo que hoy se llena a mano.
 
-Este repositorio es **la base del proyecto**: Laravel + Livewire + Tailwind ya configurados y
-funcionando. Encima de esto se construyen las tres partes descritas abajo.
+Laravel + Livewire + Tailwind. El sistema está **en uso**: las tres partes con las que empezó
+—marcar, el registro y los usuarios— funcionan, y encima han ido creciendo el estacionamiento, los
+pases de visitante, las alertas y el reconocimiento facial.
 
 ---
 
-## Qué se va a construir
+## Qué hace
 
-El trabajo está dividido en tres partes que avanzan en paralelo.
+Empezó con tres partes, que son las que sostienen todo lo demás.
 
 ### Parte 1 · Marcar e invitados
 
@@ -60,6 +61,98 @@ para el final, hay que reescribir las otras dos partes.
 
 **Está listo cuando** se puede responder, mirando el sistema, quién consultó los datos de una
 persona y en qué momento.
+
+---
+
+## Lo que se construyó después
+
+Todo esto vive sobre las tres partes de arriba y ninguna de ellas tuvo que reescribirse.
+
+### Estacionamiento
+
+Qué vehículos hay dentro, en qué plaza y de quién. Un vehículo es una **estadía**: se anota al
+entrar y se saca al salir, con **dos personas distintas** guardadas —a quién se le entregó y desde
+qué cuenta se dio por entregado—, porque un carro puede entrar con uno y salir con otro.
+
+- Catálogo de plazas y catálogo de **vehículos de la empresa** (la flota).
+- El vehículo se anota **en el mismo gesto de marcar a la persona**: no hay un segundo formulario
+  donde volver a teclear su cédula, que con cola detrás nadie rellenaba.
+- Se puede salir con el vehículo de un compañero o con uno de la empresa. La regla que gobierna
+  todo: **solo se saca lo que está dentro**.
+- Un vehículo no puede tener dos estadías abiertas. `php artisan estacionamiento:duplicados`
+  limpia los que quedaron así antes de esa regla.
+- Historial por placa: qué ha hecho ese carro, cuándo, con quién y quién lo dejó pasar.
+
+### Pases de visitante
+
+Las credenciales numeradas que se prestan en la puerta. Es el mismo problema que las plazas —un
+objeto numerado que se presta y se devuelve— y se resolvió igual.
+
+- Catálogo con alta por tanda: «V-» del 1 al 20 de una vez.
+- Se entrega al marcar la entrada del visitante y vuelve al marcarle la salida. Se puede desmarcar:
+  si se va con el pase puesto, **queda constando que sigue fuera** en vez de darse por devuelto.
+- La pantalla enseña quién está dentro **sin pase**, para ponerse al día.
+- Alerta desde que se entrega; **urgente en cuanto esa persona marca su salida y el pase no vuelve**.
+
+### Alertas
+
+Sobre lo que ya está guardado, sin inventar nada. Permanencias largas, aforo del edificio y del
+estacionamiento, vehículos de la empresa fuera y pases sin devolver. Los umbrales se ajustan en
+Ajustes; **en 0 se apaga cada aviso**.
+
+### Cotejo con el sistema de carnets
+
+Las dos listas de personal se llevan por separado y se separan solas. Desde **Trabajadores →
+Comparar con carnets** (o `php artisan padron:cotejar`) sale qué no cuadra, con su acción:
+
+| Situación | Qué se hace |
+|---|---|
+| Activo allá, no existe aquí | **Cargar**, con nombre y gerencia del carnets |
+| Existe aquí pero desactivado, y allá activo | **Reactivar** (no se recrea: pisaría su ficha) |
+| Activo aquí y de baja allá | **Desactivar**, uno a uno o todos |
+| Activo aquí y no aparece allá | Solo se dice: puede ser un dato mal cargado |
+
+El carnets es **solo del CIIP**: Marca País y VENAPP quedan fuera del cotejo, y quien no tenga ente
+asignado se lista aparte sin juzgarlo.
+
+### Reconocimiento facial
+
+Para quien llega sin el carnet. **Propone quién es y el vigilante confirma con la foto**: nunca
+marca solo, y hay una prueba que lo fija.
+
+Todo ocurre en el navegador —los modelos se sirven desde este mismo servidor, la imagen no se envía
+a ninguna parte— y al servidor solo llegan 128 números por cara. Eso identifica a una persona igual
+que una foto, así que se trata como un dato personal: se borra con ella, quién indexa y quién borra
+queda en la auditoría, y el índice se vacía entero desde la pantalla.
+
+- Se indexa del sistema de carnets, y **solo al personal**.
+- Cada persona puede tener **varias caras** (la del carnet más las que se tomen con la cámara): la
+  del carnet es de hace años, y al comparar se usa la que mejor case.
+- Para decir un nombre hacen falta **cuatro condiciones**, no una: estar cerca, estar más cerca que
+  el segundo candidato, verse bien y repetirse en dos cuadros. Sin la segunda confunde personas.
+- Se ajusta desde la pantalla, porque el punto bueno depende de las fotos que haya y de cuánta
+  gente.
+
+---
+
+## Los atajos de la puerta se encienden y se apagan
+
+Teclear la cédula es lo único que **siempre** funciona: no depende de que la persona traiga el
+carnet, ni de la cámara, ni de la luz, ni de estar indexada. Por eso abre la pantalla, y lo demás
+va debajo como lo que es.
+
+| Atajo | Por omisión | Dónde se cambia |
+|---|---|---|
+| Escanear el carnet con la cámara | **encendido** | Administración → Asociación con carnets |
+| Buscar por la cara | **apagado** | Administración → Reconocimiento facial |
+
+Son interruptores y no código comentado: **se cambian sin desplegar nada**. Un puesto sin cámara
+decente o una entrada a contraluz convierten un atajo en un botón que estorba encima del campo que
+sí sirve, y eso hay que poder quitarlo el mismo día que pasa.
+
+El reconocimiento viene apagado a propósito: es lo único de todo el sistema que puede equivocarse
+diciendo el nombre de **otra** persona. Se enciende cuando alguien haya decidido que se fía, no por
+venir puesto de fábrica.
 
 ---
 
@@ -276,6 +369,30 @@ git checkout tu-rama && git merge main
 - Claves, contraseñas, certificados o rutas internas de la red.
 - Datos reales de personas. Para desarrollo se usan **datos inventados**; la base real no se copia
   a la máquina de nadie.
+
+## El sistema de carnets
+
+Dos sistemas distintos que se hablan. De ahí salen las fotos del personal, la verificación de los
+QR y el padrón para el cotejo y el reconocimiento facial.
+
+```bash
+CARNETS_URL=https://carnet.ciip.com.ve                   # verificar un QR, y la API del padrón
+CARNETS_FOTOS=https://carnet.ciip.com.ve/imgs/usuarios   # una URL, o una carpeta del disco
+CARNETS_TOKEN=                                           # el token de su API (X-API-Token)
+```
+
+`CARNETS_FOTOS` acepta las dos formas y el sistema distingue una de otra solo: una **carpeta**
+cuando los dos están en la misma máquina, o una **URL** cuando el carnets vive en otro servidor. La
+petición sale del servidor de seguridad, no del navegador, así que funciona aunque el puesto vaya
+por VPN.
+
+Sin `CARNETS_TOKEN` el sistema sigue funcionando: se pierden el cotejo del padrón y el saber a
+quién le cambió la foto; las fotos se siguen pidiendo por la vía de siempre.
+
+**Después de cambiar el `.env` en un servidor con la config cacheada**: `php artisan config:clear &&
+php artisan config:cache`. Es la causa típica de «puse el token y me sigue dando 401».
+
+---
 
 ## Notas de entorno
 
