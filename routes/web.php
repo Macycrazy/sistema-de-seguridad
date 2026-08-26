@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\FotoPersonaController;
 use App\Http\Controllers\SalirController;
+use App\Services\Administracion\Inventario;
 use App\Services\Marcaje;
 use Illuminate\Support\Facades\Route;
 
@@ -74,7 +75,11 @@ Route::middleware('auth')->group(function () {
     // El panel de administración: reúne en un solo sitio todo lo de admin (personal, organigrama,
     // usuarios, edificio, ajustes, auditoría, roles), para que el menú de arriba no se llene. Lo
     // abre quien tenga cualquiera de esos permisos; cada tarjeta, además, revisa el suyo.
-    Route::view('/administracion', 'administracion')->middleware('can:ver-administracion')->name('administracion');
+    // Con el inventario: cada tarjeta dice cuánto tiene cargado su módulo. Un catálogo vacío y
+    // uno lleno se ven igual desde aquí, y eso engaña justo el primer día.
+    Route::get('/administracion', fn () => view('administracion', [
+        'inventario' => app(Inventario::class)->porModulo(),
+    ]))->middleware('can:ver-administracion')->name('administracion');
 
     // Meter la nómina: alta manual e importación por Excel, mientras la asociación con el sistema
     // de carnets no la traiga sola.

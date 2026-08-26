@@ -44,6 +44,22 @@
                     <x-tarjeta parte="3" class="h-full">
                         <p class="text-lg font-semibold">{{ $m['titulo'] }}</p>
                         <p class="mt-1 text-sm text-slate-500">{{ $m['texto'] }}</p>
+
+                        {{-- Cuánto tiene cargado. Un catálogo vacío y uno lleno se ven igual desde
+                             aquí, y eso engaña el primer día: quien entra a un módulo en blanco no
+                             sabe si está roto, si le falta permiso o si nadie ha cargado nada. --}}
+                        @if (isset($inventario[$m['ruta']]))
+                            @php $tiene = $inventario[$m['ruta']]; @endphp
+
+                            <p class="mt-3 font-mono text-xs uppercase tracking-widest
+                                      {{ $tiene['cuantos'] === 0 ? 'text-invitado' : 'text-slate-400' }}">
+                                @if ($tiene['cuantos'] === 0)
+                                    Sin cargar
+                                @else
+                                    {{ number_format($tiene['cuantos']) }} {{ $tiene['etiqueta'] }}
+                                @endif
+                            </p>
+                        @endif
                     </x-tarjeta>
                 </a>
             @endcan
