@@ -4,6 +4,7 @@ namespace App\Services\Carnets;
 
 use App\Models\Persona;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -31,9 +32,20 @@ class FotoDelCarnet
     public function bytes(string $cedula): ?array
     {
         $cedula = Persona::normalizarCedula($cedula);
+
+        if ($cedula === '') {
+            return null;
+        }
+
+        // Con la API configurada, por ahí. Desde que carnets sacó las fotos de su carpeta
+        // pública, es la ÚNICA vía: ya no hay archivos que leer ni URL pública que pedir.
+        if ($this->apiConfigurada()) {
+            return $this->porApi($cedula);
+        }
+
         $origen = trim((string) config('carnets.fotos'));
 
-        if ($cedula === '' || $origen === '') {
+        if ($origen === '') {
             return null;
         }
 
@@ -68,6 +80,60 @@ class FotoDelCarnet
         Storage::disk('local')->put($ruta, $foto['bytes']);
 
         return $ruta;
+    }
+
+    /** ¿Hay token y dirección para hablar con la API de carnets? */
+    private function apiConfigurada(): bool
+    {
+        return trim((string) config('carnets.token')) !== '' && $this->base() !== '';
+    }
+
+    /** La dirección del carnets: la de la API si se puso aparte, y si no la de siempre. */
+    private function base(): string
+    {
+        return rtrim(trim((string) (config('carnets.api') ?: config('carnets.url'))), '/');
+    }
+
+    /**
+     * La foto por la API autenticada: {base}/api/seguridad/personal/{cedula}/foto
+     *
+     * Una sola petición, no tres. Por la carpeta había que probar .jpg, .jpeg y .png hasta
+     * acertar; la API responde con el tipo que sea y lo dice en la cabecera, así que una cédula
+     * sin foto cuesta una petición en vez de tres.
+     *
+     * @return array{bytes:string, mime:string}|null
+     */
+    private function porApi(string $cedula): ?array
+    {
+        try {
+            $respuesta = Http::timeout((int) config('carnets.timeout', 4))
+                ->withHeaders(['X-API-Token' => trim((string) config('carnets.token'))])
+                ->get($this->base().'/api/seguridad/personal/'.$cedula.'/foto');
+        } catch (\Throwable) {
+            // Carnets caído: se sigue sin foto, como siempre.
+            return null;
+        }
+
+        if (! $respuesta->successful()) {
+            // 404 es lo normal (esa persona no tiene foto). Un 401 o un 503 sí es
+            // configuración mal puesta y conviene que quede dicho.
+            if (in_array($respuesta->status(), [401, 403, 503], true)) {
+                Log::warning('El carnets rechazó la petición de la foto de '.$cedula.' ('.$respuesta->status().'). Revisa CARNETS_TOKEN y que esta IP esté permitida.');
+            }
+
+            return null;
+        }
+
+        $bytes = $respuesta->body();
+
+        if ($bytes === '') {
+            return null;
+        }
+
+        return [
+            'bytes' => $bytes,
+            'mime' => str_contains((string) $respuesta->header('Content-Type'), 'png') ? 'image/png' : 'image/jpeg',
+        ];
     }
 
     /** Lee los bytes de la foto, del disco o por HTTP según cómo esté configurado el origen. */
