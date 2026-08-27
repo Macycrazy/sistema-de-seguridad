@@ -117,8 +117,9 @@
                                 </span>
 
                                 @can('gestionar-personal')
-                                    <button type="button" wire:click="cargarDelPadron('{{ $ficha['cedula'] }}')"
-                                            class="shrink-0 text-sm font-semibold text-parte3 hover:underline">Cargar</button>
+                                    <x-boton tamano="chico" class="shrink-0"
+                                             wire:click="cargarDelPadron('{{ $ficha['cedula'] }}')"
+                                             wire:loading.attr="disabled">Cargar</x-boton>
                                 @endcan
                             </li>
                         @endforeach
@@ -159,8 +160,9 @@
                                 </span>
 
                                 @can('gestionar-personal')
-                                    <button type="button" wire:click="desactivarComoEnCarnets('{{ $fila['persona']->cedula }}')"
-                                            class="shrink-0 text-sm font-semibold text-alto hover:underline">Desactivar</button>
+                                    <x-boton variante="peligro" tamano="chico" class="shrink-0"
+                                             wire:click="desactivarComoEnCarnets('{{ $fila['persona']->cedula }}')"
+                                             wire:loading.attr="disabled">Desactivar</x-boton>
                                 @endcan
                             </li>
                         @endforeach
@@ -188,8 +190,9 @@
                                 </span>
 
                                 @can('gestionar-personal')
-                                    <button type="button" wire:click="reactivarDelPadron('{{ $persona->cedula }}')"
-                                            class="shrink-0 text-sm font-semibold text-parte3 hover:underline">Reactivar</button>
+                                    <x-boton tamano="chico" class="shrink-0"
+                                             wire:click="reactivarDelPadron('{{ $persona->cedula }}')"
+                                             wire:loading.attr="disabled">Reactivar</x-boton>
                                 @endcan
                             </li>
                         @endforeach

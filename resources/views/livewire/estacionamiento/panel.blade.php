@@ -153,8 +153,8 @@
                             {{ $est->tiempoDentro($v->ocurrio_en) }}
                         </td>
                         <td class="px-4 py-3 text-right">
-                            <button wire:click="abrirSalida({{ $v->id }})"
-                                    class="text-sm font-semibold text-alto hover:underline">Sacar</button>
+                            <x-boton variante="peligro" tamano="chico"
+                                     wire:click="abrirSalida({{ $v->id }})">Sacar</x-boton>
                         </td>
                     </tr>
 

@@ -88,17 +88,30 @@
                         {{-- Dos salidas, porque son dos cosas distintas que se ven igual: o esa
                              persona se fue y nadie la marcó —lo normal—, o de verdad sigue dentro
                              (el guardia de noche, un turno largo) y lo que sobra es el aviso. --}}
+                        {{-- Botones y no enlaces de texto: son acciones que escriben en el
+                             registro, no navegación, y un texto subrayado entre párrafos se pasa
+                             por alto. El de «ya salió» va destacado porque es lo que ocurre casi
+                             siempre; el otro, apagado, porque es la excepción. --}}
                         @if ($alerta->tipo === \App\Services\Alertas\Alerta::PERMANENCIA && $alerta->personaId)
-                            <p class="mt-2 flex flex-wrap gap-4">
-                                <button type="button" wire:click="cerrarOlvido('{{ $alerta->personaId }}')"
-                                        class="text-sm font-semibold text-parte2 hover:underline">
-                                    Ya salió: registrar su salida
-                                </button>
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                <x-boton tamano="chico"
+                                         wire:click="cerrarOlvido('{{ $alerta->personaId }}')"
+                                         wire:loading.attr="disabled"
+                                         wire:target="cerrarOlvido('{{ $alerta->personaId }}')">
+                                    Ya salió
+                                </x-boton>
 
-                                <button type="button" wire:click="silenciar('{{ $alerta->personaId }}')"
-                                        class="text-sm font-semibold text-slate-500 hover:underline">
-                                    Sigue dentro: callar hasta mañana
-                                </button>
+                                <x-boton variante="secundario" tamano="chico"
+                                         wire:click="silenciar('{{ $alerta->personaId }}')"
+                                         wire:loading.attr="disabled"
+                                         wire:target="silenciar('{{ $alerta->personaId }}')">
+                                    Sigue dentro
+                                </x-boton>
+                            </div>
+
+                            <p class="mt-1.5 text-xs text-slate-500">
+                                «Ya salió» registra la salida que faltó, sin borrar nada. «Sigue dentro» calla
+                                el aviso hasta mañana.
                             </p>
                         @endif
                     </div>

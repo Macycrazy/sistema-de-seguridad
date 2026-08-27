@@ -119,8 +119,8 @@
                         </span>
 
                         @can('gestionar-pases')
-                            <button wire:click="darPaseA('{{ $persona->cedula }}')"
-                                    class="shrink-0 text-sm font-semibold text-parte1 hover:underline">Darle un pase</button>
+                            <x-boton tamano="chico" class="shrink-0"
+                                     wire:click="darPaseA('{{ $persona->cedula }}')">Darle un pase</x-boton>
                         @endcan
                     </li>
                 @endforeach
@@ -173,8 +173,8 @@
                                 <span class="flex flex-wrap justify-end gap-3">
                                     @if ($entrega)
                                         {{-- Para cuando el pase aparece y nadie marcó la salida. --}}
-                                        <button wire:click="recuperar({{ $entrega->id }})"
-                                                class="text-sm font-semibold text-parte1 hover:underline">Recuperar</button>
+                                        <x-boton tamano="chico" wire:click="recuperar({{ $entrega->id }})"
+                                                 wire:loading.attr="disabled">Recuperar</x-boton>
                                     @else
                                         <button wire:click="habilitar({{ $pase->id }}, {{ $pase->activo ? 'false' : 'true' }})"
                                                 class="text-sm font-semibold text-slate-500 hover:underline">
