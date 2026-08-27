@@ -113,6 +113,7 @@ final class Alertas
                     detalle: 'Entró '.$fila['desde']->translatedFormat('D d M \a \l\a\s g:i a').' y no ha marcado salida.',
                     personaId: $fila['persona_id'],
                     personaNombre: $persona?->nombre,
+                    personaCedula: $persona?->cedula,
                     desde: $fila['desde'],
                 ));
             }
@@ -176,6 +177,7 @@ final class Alertas
                             : ($tarde ? ' Lleva más de las '.$horasPase.' h previstas.' : '')),
                     personaId: $entrega->persona_id ? (string) $entrega->persona_id : null,
                     personaNombre: $entrega->persona?->nombre,
+                    personaCedula: $entrega->persona?->cedula,
                     desde: CarbonImmutable::parse($entrega->entregado_en),
                 ));
             }

@@ -36,6 +36,14 @@ final class Alerta
         public readonly string $detalle,
         public readonly ?string $personaId = null,
         public readonly ?string $personaNombre = null,
+        /**
+         * La cédula de esa persona.
+         *
+         * Va con el nombre porque el nombre no identifica: hay quien se llama parecido y quien se
+         * llama igual, y de estas alertas cuelgan acciones —cerrarle la salida a alguien— que no
+         * se pueden hacer sobre la persona equivocada.
+         */
+        public readonly ?string $personaCedula = null,
         public readonly ?CarbonImmutable $desde = null,
     ) {}
 

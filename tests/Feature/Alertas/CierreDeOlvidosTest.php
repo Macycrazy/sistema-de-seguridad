@@ -119,6 +119,21 @@ class CierreDeOlvidosTest extends TestCase
     }
 
     #[Test]
+    public function la_alerta_dice_la_cedula_y_no_solo_el_nombre(): void
+    {
+        // De estas alertas cuelga cerrarle la salida a alguien, y hay quien se llama parecido —o
+        // igual—. El nombre no identifica; la cédula sí.
+        $this->actingAs(User::factory()->create(['rol' => Rol::supervisor()]));
+        $this->entroYNoSalio('11111111', 'ANA PÉREZ');
+
+        $alerta = app(Alertas::class)->activas()->firstWhere('tipo', Alerta::PERMANENCIA);
+
+        $this->assertSame('11111111', $alerta->personaCedula);
+
+        Livewire::test(Panel::class)->assertSee('11111111');
+    }
+
+    #[Test]
     public function silenciar_calla_el_aviso_sin_tocar_el_registro(): void
     {
         // El guardia de noche SÍ sigue dentro: marcarle una salida sería mentir en el registro.

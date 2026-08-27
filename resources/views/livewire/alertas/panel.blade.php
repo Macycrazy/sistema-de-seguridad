@@ -63,7 +63,15 @@
 
                     <div class="min-w-0 grow">
                         <div class="flex flex-wrap items-center gap-2">
-                            <p class="font-semibold text-slate-900">{{ $alerta->titulo }}</p>
+                            <p class="font-semibold text-slate-900">
+                                {{ $alerta->titulo }}
+                                {{-- La cédula al lado del nombre: el nombre no identifica, y de
+                                     estas alertas cuelgan acciones que no se pueden hacer sobre la
+                                     persona equivocada. --}}
+                                @if ($alerta->personaCedula)
+                                    <span class="ml-1 font-mono text-xs font-normal text-slate-500">{{ $alerta->personaCedula }}</span>
+                                @endif
+                            </p>
                             <x-etiqueta :tipo="$urgente ? 'urgente' : 'aviso'" tamano="chico" />
                             <span class="font-mono text-[10px] uppercase tracking-widest text-slate-400">
                                 @switch($alerta->tipo)
