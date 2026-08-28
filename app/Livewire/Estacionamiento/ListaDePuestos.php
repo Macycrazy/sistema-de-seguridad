@@ -96,10 +96,12 @@ class ListaDePuestos extends Component
     {
         $this->exigirGestion();
 
-        $orden = $this->editando ? Puesto::find($this->editando)?->orden : null;
+        // Se le pasa CUÁL se está editando: si no, cambiarle el código no renombra esa plaza,
+        // crea otra y deja la vieja —o machaca a la que ya tuviera ese código—.
+        $editando = $this->editando ? Puesto::find($this->editando) : null;
 
         try {
-            $puesto = $this->catalogo->guardar($this->codigo, $this->tipo, $this->zona, $orden);
+            $puesto = $this->catalogo->guardar($this->codigo, $this->tipo, $this->zona, null, $editando);
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
 
@@ -108,7 +110,7 @@ class ListaDePuestos extends Component
 
         $this->creando = false;
         $this->reset('codigo', 'tipo', 'zona', 'editando');
-        $this->aviso = $puesto->wasRecentlyCreated ? 'Puesto agregado.' : 'Puesto actualizado.';
+        $this->aviso = $puesto->wasRecentlyCreated ? 'Plaza agregada.' : 'Plaza actualizada.';
         app(Auditoria::class)->cambioOficinas(($puesto->wasRecentlyCreated ? 'agregó' : 'editó').' el puesto '.$puesto->codigo);
     }
 

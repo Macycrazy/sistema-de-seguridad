@@ -25,18 +25,92 @@
                     aria-label="¿Cómo se usa?">?</button>
         </div>
 
-        <dl class="flex items-baseline gap-5">
-            <div class="flex items-baseline gap-2">
-                <dt class="font-mono text-xs uppercase tracking-widest text-slate-500">Trabajadores</dt>
-                <dd class="text-xl font-bold text-parte1">{{ $this->dentroPorTipo['trabajador'] }}</dd>
-            </div>
+        {{-- Los dos contadores se tocan y abren la lista de quién está dentro. Por eso se ven como
+             botones —con borde y relieve— y no como texto: si no se nota que se pueden tocar, no
+             los toca nadie. El que está abierto se queda marcado con su color.
 
-            <div class="flex items-baseline gap-2">
-                <dt class="font-mono text-xs uppercase tracking-widest text-slate-500">Visitantes</dt>
-                <dd class="text-xl font-bold text-invitado">{{ $this->dentroPorTipo['invitado'] }}</dd>
-            </div>
-        </dl>
+             Las clases van escritas enteras en cada rama, sin construirlas juntando trozos: Tailwind
+             lee estas plantillas como texto y una clase armada en PHP no la ve —y no la compila—. --}}
+        <div class="flex flex-wrap items-center gap-3">
+            <button type="button" wire:click="verDentro('trabajador')"
+                    aria-expanded="{{ $viendoDentro === 'trabajador' ? 'true' : 'false' }}"
+                    title="Ver quiénes están dentro"
+                    class="flex items-baseline gap-2 rounded border px-3 py-2 transition
+                           {{ $viendoDentro === 'trabajador'
+                                ? 'border-parte1 bg-parte1-suave'
+                                : 'border-slate-300 bg-white hover:border-slate-400 hover:bg-slate-50' }}">
+                <span class="font-mono text-xs uppercase tracking-widest text-slate-500">Trabajadores</span>
+                <span class="text-xl font-bold text-parte1">{{ $this->dentroPorTipo['trabajador'] }}</span>
+                <span class="text-xs text-slate-400">{{ $viendoDentro === 'trabajador' ? '▲' : '▼' }}</span>
+            </button>
+
+            <button type="button" wire:click="verDentro('invitado')"
+                    aria-expanded="{{ $viendoDentro === 'invitado' ? 'true' : 'false' }}"
+                    title="Ver quiénes están dentro"
+                    class="flex items-baseline gap-2 rounded border px-3 py-2 transition
+                           {{ $viendoDentro === 'invitado'
+                                ? 'border-invitado bg-invitado-suave'
+                                : 'border-slate-300 bg-white hover:border-slate-400 hover:bg-slate-50' }}">
+                <span class="font-mono text-xs uppercase tracking-widest text-slate-500">Visitantes</span>
+                <span class="text-xl font-bold text-invitado">{{ $this->dentroPorTipo['invitado'] }}</span>
+                <span class="text-xs text-slate-400">{{ $viendoDentro === 'invitado' ? '▲' : '▼' }}</span>
+            </button>
+        </div>
     </div>
+
+    {{-- QUIÉN ESTÁ DENTRO. Cerrado hasta que se toca un contador: la puerta es para marcar, y esta
+         lista no debe estorbar al que tiene cola delante.
+
+         Ordenada por hora de entrada —primero el que lleva más tiempo dentro—, que es como se mira
+         cuando quedan tres marcados a las siete de la tarde. Sin recortar: en una emergencia, media
+         lista es peor que ninguna. --}}
+    @if ($viendoDentro !== null)
+        @php $esInvitado = $viendoDentro === 'invitado'; @endphp
+
+        <div class="mb-6" wire:key="dentro-{{ $viendoDentro }}">
+            <x-tarjeta>
+                <div class="flex items-center justify-between gap-3">
+                    <p class="font-semibold {{ $esInvitado ? 'text-invitado' : 'text-parte1' }}">
+                        {{ $esInvitado ? 'Visitantes' : 'Trabajadores' }} dentro ahora
+                        <span class="font-normal text-slate-500">({{ count($this->listaDentro) }})</span>
+                    </p>
+
+                    <button type="button" wire:click="verDentro('{{ $viendoDentro }}')"
+                            class="shrink-0 rounded border border-slate-300 px-2.5 py-1 text-xs font-semibold
+                                   text-slate-600 transition hover:bg-slate-50">Cerrar</button>
+                </div>
+
+                @if ($this->listaDentro === [])
+                    <p class="mt-3 text-sm text-slate-500">
+                        No hay {{ $esInvitado ? 'ningún visitante' : 'ningún trabajador' }} marcado dentro.
+                    </p>
+                @else
+                    <ul class="mt-3 divide-y divide-slate-200">
+                        @foreach ($this->listaDentro as $quien)
+                            <li class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2">
+                                <div class="min-w-0">
+                                    <p class="truncate font-semibold">{{ $quien['nombre'] }}</p>
+                                    <p class="font-mono text-xs text-slate-500">
+                                        {{ $quien['cedula'] }}@if ($quien['donde']) · {{ $quien['donde'] }}@endif
+                                    </p>
+                                </div>
+
+                                {{-- La hora de entrada, y el día si no entró hoy: quien lleva
+                                     marcado dentro desde ayer casi siempre es una salida sin
+                                     marcar, no alguien que durmió aquí. --}}
+                                <p class="shrink-0 text-sm text-slate-500">
+                                    entró {{ $quien['entro']->format('g:i a') }}
+                                    @if (! $quien['entro']->isToday())
+                                        <span class="font-semibold text-alto">· {{ $quien['entro']->format('d/m') }}</span>
+                                    @endif
+                                </p>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </x-tarjeta>
+        </div>
+    @endif
 
     {{-- Confirmación del último marcaje. Se va sola en cuanto se teclea la siguiente cédula. --}}
     @if ($confirmacion !== '')

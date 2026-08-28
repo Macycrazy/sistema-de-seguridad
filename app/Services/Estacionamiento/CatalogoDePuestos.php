@@ -29,7 +29,13 @@ class CatalogoDePuestos
         return Puesto::query()->orderBy('orden')->orderBy('codigo')->get();
     }
 
-    public function guardar(string $codigo, ?string $tipo = null, ?string $zona = null, ?int $orden = null): Puesto
+    /**
+     * Da de alta una plaza, o cambia la que se pase en «$puesto».
+     *
+     * Editar y crear son cosas distintas y hay que decir cuál es: al editar, el código puede
+     * cambiar y lo que se renombra es ESA plaza; al crear, un código que ya exista es un error.
+     */
+    public function guardar(string $codigo, ?string $tipo = null, ?string $zona = null, ?int $orden = null, ?Puesto $puesto = null): Puesto
     {
         $codigo = mb_strtoupper(trim($codigo));
         $tipo = trim((string) $tipo);
@@ -47,14 +53,43 @@ class CatalogoDePuestos
             ]);
         }
 
-        return Puesto::updateOrCreate(
-            ['codigo' => $codigo],
-            [
-                'tipo' => $tipo === '' ? null : $tipo,
-                'zona' => $zona === '' ? null : mb_substr($zona, 0, 60),
-                'orden' => $orden ?? ((int) Puesto::max('orden') + 1),
-            ],
-        );
+        /*
+         * El código identifica la plaza, así que uno repetido es un error de quien lo teclea, no
+         * una orden de sustituir. Antes esto era un «updateOrCreate» y pasaban dos cosas malas y
+         * silenciosas:
+         *
+         *   · dar de alta un código que ya existía no creaba nada: machacaba el que había, y el
+         *     total no subía por muchas plazas que se cargaran;
+         *   · al EDITAR una plaza y cambiarle el código, la vieja se quedaba donde estaba y lo que
+         *     se sobrescribía era otra distinta —la que ya tuviera ese código—.
+         *
+         * Ahora renombrar renombra, y un código repetido se dice.
+         */
+        $otro = Puesto::where('codigo', $codigo)
+            ->when($puesto, fn ($q) => $q->whereKeyNot($puesto->getKey()))
+            ->first();
+
+        if ($otro) {
+            throw ValidationException::withMessages([
+                'codigo' => 'Ya hay una plaza con el código «'.$codigo.'»'
+                    .($otro->zona ? ' (en '.$otro->zona.')' : '').'. Los códigos no se repiten.',
+            ]);
+        }
+
+        $atributos = [
+            'codigo' => $codigo,
+            'tipo' => $tipo === '' ? null : $tipo,
+            'zona' => $zona === '' ? null : mb_substr($zona, 0, 60),
+        ];
+
+        if ($puesto) {
+            // Al editar se conserva su orden: es dónde va en la lista, no algo que se esté tocando.
+            $puesto->update($atributos);
+
+            return $puesto->refresh();
+        }
+
+        return Puesto::create($atributos + ['orden' => $orden ?? ((int) Puesto::max('orden') + 1)]);
     }
 
     public function activar(Puesto $puesto, bool $activo): void

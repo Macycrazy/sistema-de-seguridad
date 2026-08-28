@@ -19,6 +19,7 @@ use App\Services\Marcaje;
 use App\Services\Pases\Pases;
 use App\Services\Puerta\AjustesDeLaPuerta;
 use App\Services\Rostros\Rostros;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
@@ -176,6 +177,11 @@ class Marcar extends Component
     }
 
     /** Cuál de los dos botones va resaltado. */
+    /**
+     * Cuál de las dos listas de «quién está dentro» se está mirando: null, trabajador o invitado.
+     */
+    public ?string $viendoDentro = null;
+
     #[Computed]
     public function sugerido(): ?string
     {
@@ -188,6 +194,35 @@ class Marcar extends Component
     public function dentro(): int
     {
         return $this->marcaje->cuantosDentro();
+    }
+
+    /**
+     * Abre —o cierra— la lista de quién está dentro al tocar uno de los dos contadores.
+     *
+     * Es un interruptor: tocar el que ya está abierto lo cierra, y tocar el otro cambia de lista
+     * sin dejar las dos abiertas. La lista no se carga hasta que se pide: la puerta se usa todo el
+     * día para marcar, y no puede pagar esa consulta en cada tecla.
+     */
+    public function verDentro(string $tipo): void
+    {
+        $this->viendoDentro = $this->viendoDentro === $tipo ? null : $tipo;
+
+        unset($this->listaDentro);
+    }
+
+    /**
+     * Quiénes están dentro del tipo que se esté mirando. Vacía mientras no se toque nada.
+     *
+     * @return list<array{nombre:string, cedula:string, donde:?string, entro:CarbonInterface}>
+     */
+    #[Computed]
+    public function listaDentro(): array
+    {
+        if ($this->viendoDentro === null) {
+            return [];
+        }
+
+        return $this->marcaje->quienesEstanDentro($this->viendoDentro)->all();
     }
 
     /**
@@ -1193,7 +1228,7 @@ class Marcar extends Component
         // pantalla, y el vigilante vería «41 y 6» debajo de un total que ya cambió.
         unset(
             $this->persona, $this->sugerido, $this->esperaHasta,
-            $this->esperaSalidaHasta, $this->dentro, $this->dentroPorTipo,
+            $this->esperaSalidaHasta, $this->dentro, $this->dentroPorTipo, $this->listaDentro,
             $this->susVehiculos, $this->susVehiculosDentro, $this->otrosVehiculosDentro,
             $this->susPlacasDentro, $this->pasesLibres, $this->paseQueLleva, $this->hayPasesCargados,
             $this->flotaParaEntrar, $this->hayFlotaCargada,

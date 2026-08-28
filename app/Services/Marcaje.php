@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\Movimiento;
 use App\Models\Persona;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -420,6 +422,51 @@ class Marcaje
             Persona::TRABAJADOR => (int) $cuenta->get(Persona::TRABAJADOR, 0),
             Persona::INVITADO => (int) $cuenta->get(Persona::INVITADO, 0),
         ];
+    }
+
+    /**
+     * Quiénes son, con nombre y apellido, los que están dentro ahora mismo.
+     *
+     * El contador dice cuántos; esto dice quiénes. Es lo que hace falta cuando suena la alarma y
+     * hay que sacar a la gente, o cuando a las siete de la tarde quedan tres marcados dentro y hay
+     * que saber a quién llamar. Hasta ahora eso solo se podía sacar del registro, filtrando a mano.
+     *
+     * Va por tipo porque se buscan de forma distinta: al trabajador se le localiza por su
+     * dependencia, y al invitado por el piso que fue a visitar —que es el que quedó congelado en su
+     * entrada, no el de hoy—.
+     *
+     * Sin tope: en una emergencia una lista recortada es peor que no tener lista. Se ordena por
+     * hora de entrada, del que lleva más tiempo dentro al que acaba de llegar, que es el orden en
+     * que interesa mirarla.
+     *
+     * @return Collection<int, array{nombre:string, cedula:string, donde:?string, entro:CarbonInterface}>
+     */
+    public function quienesEstanDentro(string $tipo): Collection
+    {
+        return collect(
+            Movimiento::ultimoDeCadaPersona()
+                ->join('personas', 'personas.id', '=', 'movimientos.persona_id')
+                ->where('movimientos.tipo', Movimiento::ENTRADA)
+                ->where('personas.tipo', $tipo)
+                ->orderBy('movimientos.ocurrio_en')
+                ->select([
+                    'personas.nombre',
+                    'personas.cedula',
+                    'personas.nacionalidad',
+                    'personas.dependencia',
+                    'movimientos.piso',
+                    'movimientos.ocurrio_en',
+                ])
+                ->get()
+        )->map(fn ($fila) => [
+            'nombre' => (string) $fila->nombre,
+            'cedula' => $fila->nacionalidad.'-'.$fila->cedula,
+            // Al trabajador se le busca por su dependencia; al invitado, por el piso al que subió.
+            'donde' => $tipo === Persona::INVITADO
+                ? ($fila->piso ? 'Piso '.$fila->piso : null)
+                : ($fila->dependencia ?: null),
+            'entro' => CarbonImmutable::parse($fila->ocurrio_en),
+        ]);
     }
 
     /**
