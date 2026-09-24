@@ -4,6 +4,14 @@
         <x-aviso class="mb-5" wire:key="aviso">{{ $aviso }}</x-aviso>
     @endif
 
+    {{-- Lo que no se pudo hacer. Va aquí arriba y en rojo porque antes no iba a ninguna parte: las
+         acciones del cotejo dejaban su queja en el saco de errores y este panel no pintaba ninguno,
+         así que un «Cargar» rechazado y un «Cargar» que no hizo nada se veían igual. --}}
+    @if ($problema !== '')
+        <div class="mb-5 rounded border border-alto/30 bg-alto-suave px-4 py-3 text-sm font-semibold text-alto"
+             role="alert" wire:key="problema">{{ $problema }}</div>
+    @endif
+
     {{-- Personal de nómina o visitas: una sola pantalla, dos vistas. --}}
     <div class="mb-5 inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
         @foreach ([\App\Models\Persona::TRABAJADOR => 'Trabajadores', \App\Models\Persona::INVITADO => 'Visitantes'] as $valor => $rotulo)

@@ -323,4 +323,75 @@ class CotejoConCarnetsTest extends TestCase
             ->expectsOutputToContain('22222222')
             ->assertSuccessful();
     }
+
+    #[Test]
+    public function cargar_a_alguien_del_carnets_lo_da_de_alta_aqui(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
+
+        $this->carnetsResponde([
+            ['cedula' => '25303526', 'nombre' => 'YEITSON JOSE LAGUNA LEAL', 'gerencia' => 'GERENCIA DE SERVICIOS INTEGRADOS'],
+        ]);
+
+        Livewire::test(ListaDeTrabajadores::class)
+            ->call('cotejarConCarnets')
+            ->assertSee('YEITSON JOSE LAGUNA LEAL')
+            ->call('cargarDelPadron', '25303526')
+            ->assertSet('problema', '')
+            ->assertSee('cargado desde el carnets');
+
+        $this->assertDatabaseHas('personas', [
+            'cedula' => '25303526',
+            'tipo' => Persona::TRABAJADOR,
+            'activo' => true,
+        ]);
+    }
+
+    /**
+     * El fallo que hacía parecer que el botón estaba muerto.
+     *
+     * Cuando el alta se rechazaba, la queja iba al saco de errores y este panel no pintaba
+     * ninguno: la fila se quedaba donde estaba, sin un solo mensaje. Desde fuera eso es
+     * exactamente lo mismo que un botón que no hace nada.
+     */
+    public function test_si_el_alta_se_rechaza_la_pantalla_lo_dice(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
+
+        // Esa cédula ya está aquí, pero como visitante: dar de alta encima está prohibido.
+        Persona::create([
+            'cedula' => '25303526',
+            'tipo' => Persona::INVITADO,
+            'nombre' => 'YEITSON JOSE LAGUNA LEAL',
+            'activo' => true,
+        ]);
+
+        $this->carnetsResponde([
+            ['cedula' => '25303526', 'nombre' => 'YEITSON JOSE LAGUNA LEAL'],
+        ]);
+
+        Livewire::test(ListaDeTrabajadores::class)
+            ->call('cotejarConCarnets')
+            ->call('cargarDelPadron', '25303526')
+            ->assertSee('ya está registrada como visitante');
+    }
+
+    /** Y si lo que se rompe no es el dato sino el sistema, tampoco se queda callado. */
+    public function test_un_fallo_inesperado_al_cargar_tambien_se_ve(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
+
+        $this->carnetsResponde([
+            ['cedula' => '25303526', 'nombre' => 'YEITSON JOSE LAGUNA LEAL'],
+        ]);
+
+        $this->mock(\App\Services\GestionDeTrabajadores::class, function ($simulado) {
+            $simulado->shouldReceive('guardar')->andThrow(new \RuntimeException('la base se cayó'));
+        });
+
+        Livewire::test(ListaDeTrabajadores::class)
+            ->call('cotejarConCarnets')
+            ->call('cargarDelPadron', '25303526')
+            ->assertSee('No se pudo cargar');
+    }
 }

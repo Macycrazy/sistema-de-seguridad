@@ -76,6 +76,20 @@ class ListaDeTrabajadores extends Component
      */
     public ?array $cotejo = null;
 
+    /**
+     * Lo que salió mal en la última acción del cotejo, para PODER ENSEÑARLO.
+     *
+     * Existe porque la pantalla era ciega: las acciones del cotejo avisaban de sus fallos metiendo
+     * el mensaje en el saco de errores, y en este panel no se pintaba ninguno —solo el de
+     * «archivo», que es de la importación—. Así que un «Cargar» rechazado se veía exactamente
+     * igual que un «Cargar» que no hizo nada: la fila seguía ahí y ni un mensaje.
+     *
+     * Y lo que no era un error de validación —la base de datos, el carnets que deja de responder—
+     * ni siquiera llegaba: reventaba la petición entera, y con APP_DEBUG apagado, que es como está
+     * en producción, eso en pantalla no se ve de ninguna manera.
+     */
+    public string $problema = '';
+
     public string $busqueda = '';
 
     /** Filtros de la lista. Vacío = sin filtrar por ese criterio. */
@@ -391,6 +405,7 @@ class ListaDeTrabajadores extends Component
 
         $this->cotejo = app(CotejoConCarnets::class)->comparar();
         $this->aviso = '';
+        $this->problema = '';
 
         if (! $this->cotejo['disponible']) {
             $this->aviso = 'No se pudo consultar el carnets: revisa el token en el .env, o pregúntale a quien lleve el servidor.';
@@ -405,6 +420,33 @@ class ListaDeTrabajadores extends Component
         $this->aviso = $pendientes === 0
             ? 'El estado de aquí coincide con el del carnets.'
             : $pendientes.' diferencia(s) con el carnets. Están abajo, cada una con qué hacer.';
+    }
+
+    /**
+     * Corre una acción del cotejo dejando dicho en pantalla si no salió.
+     *
+     * Devuelve si pudo. Las dos formas de fallar acaban igual de visibles: lo que el sistema
+     * rechaza a propósito se dice con sus palabras, y lo que se rompe sin avisar se dice como lo
+     * que es —sin tragárselo y sin enseñar tripas—, y además queda en el log.
+     */
+    private function haciendo(string $queHacia, callable $accion): bool
+    {
+        $this->problema = '';
+
+        try {
+            $accion();
+
+            return true;
+        } catch (ValidationException $e) {
+            $this->problema = $e->validator->errors()->first() ?: 'No se pudo '.$queHacia.'.';
+        } catch (\Throwable $e) {
+            report($e);
+
+            $this->problema = 'No se pudo '.$queHacia.'. Falló el sistema, no el dato:'
+                .' '.class_basename($e).'. Queda anotado en el log.';
+        }
+
+        return false;
     }
 
     /**
@@ -425,15 +467,13 @@ class ListaDeTrabajadores extends Component
             return;
         }
 
-        try {
-            $this->gestion->guardar(
-                cedula: $ficha['cedula'],
-                nombre: $ficha['nombre'],
-                dependencia: $ficha['gerencia'] ?? null,
-            );
-        } catch (ValidationException $e) {
-            $this->setErrorBag($e->validator->errors());
+        $pudo = $this->haciendo('cargar a '.$ficha['nombre'], fn () => $this->gestion->guardar(
+            cedula: $ficha['cedula'],
+            nombre: $ficha['nombre'],
+            dependencia: $ficha['gerencia'] ?? null,
+        ));
 
+        if (! $pudo) {
             return;
         }
 
@@ -461,7 +501,10 @@ class ListaDeTrabajadores extends Component
             return;
         }
 
-        $this->gestion->reactivar($persona);
+        if (! $this->haciendo('reactivar a '.$persona->nombre, fn () => $this->gestion->reactivar($persona))) {
+            return;
+        }
+
         $this->aviso = $persona->nombre.' reactivado. Su histórico se conserva.';
 
         $this->cotejo = app(CotejoConCarnets::class)->comparar();
@@ -485,7 +528,10 @@ class ListaDeTrabajadores extends Component
             return;
         }
 
-        $this->gestion->desactivar($persona);
+        if (! $this->haciendo('desactivar a '.$persona->nombre, fn () => $this->gestion->desactivar($persona))) {
+            return;
+        }
+
         $this->aviso = $persona->nombre.' desactivado, como en carnets. Su histórico se conserva.';
 
         $this->cotejo = app(CotejoConCarnets::class)->comparar();
@@ -504,13 +550,25 @@ class ListaDeTrabajadores extends Component
 
         $cuantos = 0;
 
-        foreach ($this->cotejo['inactivosEnCarnets'] ?? [] as $fila) {
-            $persona = Persona::find($fila['persona']->id ?? null);
+        $pudo = $this->haciendo('desactivarlos', function () use (&$cuantos) {
+            foreach ($this->cotejo['inactivosEnCarnets'] ?? [] as $fila) {
+                // La ficha puede venir como modelo o —al volver del navegador— como un array
+                // pelado: el viaje de ida y vuelta no conserva el objeto. Se acepta de las dos
+                // formas, porque leerlo solo de una devolvía null y no desactivaba a nadie sin
+                // decir por qué.
+                $suya = $fila['persona'] ?? null;
+                $id = is_array($suya) ? ($suya['id'] ?? null) : ($suya->id ?? null);
+                $persona = $id ? Persona::find($id) : null;
 
-            if ($persona && $persona->activo) {
-                $this->gestion->desactivar($persona);
-                $cuantos++;
+                if ($persona && $persona->activo) {
+                    $this->gestion->desactivar($persona);
+                    $cuantos++;
+                }
             }
+        });
+
+        if (! $pudo) {
+            return;
         }
 
         $this->aviso = $cuantos === 0
