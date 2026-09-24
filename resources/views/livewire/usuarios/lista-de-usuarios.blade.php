@@ -210,7 +210,7 @@
                                                  variante="peligro"
                                                  tamano="chico"
                                                  wire:click="eliminar({{ $fila->id }})"
-                                                 wire:confirm="¿Borrar a {{ $fila->nombre }}? Se pierde su rastro en la auditoría. Si solo quieres quitarle el acceso, usa Desactivar."
+                                                 data-confirmar="¿Borrar a {{ $fila->nombre }}? Se pierde su rastro en la auditoría. Si solo quieres quitarle el acceso, usa Desactivar." data-confirmar-tono="peligro"
                                                  >
                                             Borrar
                                         </x-boton>

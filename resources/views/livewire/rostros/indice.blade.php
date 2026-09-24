@@ -84,7 +84,7 @@
 
                 <x-boton variante="secundario" x-show="!trabajando"
                          wire:click="vaciar"
-                         wire:confirm="¿Borrar el índice entero? Habrá que volver a indexar para usar el reconocimiento.">
+                         data-confirmar="¿Borrar el índice entero? Habrá que volver a indexar para usar el reconocimiento." data-confirmar-aceptar="Sí, borrar el índice">
                     Borrar el índice
                 </x-boton>
             @endif

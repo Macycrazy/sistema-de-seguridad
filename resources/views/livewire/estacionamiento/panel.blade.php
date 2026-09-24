@@ -302,7 +302,7 @@
                                 @endif
 
                                 <x-boton tamano="chico" variante="peligro"
-                                         wire:click="eliminarFlota({{ $f->id }})" wire:confirm="¿Quitar {{ $f->placa }} de la flota?">Quitar</x-boton>
+                                         wire:click="eliminarFlota({{ $f->id }})" data-confirmar="¿Quitar {{ $f->placa }} de la flota?" data-confirmar-tono="peligro">Quitar</x-boton>
                             </span>
                         </li>
                     @endforeach

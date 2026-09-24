@@ -10,7 +10,12 @@
  * funciona sobre HTTPS (o localhost); por eso el puesto se sirve por HTTPS.
  */
 import { controlesDeCamara } from './camara.js';
+import { instalarConfirmaciones } from './confirmar.js';
 import { indiceDeRostros, muestrasDeRostro, rostroEnLaPuerta } from './rostros.js';
+
+// El «¿seguro?» del sistema, en vez del cuadro del navegador. Se engancha ya, sin esperar a
+// Alpine: hay confirmaciones en páginas que no montan ningún componente de Livewire.
+instalarConfirmaciones();
 
 document.addEventListener('alpine:init', () => {
     // El reconocimiento de caras vive en su propio archivo y se carga bajo demanda: ver rostros.js.

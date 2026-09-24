@@ -96,7 +96,7 @@
                                                      type="button" wire:click="abrirEdicionRol('{{ $rol->value }}')">Editar</x-boton>
                                             <x-boton tamano="chico" variante="peligro"
                                                      type="button" wire:click="eliminarRol('{{ $rol->value }}')"
-                                                     wire:confirm="¿Borrar el rol «{{ $rol->nombre }}»? No se puede si hay usuarios que lo tienen.">Borrar</x-boton>
+                                                     data-confirmar="¿Borrar el rol «{{ $rol->nombre }}»? No se puede si hay usuarios que lo tienen." data-confirmar-tono="peligro">Borrar</x-boton>
                                         </div>
                                     @endunless
                                 </div>

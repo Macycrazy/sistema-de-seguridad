@@ -166,8 +166,8 @@
                                 @can('gestionar-personal')
                                     <x-boton tamano="chico" class="shrink-0"
                                              wire:click="pasarANomina('{{ $ficha['cedula'] }}')"
-                                             wire:confirm="¿Pasar a nómina a {{ $ficha['nombre'] }}? Su ficha de visitante pasa a ser de trabajador, con el histórico que ya tiene."
-                                             wire:loading.attr="disabled">Pasar a nómina</x-boton>
+                                             data-confirmar="¿Pasar a nómina a {{ $ficha['nombre'] }}? Su ficha de visitante pasa a ser de trabajador, con el histórico que ya tiene."
+                                             wire:loading.attr="disabled" data-confirmar-aceptar="Sí, pasar a nómina">Pasar a nómina</x-boton>
                                 @endcan
                             </li>
                         @endforeach
@@ -188,7 +188,9 @@
                         @can('gestionar-personal')
                             <x-boton tamano="chico" variante="peligro"
                                      type="button" wire:click="desactivarTodosComoEnCarnets"
-                                     wire:confirm="¿Desactivar a los {{ $inactivosAlla->count() }}? Su histórico se conserva y se puede deshacer.">Desactivar todos</x-boton>
+                                     data-confirmar="¿Desactivar a los {{ $inactivosAlla->count() }}? Su histórico se conserva y se puede deshacer."
+                                     data-confirmar-tono="peligro"
+                                     data-confirmar-aceptar="Sí, desactivar">Desactivar todos</x-boton>
                         @endcan
                     </div>
                     <p class="mt-0.5 text-xs text-slate-500">
@@ -444,7 +446,7 @@
                                         @if (! $this->verInvitados())
                                             <x-boton tamano="chico" variante="secundario"
                                                      wire:click="pasarAVisitas({{ $p->id }})"
-                                                     wire:confirm="¿Pasar a {{ $p->nombre }} a visitas? Deja de ser trabajador y podrá marcar como visitante. Su histórico se conserva.">Pasar a visitas</x-boton>
+                                                     data-confirmar="¿Pasar a {{ $p->nombre }} a visitas? Deja de ser trabajador y podrá marcar como visitante. Su histórico se conserva.">Pasar a visitas</x-boton>
                                         @endif
                                     @endif
                                 </div>

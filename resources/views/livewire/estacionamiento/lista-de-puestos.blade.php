@@ -73,7 +73,7 @@
                                     @endif
                                     <x-boton tamano="chico" variante="peligro"
                                              wire:click="eliminar({{ $puesto->id }})"
-                                             wire:confirm="¿Quitar el puesto {{ $puesto->codigo }} del catálogo?">Quitar</x-boton>
+                                             data-confirmar="¿Quitar el puesto {{ $puesto->codigo }} del catálogo?" data-confirmar-tono="peligro">Quitar</x-boton>
                                 </div>
                             @else
                                 <span class="text-slate-300">—</span>

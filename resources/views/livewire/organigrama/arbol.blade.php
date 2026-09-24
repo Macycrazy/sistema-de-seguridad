@@ -86,7 +86,8 @@
                                 <x-boton tamano="chico" variante="secundario" class="ml-4"
                                          wire:click="activar({{ $unidad->id }}, {{ $unidad->activo ? 'false' : 'true' }})">{{ $unidad->activo ? 'Desactivar' : 'Reactivar' }}</x-boton>
                                 <x-boton tamano="chico" variante="peligro" class="ml-4"
-                                         wire:click="eliminar({{ $unidad->id }})">Quitar</x-boton>
+                                         wire:click="eliminar({{ $unidad->id }})"
+                                         data-confirmar="¿Quitar «{{ $unidad->nombre }}» del organigrama?" data-confirmar-tono="peligro" data-confirmar-aceptar="Sí, quitar">Quitar</x-boton>
                             @else
                                 <span class="text-slate-300">—</span>
                             @endcan

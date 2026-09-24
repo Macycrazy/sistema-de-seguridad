@@ -64,7 +64,8 @@
                                 <x-boton tamano="chico" variante="secundario"
                                          wire:click="editar({{ $oficina->id }})">Editar</x-boton>
                                 <x-boton tamano="chico" variante="peligro" class="ml-4"
-                                         wire:click="eliminar({{ $oficina->id }})">Quitar</x-boton>
+                                         wire:click="eliminar({{ $oficina->id }})"
+                                         data-confirmar="¿Quitar la oficina {{ $oficina->nombre }} del catálogo? Deja de ofrecerse al marcar el piso." data-confirmar-tono="peligro" data-confirmar-aceptar="Sí, quitar">Quitar</x-boton>
                             @else
                                 <span class="text-slate-300">—</span>
                             @endcan

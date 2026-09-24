@@ -180,7 +180,7 @@
                                                  wire:click="habilitar({{ $pase->id }}, {{ $pase->activo ? 'false' : 'true' }})">{{ $pase->activo ? 'Deshabilitar' : 'Habilitar' }}</x-boton>
                                         <x-boton tamano="chico" variante="peligro"
                                                  wire:click="eliminar({{ $pase->id }})"
-                                                 wire:confirm="¿Quitar el pase {{ $pase->codigo }} del catálogo?">Quitar</x-boton>
+                                                 data-confirmar="¿Quitar el pase {{ $pase->codigo }} del catálogo?" data-confirmar-tono="peligro">Quitar</x-boton>
                                     @endif
                                 </span>
                             @endcan

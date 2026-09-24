@@ -41,7 +41,7 @@
                                      wire:click="descargar('{{ $r['nombre'] }}')">Descargar</x-boton>
                             <x-boton tamano="chico" variante="peligro" class="ml-4"
                                      wire:click="eliminar('{{ $r['nombre'] }}')"
-                                     wire:confirm="¿Borrar este respaldo? No se puede deshacer.">Borrar</x-boton>
+                                     data-confirmar="¿Borrar este respaldo? No se puede deshacer." data-confirmar-tono="peligro" data-confirmar-aceptar="Sí, borrar">Borrar</x-boton>
                         </td>
                     </tr>
                 @empty

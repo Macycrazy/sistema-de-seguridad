@@ -20,7 +20,7 @@
 
             <x-boton variante="secundario" tamano="chico"
                      wire:click="cerrarTodosLosOlvidos"
-                     wire:confirm="Se registrará la salida que faltó de {{ $this->permanencias->count() }} personas. No se borra nada: sus entradas y su histórico se conservan.">
+                     data-confirmar="Se registrará la salida que faltó de {{ $this->permanencias->count() }} personas. No se borra nada: sus entradas y su histórico se conservan.">
                 Registrar la salida de todas
             </x-boton>
         </div>
