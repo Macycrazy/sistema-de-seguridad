@@ -80,6 +80,7 @@
             $sinEnte = $cotejo['sinEnte'];
             $desactivados = $cotejo['desactivados'];
             $inactivosAlla = $cotejo['inactivosEnCarnets'];
+            $sinConcluir = $cotejo['sinConcluir'];
         @endphp
 
         <div class="mt-4 rounded border border-slate-200 bg-white p-4 shadow-sm">
@@ -182,7 +183,7 @@
                 <div class="mt-4 border-t border-slate-100 pt-3">
                     <div class="flex flex-wrap items-baseline justify-between gap-2">
                         <p class="font-semibold text-slate-900">
-                            {{ $inactivosAlla->count() }} activos aquí y de baja en carnets
+                            {{ $inactivosAlla->count() }} del CIIP, activos aquí y de baja en carnets
                         </p>
 
                         @can('gestionar-personal')
@@ -220,6 +221,42 @@
 
             {{-- Están aquí pero desactivados, y en carnets siguen activos. NO se cargan: su
                  ficha existe con su histórico, y crearla otra vez encima pisaría lo que tenga. --}}
+            {{-- En carnets no constan activos, pero de aquí NO se puede concluir nada, así que se
+                 enseñan sin botón.
+
+                 Antes estos salían mezclados con los de arriba y con su «Desactivar» al lado. Son
+                 dos cosas distintas y ninguna es una baja:
+
+                   · «No Aplica» no dice que la persona se fuera; dice que el carnets no tiene nada
+                     que decir de ella. Desactivar por eso es dejar a alguien fuera del edificio
+                     por un campo en blanco.
+                   · quien pasó a Marca País o a VENAPP consta de baja en el carnets —que es del
+                     CIIP— y sigue viniendo a trabajar todos los días. --}}
+            @if ($sinConcluir->isNotEmpty())
+                <div class="mt-4 border-t border-slate-100 pt-3">
+                    <p class="font-semibold text-slate-900">
+                        {{ $sinConcluir->count() }} que en carnets no constan activos, pero no se puede concluir nada
+                    </p>
+                    <p class="mt-0.5 text-xs text-slate-500">
+                        Aquí no hay nada que igualar: «No Aplica» no es una baja, y a quien pasó a otro
+                        ente del edificio le consta la baja en el carnets del CIIP aunque siga trabajando aquí.
+                        Si alguno de verdad se fue, se le da de baja desde su fila, arriba.
+                    </p>
+
+                    <ul class="mt-2 divide-y divide-slate-100 text-sm">
+                        @foreach ($sinConcluir as $fila)
+                            <li class="py-2" wire:key="sinconcluir-{{ $fila['persona']->id }}">
+                                <span class="block truncate font-medium text-slate-800">{{ $fila['persona']->nombre }}</span>
+                                <span class="font-mono text-xs text-slate-500">
+                                    {{ $fila['persona']->cedula }} · en carnets: {{ $fila['estatus'] }}
+                                    · aquí: {{ $fila['persona']->ente ? \App\Services\Registro\Ente::from($fila['persona']->ente)->etiqueta() : 'sin ente' }}
+                                </span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             @if ($desactivados->isNotEmpty())
                 <div class="mt-4 border-t border-slate-100 pt-3">
                     <p class="font-semibold text-slate-900">

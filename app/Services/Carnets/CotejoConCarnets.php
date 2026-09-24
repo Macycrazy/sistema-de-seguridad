@@ -37,6 +37,7 @@ final class CotejoConCarnets
      *     sobran: Collection<int, Persona>,
      *     desactivados: Collection<int, Persona>,
      *     inactivosEnCarnets: Collection<int, array{persona:Persona, estatus:string}>,
+     *     sinConcluir: Collection<int, array{persona:Persona, estatus:string}>,
      *     sinEnte: Collection<int, Persona>,
      *     otrosEntes: int,
      *     coinciden: int,
@@ -133,11 +134,39 @@ final class CotejoConCarnets
                 ->filter(fn (Persona $persona, $cedula) => ! $persona->activo && $enCarnets->has((string) $cedula))
                 ->values(),
 
-            // Activos aquí y en carnets constan como NO activos: ahí no hay duda de qué pasó, y
-            // el estado se puede igualar. Vale para cualquier ente: si está en el carnets, es del
-            // CIIP —el carnets es suyo—.
-            'inactivosEnCarnets' => $aqui
-                ->filter(fn (Persona $persona, $cedula) => $inactivosAlla->has((string) $cedula))
+            /*
+             * Activos aquí y en el carnets consta su BAJA, siendo del CIIP. Solo de estos se puede
+             * decir qué pasó, y solo estos se ofrecen para desactivar.
+             *
+             * Las dos condiciones hacen falta, y cada una tapa un agujero por el que se colaba
+             * gente que trabaja aquí perfectamente:
+             *
+             *   · que sea una baja de verdad —ver «esBaja»—, y no un «No Aplica», que no dice nada;
+             *   · que sea del CIIP. El carnets es del CIIP: que alguien conste allá de baja
+             *     significa que ya no es del CIIP, no que se haya ido del edificio. A quien pasó a
+             *     Marca País o a VENAPP le consta la baja allá y sigue viniendo a trabajar todos
+             *     los días.
+             */
+            'inactivosEnCarnets' => $delCiip
+                ->filter(fn (Persona $persona, $cedula) => $inactivosAlla->has((string) $cedula)
+                    && $this->esBaja($inactivosAlla[(string) $cedula]['estatus']))
+                ->map(fn (Persona $persona) => [
+                    'persona' => $persona,
+                    'estatus' => $inactivosAlla[(string) $persona->cedula]['estatus'] ?: 'no activo',
+                ])
+                ->values(),
+
+            /*
+             * Los demás que en el carnets no constan activos: se enseñan, pero sin botón.
+             *
+             * Es lo que antes se ofrecía desactivar sin más. Aquí hay dos cosas distintas y de
+             * ninguna se puede concluir nada: un estatus que no afirma la baja, y quien consta de
+             * baja pero ya no es del CIIP porque lo contrató otro de los entes del edificio.
+             */
+            'sinConcluir' => $aqui
+                ->filter(fn (Persona $persona, $cedula) => $inactivosAlla->has((string) $cedula)
+                    && ! ($persona->ente === Ente::Ciip->value
+                        && $this->esBaja($inactivosAlla[(string) $cedula]['estatus'])))
                 ->map(fn (Persona $persona) => [
                     'persona' => $persona,
                     'estatus' => $inactivosAlla[(string) $persona->cedula]['estatus'] ?: 'no activo',
@@ -175,6 +204,25 @@ final class CotejoConCarnets
         return mb_strtolower(trim((string) $estatus)) === 'activo';
     }
 
+    /**
+     * Si ese estatus dice que la persona causó baja. Solo lo que lo dice de verdad.
+     *
+     * Antes no existía esto: se daba por baja TODO lo que no fuera «Activo», y eso metía en la
+     * lista de desactivar a los diecisiete que el carnets marca «No Aplica». «No Aplica» no es una
+     * baja; es el carnets diciendo que ahí no tiene nada que decir. Desactivar a alguien por eso es
+     * dejarlo fuera del edificio por un campo en blanco.
+     *
+     * Va por lista blanca a propósito. Si mañana el carnets estrena un estatus que aquí no se
+     * conoce, lo que pase es que esa persona no salga en la lista —y alguien lo note— en vez de
+     * que se ofrezca darle de baja sin que nadie sepa por qué.
+     */
+    private function esBaja(?string $estatus): bool
+    {
+        return in_array(mb_strtolower(trim((string) $estatus)), [
+            'inactivo', 'retirado', 'egresado', 'suspendido', 'de baja',
+        ], true);
+    }
+
     /** @return array<string, mixed> */
     private function vacio(bool $disponible): array
     {
@@ -186,6 +234,7 @@ final class CotejoConCarnets
             'sinEnte' => collect(),
             'desactivados' => collect(),
             'inactivosEnCarnets' => collect(),
+            'sinConcluir' => collect(),
             'otrosEntes' => 0,
             'coinciden' => 0,
             'enCarnets' => 0,

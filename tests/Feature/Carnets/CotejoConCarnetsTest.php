@@ -396,4 +396,66 @@ class CotejoConCarnetsTest extends TestCase
             ->call('cargarDelPadron', '25303526')
             ->assertSee('No se pudo cargar');
     }
+
+    /**
+     * «No Aplica» no es una baja, y por creerlo el sistema ofrecía desactivar a diecisiete
+     * personas que trabajan aquí. El carnets solo tiene tres estatus: Activo, Inactivo y No
+     * Aplica; el último dice que ahí no hay nada que decir, no que la persona se fuera.
+     */
+    #[Test]
+    public function no_aplica_no_cuenta_como_baja(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
+
+        $trabaja = $this->aqui('11111111', 'SIGUE TRABAJANDO');
+        $this->carnetsResponde([
+            ['cedula' => '11111111', 'nombre' => 'SIGUE TRABAJANDO', 'estatus' => 'No Aplica'],
+        ]);
+
+        $cotejo = app(CotejoConCarnets::class)->comparar();
+
+        $this->assertCount(0, $cotejo['inactivosEnCarnets'], 'No se ofrece desactivar por un «No Aplica».');
+        $this->assertCount(1, $cotejo['sinConcluir'], 'Pero se enseña, para que se vea.');
+
+        Livewire::test(ListaDeTrabajadores::class)
+            ->call('cotejarConCarnets')
+            ->assertSee('no se puede concluir nada')
+            // Y si la petición llega igual —una pantalla vieja—, tampoco lo desactiva.
+            ->call('desactivarComoEnCarnets', '11111111')
+            ->assertSee('no está entre las que el carnets da de baja');
+
+        $this->assertTrue((bool) $trabaja->fresh()->activo);
+    }
+
+    /**
+     * El caso que se vio en producción: a quien pasó a Marca País le consta la baja en el carnets
+     * —que es del CIIP— y sigue viniendo a trabajar todos los días.
+     */
+    #[Test]
+    public function de_baja_en_carnets_pero_contratado_por_otro_ente_no_se_desactiva(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
+
+        $ahoraEnMarcaPais = $this->aqui('22222222', 'CAMBIÓ DE ENTE', ente: 'marca-pais');
+        $delCiip = $this->aqui('33333333', 'ESTE SÍ SE FUE', ente: 'ciip');
+
+        $this->carnetsResponde([
+            ['cedula' => '22222222', 'nombre' => 'CAMBIÓ DE ENTE', 'estatus' => 'Inactivo'],
+            ['cedula' => '33333333', 'nombre' => 'ESTE SÍ SE FUE', 'estatus' => 'Inactivo'],
+        ]);
+
+        $cotejo = app(CotejoConCarnets::class)->comparar();
+
+        $this->assertSame(['33333333'], $cotejo['inactivosEnCarnets']->pluck('persona.cedula')->all(),
+            'Solo el del CIIP: la baja en el carnets del CIIP no dice nada de quien ya es de otro ente.');
+        $this->assertSame(['22222222'], $cotejo['sinConcluir']->pluck('persona.cedula')->all());
+
+        Livewire::test(ListaDeTrabajadores::class)
+            ->call('cotejarConCarnets')
+            ->call('desactivarTodosComoEnCarnets')
+            ->assertHasNoErrors();
+
+        $this->assertTrue((bool) $ahoraEnMarcaPais->fresh()->activo, 'El de Marca País sigue pudiendo marcar.');
+        $this->assertFalse((bool) $delCiip->fresh()->activo);
+    }
 }

@@ -623,6 +623,18 @@ class ListaDeTrabajadores extends Component
     {
         Gate::authorize('gestionar-personal');
 
+        // Solo se desactiva a quien el cotejo señala, y el cotejo ya descarta a quien no se puede
+        // juzgar: los «No Aplica» y los que pasaron a otro ente del edificio. Sin esta guarda
+        // bastaba con mandar una cédula —una pantalla vieja sirve— para desactivar a cualquiera.
+        $senalado = collect($this->cotejo['inactivosEnCarnets'] ?? [])
+            ->contains(fn ($fila) => (string) (is_array($p = $fila['persona'] ?? null) ? ($p['cedula'] ?? '') : ($p->cedula ?? '')) === (string) Persona::normalizarCedula($cedula));
+
+        if (! $senalado) {
+            $this->problema = 'Esa persona no está entre las que el carnets da de baja. Vuelve a comparar.';
+
+            return;
+        }
+
         $persona = Persona::where('cedula', Persona::normalizarCedula($cedula))->first();
 
         if (! $persona) {
