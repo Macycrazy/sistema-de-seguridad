@@ -6,6 +6,7 @@ use App\Livewire\Trabajadores\ListaDeTrabajadores;
 use App\Models\Persona;
 use App\Models\User;
 use App\Services\Carnets\CotejoConCarnets;
+use App\Services\GestionDeTrabajadores;
 use App\Usuarios\Rol;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -373,7 +374,9 @@ class CotejoConCarnetsTest extends TestCase
         Livewire::test(ListaDeTrabajadores::class)
             ->call('cotejarConCarnets')
             ->call('cargarDelPadron', '25303526')
-            ->assertSee('ya está registrada como visitante');
+            // Y dice dónde está esa ficha y qué hacer, no solo que no se pudo.
+            ->assertSee('ya está aquí como VISITANTE')
+            ->assertSee('pestaña de');
     }
 
     /** Y si lo que se rompe no es el dato sino el sistema, tampoco se queda callado. */
@@ -385,7 +388,7 @@ class CotejoConCarnetsTest extends TestCase
             ['cedula' => '25303526', 'nombre' => 'YEITSON JOSE LAGUNA LEAL'],
         ]);
 
-        $this->mock(\App\Services\GestionDeTrabajadores::class, function ($simulado) {
+        $this->mock(GestionDeTrabajadores::class, function ($simulado) {
             $simulado->shouldReceive('guardar')->andThrow(new \RuntimeException('la base se cayó'));
         });
 

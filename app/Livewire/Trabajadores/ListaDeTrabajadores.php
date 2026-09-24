@@ -467,6 +467,27 @@ class ListaDeTrabajadores extends Component
             return;
         }
 
+        /*
+         * El caso que más se da, y que sin explicar no hay quien lo resuelva: esa cédula YA está
+         * aquí, pero como visitante. Pasa con quien vino de visita antes de entrar a trabajar
+         * —muchas veces con el nombre mal escrito, como lo tecleó el vigilante—, y luego lo dan de
+         * alta en el carnets. El alta se rechaza a propósito: mezclar las dos figuras ensuciaría
+         * el registro. Pero decir solo «ya está registrada como visitante» deja a quien mira sin
+         * saber dónde está esa ficha ni qué se supone que tiene que hacer.
+         */
+        $comoVisitante = Persona::where('cedula', Persona::normalizarCedula($ficha['cedula']))
+            ->where('tipo', Persona::INVITADO)
+            ->first();
+
+        if ($comoVisitante) {
+            $this->problema = $ficha['nombre'].' ya está aquí como VISITANTE, con el nombre «'
+                .$comoVisitante->nombre.'». No se carga encima: son dos figuras distintas y'
+                .' mezclarlas ensuciaría el registro. Resuelve primero esa ficha en la pestaña de'
+                .' visitantes.';
+
+            return;
+        }
+
         $pudo = $this->haciendo('cargar a '.$ficha['nombre'], fn () => $this->gestion->guardar(
             cedula: $ficha['cedula'],
             nombre: $ficha['nombre'],
