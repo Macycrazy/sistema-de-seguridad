@@ -10,7 +10,40 @@
  *
  * Se corre con «npm run comprobar».
  */
+import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
+
+/*
+ * Antes que nada: que el binario nativo de Tailwind esté de verdad.
+ *
+ * Tailwind 4 compila con @tailwindcss/oxide, que es código nativo y se instala como dependencia
+ * opcional por plataforma, y que pide Node 20 o más. Con un Node más viejo npm se lo salta por
+ * incompatible —sin fallar la instalación, que es lo traicionero— y el fallo sale después, al
+ * construir, como «Cannot find native binding» y quince líneas de rastro que no mencionan ni a
+ * Node ni a Tailwind. Eso tumbó un despliegue y costó un rato entenderlo.
+ *
+ * Se mira si el binario RESPONDE, y no qué versión de Node hay: hay máquinas con Node viejo donde
+ * el binario ya está instalado de antes y todo construye perfectamente. Lo que rompe el build es
+ * que falte, así que es eso lo que se comprueba.
+ *
+ * Y va aquí porque esto corre antes que vite en «npm run build»: el aviso llega antes que el error.
+ */
+const require = createRequire(import.meta.url);
+
+try {
+    require('@tailwindcss/oxide');
+} catch (fallo) {
+    const versionDeNode = Number(process.versions.node.split('.')[0]);
+
+    console.error(
+        'Falta el binario nativo de Tailwind (@tailwindcss/oxide), así que «vite build» va a fallar.\n'
+        + (versionDeNode < 20
+            ? `Es por Node: tienes la ${process.versions.node} y hace falta la 20 o más. Actualiza Node y reinstala.`
+            : 'Reinstala las dependencias: borra node_modules y package-lock.json y vuelve a «npm install».')
+        + `\n(${fallo.message.split('\n')[0]})`
+    );
+    process.exit(1);
+}
 
 /** Un doble de $wire: responde a cualquier método con una promesa vacía. */
 const wireFalso = new Proxy({}, { get: () => async () => [] });

@@ -186,7 +186,7 @@ Esconder un botón en la pantalla no es seguridad.
 | PHP | 8.3 o superior, con las extensiones `pdo_pgsql`, `mbstring`, `intl`, `zip`, `gd` |
 | Composer | 2.x |
 | PostgreSQL | 14 o superior |
-| Node.js | 18 o superior (con npm) |
+| Node.js | 20 o superior (con npm). Tailwind compila con un binario nativo que no existe para versiones anteriores. |
 
 ---
 
