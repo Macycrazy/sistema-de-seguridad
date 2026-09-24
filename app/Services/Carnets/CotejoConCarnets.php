@@ -33,6 +33,7 @@ final class CotejoConCarnets
      * @return array{
      *     disponible: bool,
      *     faltan: Collection<int, array{cedula:string, nombre:string, gerencia:?string}>,
+     *     comoVisitantes: Collection<int, array{cedula:string, nombre:string, gerencia:?string, nombreAqui:string}>,
      *     sobran: Collection<int, Persona>,
      *     desactivados: Collection<int, Persona>,
      *     inactivosEnCarnets: Collection<int, array{persona:Persona, estatus:string}>,
@@ -85,6 +86,19 @@ final class CotejoConCarnets
 
         $aqui = $todos->filter(fn (Persona $persona) => (bool) $persona->activo);
 
+        /*
+         * Los que aquí están como VISITANTES. Hay que mirarlos aparte porque de lo contrario caen
+         * en «faltan», y ahí el botón de cargar no puede funcionar jamás: su cédula ya está
+         * ocupada por esa ficha. Se quedaban en la lista dando la lata sin salida.
+         *
+         * Pasa con quien vino de visita antes de que lo contrataran —con el nombre como lo tecleó
+         * el vigilante, que casi nunca es el del carnet— y luego entró en nómina.
+         */
+        $visitantes = Persona::query()
+            ->where('tipo', Persona::INVITADO)
+            ->get()
+            ->keyBy(fn (Persona $persona) => (string) $persona->cedula);
+
         // Solo del CIIP se puede decir «no está en carnets»: el carnets es suyo. De los otros dos
         // entes no está nadie allá, y eso es lo normal, no un problema.
         $delCiip = $aqui->filter(fn (Persona $p) => $p->ente === Ente::Ciip->value);
@@ -94,9 +108,23 @@ final class CotejoConCarnets
         return [
             'disponible' => true,
 
-            // Activos en carnets y aquí NO EXISTEN: hay que darlos de alta.
+            // Activos en carnets y aquí NO EXISTEN de ninguna forma: hay que darlos de alta.
             'faltan' => $enCarnets
-                ->reject(fn ($ficha, $cedula) => $todos->has((string) $cedula))
+                ->reject(fn ($ficha, $cedula) => $todos->has((string) $cedula) || $visitantes->has((string) $cedula))
+                ->values(),
+
+            // Activos en carnets y aquí existen, pero como VISITANTES. No se dan de alta: se pasa
+            // a nómina la ficha que ya hay, para no partir en dos a la misma persona.
+            'comoVisitantes' => $enCarnets
+                ->filter(fn ($ficha, $cedula) => ! $todos->has((string) $cedula) && $visitantes->has((string) $cedula))
+                ->map(fn ($ficha, $cedula) => [
+                    'cedula' => $ficha['cedula'],
+                    'nombre' => $ficha['nombre'],
+                    'gerencia' => $ficha['gerencia'] ?? null,
+                    // Con qué nombre está aquí: enseñarlo es lo que hace evidente que es la misma
+                    // persona mal escrita, y no un choque de cédulas entre dos distintas.
+                    'nombreAqui' => (string) $visitantes->get((string) $cedula)?->nombre,
+                ])
                 ->values(),
 
             // Existen aquí pero desactivados, y en carnets siguen activos: tampoco pueden marcar,
@@ -153,6 +181,7 @@ final class CotejoConCarnets
         return [
             'disponible' => $disponible,
             'faltan' => collect(),
+            'comoVisitantes' => collect(),
             'sobran' => collect(),
             'sinEnte' => collect(),
             'desactivados' => collect(),

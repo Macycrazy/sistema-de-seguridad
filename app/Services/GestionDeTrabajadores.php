@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\EntregaDePase;
 use App\Models\Persona;
 use App\Services\Carnets\FotoDelCarnet;
 use App\Services\Organigrama\Organigrama;
@@ -150,6 +151,112 @@ class GestionDeTrabajadores
     public function reactivar(Persona $trabajador): void
     {
         $trabajador->update(['activo' => true]);
+    }
+
+    /**
+     * Pasa a nómina a quien estaba aquí como VISITANTE y en el carnets consta de personal.
+     *
+     * Ocurre más de lo que parece: alguien viene de visita antes de que lo contraten —y el
+     * vigilante teclea su nombre a ojo, así que la ficha queda con el nombre mal escrito—, y
+     * meses después lo dan de alta en el carnets. Dar de alta una ficha nueva no vale: la cédula
+     * ya está ocupada, y son la misma persona.
+     *
+     * Se cambia la ficha que ya hay, no se crea otra. Así el histórico de cuando venía de visita
+     * sigue colgando de ella: quién es y cuándo entró no cambia porque ahora cobre nómina.
+     *
+     * Solo se toca lo que de verdad cambia —qué es, si tiene acceso, y sus datos de nómina—. El
+     * motivo de visita y el piso se quedan: no estorban a un trabajador, no se le muestran, y
+     * dejarlos hace que deshacer esto no pierda nada.
+     *
+     * @throws ValidationException
+     */
+    public function convertirEnTrabajador(
+        Persona $persona,
+        string $nombre,
+        ?string $ente = null,
+        ?string $dependencia = null,
+    ): Persona {
+        if (! $persona->esInvitado()) {
+            throw ValidationException::withMessages([
+                'cedula' => 'Esa persona ya está en la nómina.',
+            ]);
+        }
+
+        // Un trabajador no anda con un pase de visitante en el bolsillo. Si lo tiene sin devolver,
+        // primero se recoge: convertirlo ahora dejaría el pase prestado a alguien que, para el
+        // sistema de pases, ya no es una visita —y no habría quien se lo reclamara—.
+        $pase = EntregaDePase::query()->abiertas()->where('persona_id', $persona->id)->with('pase')->first();
+
+        if ($pase) {
+            throw ValidationException::withMessages([
+                'cedula' => 'Antes de pasarlo a nómina hay que recoger el pase '
+                    .($pase->pase?->codigo ?? '').' que lleva.',
+            ]);
+        }
+
+        $nombre = trim($nombre);
+
+        if ($nombre === '') {
+            throw ValidationException::withMessages([
+                'nombre' => 'Hace falta el nombre del trabajador.',
+            ]);
+        }
+
+        $persona->update([
+            'tipo' => Persona::TRABAJADOR,
+            'nombre' => mb_strtoupper($nombre),
+            'ente' => $this->enteValido($ente),
+            'dependencia' => ($dependencia = $this->recorta($dependencia, 120)) ? mb_strtoupper($dependencia) : null,
+            'activo' => true,
+        ]);
+
+        $this->enlazarDepartamento($persona);
+        $this->traerLaFoto($persona);
+
+        return $persona->refresh();
+    }
+
+    /**
+     * Pasa a VISITANTE a un trabajador que ya no lo es.
+     *
+     * Quien se va de la empresa se desactiva, y su ficha queda ahí sin poder marcar: es lo
+     * correcto mientras sea un ex trabajador y nada más. Pero vuelven —a un trámite, a buscar un
+     * papel, a una reunión— y entonces no hay por dónde: no se les puede marcar porque están
+     * desactivados, y darlos de alta como visita choca con su propia cédula.
+     *
+     * Esto lo resuelve sin inventar una segunda ficha: la misma persona pasa a ser una visita, con
+     * todo lo que ya tenía detrás.
+     *
+     * Solo desde inactivo, y a propósito: convertir a un trabajador en plantilla sería quitarlo de
+     * la nómina por accidente. Primero se le da de baja —que es la decisión de verdad— y después,
+     * si hace falta, se le deja entrar como visita.
+     *
+     * Lo de nómina (ente, dependencia, unidad) NO se borra, aunque deje de mostrarse: si esto se
+     * hizo por error, deshacerlo lo devuelve entero.
+     *
+     * @throws ValidationException
+     */
+    public function convertirEnInvitado(Persona $persona): Persona
+    {
+        if ($persona->esInvitado()) {
+            throw ValidationException::withMessages([
+                'cedula' => 'Esa persona ya es una visita.',
+            ]);
+        }
+
+        if ($persona->activo) {
+            throw ValidationException::withMessages([
+                'cedula' => 'Primero dale de baja. Un trabajador activo no se pasa a visitas: eso lo sacaría de la nómina sin querer.',
+            ]);
+        }
+
+        $persona->update([
+            'tipo' => Persona::INVITADO,
+            // Como visita sí puede marcar: es justo para lo que se hace esto.
+            'activo' => true,
+        ]);
+
+        return $persona->refresh();
     }
 
     private function exigirCedula(string $cedula): void

@@ -349,21 +349,20 @@ class CotejoConCarnetsTest extends TestCase
     }
 
     /**
-     * El fallo que hacía parecer que el botón estaba muerto.
+     * Quien ya está aquí como visitante no se carga: se pasa a nómina, que es otro botón.
      *
-     * Cuando el alta se rechazaba, la queja iba al saco de errores y este panel no pintaba
-     * ninguno: la fila se quedaba donde estaba, sin un solo mensaje. Desde fuera eso es
-     * exactamente lo mismo que un botón que no hace nada.
+     * Aun así la guarda se queda, porque la petición puede llegar sin pasar por la pantalla. Y
+     * cuando salta, se explica: antes el rechazo se guardaba en el saco de errores y este panel no
+     * pintaba ninguno, así que desde fuera era idéntico a un botón muerto.
      */
-    public function test_si_el_alta_se_rechaza_la_pantalla_lo_dice(): void
+    public function test_cargar_a_quien_ya_esta_como_visitante_se_niega_y_lo_dice(): void
     {
         $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
 
-        // Esa cédula ya está aquí, pero como visitante: dar de alta encima está prohibido.
         Persona::create([
             'cedula' => '25303526',
             'tipo' => Persona::INVITADO,
-            'nombre' => 'YEITSON JOSE LAGUNA LEAL',
+            'nombre' => 'Jheison laguna',
             'activo' => true,
         ]);
 
@@ -373,10 +372,10 @@ class CotejoConCarnetsTest extends TestCase
 
         Livewire::test(ListaDeTrabajadores::class)
             ->call('cotejarConCarnets')
+            // Ya no se le ofrece cargar: se le ofrece pasarlo a nómina.
+            ->assertSee('están como visitantes')
             ->call('cargarDelPadron', '25303526')
-            // Y dice dónde está esa ficha y qué hacer, no solo que no se pudo.
-            ->assertSee('ya está aquí como VISITANTE')
-            ->assertSee('pestaña de');
+            ->assertSee('ya está aquí como VISITANTE');
     }
 
     /** Y si lo que se rompe no es el dato sino el sistema, tampoco se queda callado. */

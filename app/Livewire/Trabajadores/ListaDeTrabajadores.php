@@ -10,6 +10,7 @@ use App\Services\Auditoria\Auditoria;
 use App\Services\Carnets\CotejoConCarnets;
 use App\Services\GestionDeInvitados;
 use App\Services\GestionDeTrabajadores;
+use App\Services\Registro\Ente;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -414,6 +415,7 @@ class ListaDeTrabajadores extends Component
         }
 
         $pendientes = $this->cotejo['faltan']->count()
+            + $this->cotejo['comoVisitantes']->count()
             + $this->cotejo['desactivados']->count()
             + $this->cotejo['inactivosEnCarnets']->count();
 
@@ -459,7 +461,11 @@ class ListaDeTrabajadores extends Component
     {
         Gate::authorize('gestionar-personal');
 
-        $ficha = collect($this->cotejo['faltan'] ?? [])->firstWhere('cedula', $cedula);
+        // También se busca entre los que están aquí como visitantes: esos no se cargan —tienen su
+        // propio botón—, pero si la petición llega igual conviene decir por qué no, en vez del
+        // genérico «ya no está en la lista», que manda a buscar algo que sí está.
+        $ficha = collect($this->cotejo['faltan'] ?? [])->firstWhere('cedula', $cedula)
+            ?? collect($this->cotejo['comoVisitantes'] ?? [])->firstWhere('cedula', $cedula);
 
         if (! $ficha) {
             $this->aviso = 'Esa persona ya no está en la lista: vuelve a cotejar.';
@@ -502,6 +508,82 @@ class ListaDeTrabajadores extends Component
 
         // Se rehace el cotejo para que esa persona desaparezca de la lista.
         $this->cotejo = app(CotejoConCarnets::class)->comparar();
+    }
+
+    /**
+     * Pasa a nómina la ficha de quien aquí era VISITANTE y en el carnets consta de personal.
+     *
+     * No da de alta nada: cambia la ficha que ya hay. Son la misma persona, y partirla en dos
+     * dejaría su histórico repartido entre dos fichas con la misma cédula.
+     */
+    public function pasarANomina(string $cedula): void
+    {
+        Gate::authorize('gestionar-personal');
+
+        $ficha = collect($this->cotejo['comoVisitantes'] ?? [])->firstWhere('cedula', $cedula);
+
+        if (! $ficha) {
+            $this->aviso = 'Esa persona ya no está en la lista: vuelve a cotejar.';
+
+            return;
+        }
+
+        $persona = Persona::where('cedula', Persona::normalizarCedula($cedula))
+            ->where('tipo', Persona::INVITADO)
+            ->first();
+
+        if (! $persona) {
+            $this->aviso = 'Esa ficha de visitante ya no está: vuelve a cotejar.';
+
+            return;
+        }
+
+        $pudo = $this->haciendo('pasar a nómina a '.$ficha['nombre'], fn () => $this->gestion->convertirEnTrabajador(
+            persona: $persona,
+            nombre: $ficha['nombre'],
+            ente: Ente::Ciip->value,
+            dependencia: $ficha['gerencia'] ?? null,
+        ));
+
+        if (! $pudo) {
+            return;
+        }
+
+        $this->aviso = $ficha['nombre'].' pasó a nómina, con el histórico que ya tenía.';
+        app(Auditoria::class)->cargoPersonal('pasó a nómina a '.$ficha['nombre'].' ('.$cedula.'), que estaba como visitante');
+
+        $this->problema = '';
+        $this->cotejo = app(CotejoConCarnets::class)->comparar();
+    }
+
+    /**
+     * Pasa a VISITAS a un trabajador que ya no lo es.
+     *
+     * Quien se va se desactiva, y su ficha queda sin poder marcar. Pero vuelven —a un trámite, a
+     * buscar un papel— y ahí no había por dónde: desactivado no se le marca, y darlo de alta como
+     * visita choca con su propia cédula. Esto lo deja entrar como lo que es ahora, sin partir su
+     * ficha en dos.
+     */
+    public function pasarAVisitas(int $id): void
+    {
+        Gate::authorize('gestionar-personal');
+
+        $persona = Persona::find($id);
+
+        if (! $persona) {
+            $this->aviso = 'Esa persona ya no está.';
+
+            return;
+        }
+
+        $nombre = $persona->nombre;
+
+        if (! $this->haciendo('pasar a visitas a '.$nombre, fn () => $this->gestion->convertirEnInvitado($persona))) {
+            return;
+        }
+
+        $this->aviso = $nombre.' pasó a visitas: ya puede marcar como visitante, con su histórico.';
+        app(Auditoria::class)->cargoPersonal('pasó a visitas a '.$nombre.' ('.$persona->cedula.')');
     }
 
     /**

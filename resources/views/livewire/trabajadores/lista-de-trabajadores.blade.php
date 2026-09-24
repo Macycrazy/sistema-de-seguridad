@@ -80,6 +80,7 @@
     @if ($cotejo && $cotejo['disponible'])
         @php
             $faltan = $cotejo['faltan'];
+            $comoVisitantes = $cotejo['comoVisitantes'];
             $sobran = $cotejo['sobran'];
             $sinEnte = $cotejo['sinEnte'];
             $desactivados = $cotejo['desactivados'];
@@ -128,6 +129,50 @@
                                     <x-boton tamano="chico" class="shrink-0"
                                              wire:click="cargarDelPadron('{{ $ficha['cedula'] }}')"
                                              wire:loading.attr="disabled">Cargar</x-boton>
+                                @endcan
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            {{-- En carnets, y aquí ya existen pero COMO VISITANTES.
+
+                 Van aparte de «no están aquí» porque cargarlos es imposible: su cédula ya está
+                 ocupada por esa ficha. Antes caían en aquella lista con un botón que no podía
+                 funcionar y que no explicaba por qué.
+
+                 Es quien vino de visita antes de que lo contrataran —con el nombre como lo tecleó
+                 el vigilante— y luego entró en nómina. Por eso se enseñan los dos nombres: es lo
+                 que hace ver que son la misma persona y no dos con la misma cédula. --}}
+            @if ($comoVisitantes->isNotEmpty())
+                <div class="mt-4 border-t border-slate-100 pt-3">
+                    <p class="font-semibold text-slate-900">
+                        {{ $comoVisitantes->count() }} en carnets y aquí están como visitantes
+                    </p>
+                    <p class="mt-0.5 text-xs text-slate-500">
+                        No se dan de alta otra vez: se pasa a nómina la ficha que ya tienen, y su histórico se conserva.
+                    </p>
+
+                    <ul class="mt-2 divide-y divide-slate-100 text-sm">
+                        @foreach ($comoVisitantes as $ficha)
+                            <li class="flex flex-wrap items-center justify-between gap-2 py-2"
+                                wire:key="visitante-{{ $ficha['cedula'] }}">
+                                <span class="min-w-0">
+                                    <span class="block truncate font-medium text-slate-800">{{ $ficha['nombre'] }}</span>
+                                    <span class="font-mono text-xs text-slate-500">
+                                        {{ $ficha['cedula'] }}@if ($ficha['gerencia']) · {{ $ficha['gerencia'] }}@endif
+                                    </span>
+                                    <span class="block text-xs text-invitado">
+                                        aquí figura como visitante: «{{ $ficha['nombreAqui'] }}»
+                                    </span>
+                                </span>
+
+                                @can('gestionar-personal')
+                                    <x-boton tamano="chico" class="shrink-0"
+                                             wire:click="pasarANomina('{{ $ficha['cedula'] }}')"
+                                             wire:confirm="¿Pasar a nómina a {{ $ficha['nombre'] }}? Su ficha de visitante pasa a ser de trabajador, con el histórico que ya tiene."
+                                             wire:loading.attr="disabled">Pasar a nómina</x-boton>
                                 @endcan
                             </li>
                         @endforeach
@@ -400,6 +445,16 @@
                                     @else
                                         <button wire:click="reactivar({{ $p->id }})"
                                                 class="text-sm font-semibold text-parte3 hover:underline">Reactivar</button>
+
+                                        {{-- Ya no trabaja aquí, pero vuelve: a un trámite, a buscar
+                                             un papel. Desactivado no se le puede marcar, y darlo de
+                                             alta como visita choca con su propia cédula. Esto le
+                                             deja entrar como lo que es ahora, sin partir su ficha. --}}
+                                        @if (! $this->verInvitados())
+                                            <button wire:click="pasarAVisitas({{ $p->id }})"
+                                                    wire:confirm="¿Pasar a {{ $p->nombre }} a visitas? Deja de ser trabajador y podrá marcar como visitante. Su histórico se conserva."
+                                                    class="text-sm font-semibold text-invitado hover:underline">Pasar a visitas</button>
+                                        @endif
                                     @endif
                                 </div>
                             @else
