@@ -217,6 +217,30 @@ class GestionDeTrabajadores
     }
 
     /**
+     * Lo cambia de ente: sigue trabajando en el edificio, pero para otra de las empresas.
+     *
+     * En el edificio hay tres —CIIP, Marca País y VENAPP— y la gente se mueve entre ellas. El
+     * carnets es solo del CIIP, así que a quien se pasa a otra le consta la baja allá aunque
+     * venga a trabajar todos los días. Darlo de baja aquí por eso sería dejarlo en la puerta.
+     *
+     * No se toca si está activo ni su histórico: lo único que cambia es para quién trabaja.
+     *
+     * @throws ValidationException
+     */
+    public function cambiarDeEnte(Persona $trabajador, ?string $ente): Persona
+    {
+        if ($trabajador->esInvitado()) {
+            throw ValidationException::withMessages([
+                'ente' => 'Una visita no pertenece a ningún ente.',
+            ]);
+        }
+
+        $trabajador->update(['ente' => $this->enteValido($ente)]);
+
+        return $trabajador->refresh();
+    }
+
+    /**
      * Pasa a VISITANTE a un trabajador que ya no lo es.
      *
      * Quien se va de la empresa se desactiva, y su ficha queda ahí sin poder marcar: es lo

@@ -458,4 +458,69 @@ class CotejoConCarnetsTest extends TestCase
         $this->assertTrue((bool) $ahoraEnMarcaPais->fresh()->activo, 'El de Marca País sigue pudiendo marcar.');
         $this->assertFalse((bool) $delCiip->fresh()->activo);
     }
+
+    /**
+     * Las tres salidas de una baja en carnets.
+     *
+     * El carnets solo dice «ya no es del CIIP», y eso puede ser tres cosas con desenlaces que no se
+     * parecen: se fue, se pasó a otra de las empresas del edificio, o ahora viene de visita. Antes
+     * el botón daba por hecho la primera y desactivaba de un toque, sin preguntar.
+     */
+    #[Test]
+    public function la_baja_en_carnets_pregunta_que_paso_en_vez_de_desactivar(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
+
+        $persona = $this->aqui('11111111', 'SE FUE DEL CIIP', ente: 'ciip');
+        $this->carnetsResponde([['cedula' => '11111111', 'nombre' => 'SE FUE DEL CIIP', 'estatus' => 'Inactivo']]);
+
+        Livewire::test(ListaDeTrabajadores::class)
+            ->call('cotejarConCarnets')
+            ->assertSee('¿Qué pasó?')
+            ->call('resolver', '11111111')
+            ->assertSee('Se fue')
+            ->assertSee('Pasó a Marca País')
+            ->assertSee('Ahora viene de visita');
+
+        // Abrir las opciones no toca nada.
+        $this->assertTrue((bool) $persona->fresh()->activo);
+    }
+
+    #[Test]
+    public function si_paso_a_otra_empresa_del_edificio_cambia_de_ente_y_sigue_marcando(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
+
+        $persona = $this->aqui('11111111', 'CAMBIÓ DE CASA', ente: 'ciip');
+        $this->carnetsResponde([['cedula' => '11111111', 'nombre' => 'CAMBIÓ DE CASA', 'estatus' => 'Inactivo']]);
+
+        Livewire::test(ListaDeTrabajadores::class)
+            ->call('cotejarConCarnets')
+            ->call('resolverComoOtroEnte', '11111111', 'marca-pais')
+            ->assertSee('Marca País');
+
+        $persona->refresh();
+
+        $this->assertSame('marca-pais', $persona->ente);
+        $this->assertTrue((bool) $persona->activo, 'No se le da de baja: sigue trabajando en el edificio.');
+    }
+
+    #[Test]
+    public function si_ahora_viene_de_visita_sale_de_nomina_y_queda_como_visitante(): void
+    {
+        $this->actingAs(User::factory()->create(['rol' => Rol::administrador()]));
+
+        $persona = $this->aqui('11111111', 'YA NO TRABAJA', ente: 'ciip');
+        $this->carnetsResponde([['cedula' => '11111111', 'nombre' => 'YA NO TRABAJA', 'estatus' => 'Inactivo']]);
+
+        Livewire::test(ListaDeTrabajadores::class)
+            ->call('cotejarConCarnets')
+            ->call('resolverComoVisita', '11111111')
+            ->assertSee('queda como visitante');
+
+        $persona->refresh();
+
+        $this->assertSame(Persona::INVITADO, $persona->tipo);
+        $this->assertTrue((bool) $persona->activo, 'Como visita sí puede marcar.');
+    }
 }

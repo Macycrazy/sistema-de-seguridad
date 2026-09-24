@@ -195,24 +195,75 @@
                         @endcan
                     </div>
                     <p class="mt-0.5 text-xs text-slate-500">
-                        Siguen pudiendo marcar aquí. Desactivar conserva su histórico y se deshace reactivando.
+                        Siguen pudiendo marcar aquí. El carnets solo dice que ya no son del CIIP, y eso
+                        puede ser tres cosas: toca «¿Qué pasó?» y elige la que sea.
                     </p>
 
                     <ul class="mt-2 divide-y divide-slate-100 text-sm">
                         @foreach ($inactivosAlla as $fila)
-                            <li class="flex flex-wrap items-center justify-between gap-2 py-2" wire:key="inact-{{ $fila['persona']->id }}">
-                                <span class="min-w-0">
-                                    <span class="block truncate font-medium text-slate-800">{{ $fila['persona']->nombre }}</span>
-                                    <span class="font-mono text-xs text-slate-500">
-                                        {{ $fila['persona']->cedula }} · en carnets: {{ $fila['estatus'] }}
+                            <li class="py-2" wire:key="inact-{{ $fila['persona']->id }}">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <span class="min-w-0">
+                                        <span class="block truncate font-medium text-slate-800">{{ $fila['persona']->nombre }}</span>
+                                        <span class="font-mono text-xs text-slate-500">
+                                            {{ $fila['persona']->cedula }} · en carnets: {{ $fila['estatus'] }}
+                                        </span>
                                     </span>
-                                </span>
 
-                                @can('gestionar-personal')
-                                    <x-boton variante="peligro" tamano="chico" class="shrink-0"
-                                             wire:click="desactivarComoEnCarnets('{{ $fila['persona']->cedula }}')"
-                                             wire:loading.attr="disabled">Desactivar</x-boton>
-                                @endcan
+                                    @can('gestionar-personal')
+                                        <x-boton variante="secundario" tamano="chico" class="shrink-0"
+                                                 wire:click="resolver('{{ $fila['persona']->cedula }}')"
+                                                 wire:loading.attr="disabled">{{ $resolviendo === (string) $fila['persona']->cedula ? 'Cerrar' : '¿Qué pasó?' }}</x-boton>
+                                    @endcan
+                                </div>
+
+                                {{-- Las tres salidas.
+
+                                     El carnets solo dice una cosa —«ya no es del CIIP»— y eso puede
+                                     ser tres muy distintas. Antes el botón daba por hecho la
+                                     primera y desactivaba de un toque, sin preguntar: a quien se
+                                     había pasado a otra de las empresas del edificio lo dejaba en
+                                     la puerta al día siguiente. --}}
+                                @if ($resolviendo === (string) $fila['persona']->cedula)
+                                    @can('gestionar-personal')
+                                        <div class="mt-2 rounded border border-slate-200 bg-slate-50 p-3">
+                                            <p class="text-xs font-semibold text-slate-700">
+                                                ¿Qué pasó con {{ $fila['persona']->nombre }}?
+                                            </p>
+
+                                            <div class="mt-2 grid gap-2">
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <x-boton variante="peligro" tamano="chico"
+                                                             wire:click="desactivarComoEnCarnets('{{ $fila['persona']->cedula }}')"
+                                                             wire:loading.attr="disabled">Se fue</x-boton>
+                                                    <span class="text-xs text-slate-500">
+                                                        Deja de marcar. Su histórico se conserva y se deshace reactivando.
+                                                    </span>
+                                                </div>
+
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    @foreach ([\App\Services\Registro\Ente::MarcaPais, \App\Services\Registro\Ente::Venapp] as $otro)
+                                                        <x-boton variante="secundario" tamano="chico"
+                                                                 wire:click="resolverComoOtroEnte('{{ $fila['persona']->cedula }}', '{{ $otro->value }}')"
+                                                                 wire:loading.attr="disabled">Pasó a {{ $otro->etiqueta() }}</x-boton>
+                                                    @endforeach
+                                                    <span class="text-xs text-slate-500">
+                                                        Sigue trabajando en el edificio: no se le da de baja, cambia de ente.
+                                                    </span>
+                                                </div>
+
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <x-boton variante="secundario" tamano="chico"
+                                                             wire:click="resolverComoVisita('{{ $fila['persona']->cedula }}')"
+                                                             wire:loading.attr="disabled">Ahora viene de visita</x-boton>
+                                                    <span class="text-xs text-slate-500">
+                                                        Sale de la nómina y su ficha pasa a ser de visitante, con su histórico.
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endcan
+                                @endif
                             </li>
                         @endforeach
                     </ul>

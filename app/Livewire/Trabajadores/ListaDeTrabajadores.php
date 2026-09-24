@@ -614,6 +614,115 @@ class ListaDeTrabajadores extends Component
     }
 
     /**
+     * De quién se está decidiendo qué pasó, en la lista del cotejo. Su cédula, o nada.
+     */
+    public ?string $resolviendo = null;
+
+    /**
+     * Abre —o cierra— las opciones de una fila del cotejo.
+     *
+     * Antes el botón desactivaba de un toque. Eso está mal por dos motivos: no avisaba de nada, y
+     * daba por hecho lo único que el carnets NO dice. Que allá conste de baja significa que ya no
+     * es del CIIP, y eso puede ser tres cosas distintas —se fue, se pasó a otra de las empresas
+     * del edificio, o ahora viene de visita— con tres desenlaces que no se parecen en nada.
+     * Preguntarlo cuesta un toque y evita dejar en la puerta a alguien que trabaja aquí.
+     */
+    public function resolver(?string $cedula = null): void
+    {
+        $this->problema = '';
+        $this->resolviendo = ($cedula === null || $this->resolviendo === $cedula) ? null : $cedula;
+    }
+
+    /**
+     * La persona que el cotejo señala con esa cédula, o null si no la señala.
+     *
+     * La comprobación es del servidor y no de la pantalla: sin ella bastaba con mandar una cédula
+     * —una pestaña vieja sirve— para desactivar a cualquiera.
+     */
+    private function senaladaPorElCotejo(string $cedula): ?Persona
+    {
+        $normalizada = (string) Persona::normalizarCedula($cedula);
+
+        $senalada = collect($this->cotejo['inactivosEnCarnets'] ?? [])
+            ->contains(function ($fila) use ($normalizada) {
+                $suya = $fila['persona'] ?? null;
+                $cedulaDeLaFila = is_array($suya) ? ($suya['cedula'] ?? '') : ($suya->cedula ?? '');
+
+                return (string) $cedulaDeLaFila === $normalizada;
+            });
+
+        if (! $senalada) {
+            $this->problema = 'Esa persona no está entre las que el carnets da de baja. Vuelve a comparar.';
+
+            return null;
+        }
+
+        $persona = Persona::where('cedula', $normalizada)->first();
+
+        if (! $persona) {
+            $this->aviso = 'Esa persona ya no está: vuelve a comparar.';
+        }
+
+        return $persona;
+    }
+
+    /** Se quedó, pero trabajando para otra de las empresas del edificio. */
+    public function resolverComoOtroEnte(string $cedula, string $ente): void
+    {
+        Gate::authorize('gestionar-personal');
+
+        if (! $persona = $this->senaladaPorElCotejo($cedula)) {
+            return;
+        }
+
+        if (! $this->haciendo('cambiar de ente a '.$persona->nombre, fn () => $this->gestion->cambiarDeEnte($persona, $ente))) {
+            return;
+        }
+
+        $this->aviso = $persona->nombre.' queda como personal de '.(Ente::tryFrom($ente)?->etiqueta() ?? $ente)
+            .'. Sigue pudiendo marcar: no se le da de baja.';
+        app(Auditoria::class)->cargoPersonal('cambio de ente · '.$persona->cedula.' → '.$ente);
+
+        $this->cerrarResolucion();
+    }
+
+    /** Ya no trabaja aquí, pero vuelve de visita: su ficha pasa a ser de visitante. */
+    public function resolverComoVisita(string $cedula): void
+    {
+        Gate::authorize('gestionar-personal');
+
+        if (! $persona = $this->senaladaPorElCotejo($cedula)) {
+            return;
+        }
+
+        $nombre = $persona->nombre;
+
+        // La baja primero, que es lo que de verdad pasó, y encima la conversión. El servicio no
+        // convierte a nadie que siga activo, y con razón: sería sacarlo de la nómina sin decirlo.
+        $pudo = $this->haciendo('pasar a visitas a '.$nombre, function () use ($persona) {
+            $this->gestion->desactivar($persona);
+            $this->gestion->convertirEnInvitado($persona);
+        });
+
+        if (! $pudo) {
+            return;
+        }
+
+        $this->aviso = $nombre.' sale de la nómina y queda como visitante, con su histórico.';
+        app(Auditoria::class)->cargoPersonal('de baja y pasado a visitas · '.$persona->cedula);
+
+        $this->cerrarResolucion();
+    }
+
+    /** Cierra las opciones y rehace el cotejo, que acaba de cambiar. */
+    private function cerrarResolucion(): void
+    {
+        $this->resolviendo = null;
+        $this->problema = '';
+        $this->cotejo = app(CotejoConCarnets::class)->comparar();
+    }
+
+    /**
      * Iguala aquí el estado que esa persona tiene en el carnets: la desactiva.
      *
      * De estos no hay duda: en carnets consta su baja. Desactivar conserva su histórico —los
@@ -623,23 +732,7 @@ class ListaDeTrabajadores extends Component
     {
         Gate::authorize('gestionar-personal');
 
-        // Solo se desactiva a quien el cotejo señala, y el cotejo ya descarta a quien no se puede
-        // juzgar: los «No Aplica» y los que pasaron a otro ente del edificio. Sin esta guarda
-        // bastaba con mandar una cédula —una pantalla vieja sirve— para desactivar a cualquiera.
-        $senalado = collect($this->cotejo['inactivosEnCarnets'] ?? [])
-            ->contains(fn ($fila) => (string) (is_array($p = $fila['persona'] ?? null) ? ($p['cedula'] ?? '') : ($p->cedula ?? '')) === (string) Persona::normalizarCedula($cedula));
-
-        if (! $senalado) {
-            $this->problema = 'Esa persona no está entre las que el carnets da de baja. Vuelve a comparar.';
-
-            return;
-        }
-
-        $persona = Persona::where('cedula', Persona::normalizarCedula($cedula))->first();
-
-        if (! $persona) {
-            $this->aviso = 'Esa persona ya no está: vuelve a comparar.';
-
+        if (! $persona = $this->senaladaPorElCotejo($cedula)) {
             return;
         }
 
@@ -649,7 +742,7 @@ class ListaDeTrabajadores extends Component
 
         $this->aviso = $persona->nombre.' desactivado, como en carnets. Su histórico se conserva.';
 
-        $this->cotejo = app(CotejoConCarnets::class)->comparar();
+        $this->cerrarResolucion();
     }
 
     /**
