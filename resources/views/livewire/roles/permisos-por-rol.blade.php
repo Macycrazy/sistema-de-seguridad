@@ -92,11 +92,11 @@
                                     </span>
                                     @unless ($rol->esBase())
                                         <div class="mt-1 flex items-center gap-2">
-                                            <button type="button" wire:click="abrirEdicionRol('{{ $rol->value }}')"
-                                                    class="text-[11px] font-semibold normal-case tracking-normal text-parte3 hover:underline">Editar</button>
-                                            <button type="button" wire:click="eliminarRol('{{ $rol->value }}')"
-                                                    wire:confirm="¿Borrar el rol «{{ $rol->nombre }}»? No se puede si hay usuarios que lo tienen."
-                                                    class="text-[11px] font-semibold normal-case tracking-normal text-alto hover:underline">Borrar</button>
+                                            <x-boton tamano="chico" variante="secundario"
+                                                     type="button" wire:click="abrirEdicionRol('{{ $rol->value }}')">Editar</x-boton>
+                                            <x-boton tamano="chico" variante="peligro"
+                                                     type="button" wire:click="eliminarRol('{{ $rol->value }}')"
+                                                     wire:confirm="¿Borrar el rol «{{ $rol->nombre }}»? No se puede si hay usuarios que lo tienen.">Borrar</x-boton>
                                         </div>
                                     @endunless
                                 </div>
@@ -175,8 +175,8 @@
     <div class="mt-6 flex flex-wrap items-center gap-3">
         <x-boton wire:click="guardar">Guardar</x-boton>
         <x-boton variante="secundario" wire:click="restablecer">
-            Devolver a como venía
-        </x-boton>
+                 Devolver a como venía
+                 </x-boton>
         <p class="text-sm text-slate-500">
             «Gestionar permisos» no se toca: es lo que impide dejar el sistema sin quien lo
             administre.

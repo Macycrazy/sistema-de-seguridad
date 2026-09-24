@@ -68,12 +68,12 @@
                 @if ($this->padronDisponible)
                     @if ($desactualizados !== [])
                         <x-boton x-show="!trabajando" x-on:click="indexar('desactualizados')">
-                            Actualizar los {{ count($desactualizados) }} que cambiaron de foto
-                        </x-boton>
+                                 Actualizar los {{ count($desactualizados) }} que cambiaron de foto
+                                 </x-boton>
                     @elseif (! $comprobado)
                         <x-boton variante="secundario" x-show="!trabajando" wire:click="comprobarCambios">
-                            Comprobar si alguna foto cambió
-                        </x-boton>
+                                 Comprobar si alguna foto cambió
+                                 </x-boton>
                     @endif
                 @endif
 
@@ -199,8 +199,8 @@
                      x-data="muestrasDeRostro($wire)">
                     <div class="flex flex-wrap items-baseline justify-between gap-2">
                         <p class="font-semibold text-slate-900">{{ $this->personaDeMuestras->nombre }}</p>
-                        <button type="button" wire:click="cerrarMuestras"
-                                class="text-sm font-semibold text-slate-500 hover:underline">Cambiar de persona</button>
+                        <x-boton tamano="chico" variante="secundario"
+                                 type="button" wire:click="cerrarMuestras">Cambiar de persona</x-boton>
                     </div>
 
                     <div x-show="!abierto" class="mt-3">
@@ -240,8 +240,8 @@
                         </div>
 
                         <x-boton type="button" variante="secundario" x-on:click="cerrar()" class="mt-3 w-full">
-                            Terminar
-                        </x-boton>
+                                 Terminar
+                                 </x-boton>
                     </div>
                     {{-- Lo que ya tiene, DEBAJO de la cámara: mientras alguien se está
                          grabando lo que quiere ver es su cara, no una lista. --}}
@@ -259,8 +259,8 @@
                                     </span>
                                 </span>
 
-                                <button type="button" wire:click="olvidarMuestra({{ $muestra->id }})"
-                                        class="shrink-0 text-sm font-semibold text-alto hover:underline">Quitar</button>
+                                <x-boton tamano="chico" variante="peligro" class="shrink-0"
+                                         type="button" wire:click="olvidarMuestra({{ $muestra->id }})">Quitar</x-boton>
                             </li>
                         @empty
                             <li class="py-2 text-slate-500">Todavía no tiene ninguna cara guardada.</li>

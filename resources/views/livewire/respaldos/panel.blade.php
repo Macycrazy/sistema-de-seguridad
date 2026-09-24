@@ -15,7 +15,7 @@
         </p>
 
         <x-boton wire:click="crear" wire:loading.attr="disabled" wire:target="crear">
-            <span wire:loading.remove wire:target="crear">Crear respaldo</span>
+                 <span wire:loading.remove wire:target="crear">Crear respaldo</span>
             <span wire:loading wire:target="crear">Creando…</span>
         </x-boton>
     </div>
@@ -37,11 +37,11 @@
                         <td class="px-4 py-3 text-slate-600">{{ $r['cuando']->translatedFormat('d M Y · g:i a') }}</td>
                         <td class="px-4 py-3 text-right tabular-nums text-slate-600">{{ number_format($r['bytes'] / 1024, 1) }} KB</td>
                         <td class="whitespace-nowrap px-4 py-3 text-right">
-                            <button wire:click="descargar('{{ $r['nombre'] }}')"
-                                    class="text-sm font-semibold text-parte3 hover:underline">Descargar</button>
-                            <button wire:click="eliminar('{{ $r['nombre'] }}')"
-                                    wire:confirm="¿Borrar este respaldo? No se puede deshacer."
-                                    class="ml-4 text-sm font-semibold text-alto hover:underline">Borrar</button>
+                            <x-boton tamano="chico" variante="secundario"
+                                     wire:click="descargar('{{ $r['nombre'] }}')">Descargar</x-boton>
+                            <x-boton tamano="chico" variante="peligro" class="ml-4"
+                                     wire:click="eliminar('{{ $r['nombre'] }}')"
+                                     wire:confirm="¿Borrar este respaldo? No se puede deshacer.">Borrar</x-boton>
                         </td>
                     </tr>
                 @empty

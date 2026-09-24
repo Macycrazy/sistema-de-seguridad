@@ -227,7 +227,7 @@
         <div x-data="escanerCarnet($wire)" class="mb-4 border-b border-slate-100 pb-4">
             <div x-show="!abierto">
                 <x-boton type="button" x-on:click="abrir()" class="w-full">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
                          stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
                         <rect x="3" y="6.5" width="18" height="13" rx="2.5"/>
                         <circle cx="12" cy="13" r="3.2"/>
@@ -325,8 +325,8 @@
                 </div>
 
                 <x-boton type="button" variante="secundario" x-on:click="cerrar()" class="mt-3 w-full">
-                    Cerrar cámara
-                </x-boton>
+                         Cerrar cámara
+                         </x-boton>
             </div>
         </div>
 
@@ -413,8 +413,8 @@
                     </p>
 
                     <x-boton type="button" variante="secundario" x-on:click="cerrar()" class="mt-3 w-full">
-                        Cerrar cámara
-                    </x-boton>
+                             Cerrar cámara
+                             </x-boton>
                 </div>
             </div>
         @endif
@@ -929,22 +929,22 @@
                      hay debajo mientras se desliza, que es justo lo que se está leyendo. --}}
                 <div class="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:flex-wrap sm:items-center">
                     <x-boton
-                        variante="entrada"
-                        tamano="grande"
-                        :class="$claseEntrada"
-                        wire:click="marcarEntrada"
-                        wire:loading.attr="disabled"
-                        :disabled="! $puedeEntrar"
-                    >ENTRADA</x-boton>
+                             variante="entrada"
+                             tamano="grande"
+                             :class="$claseEntrada"
+                             wire:click="marcarEntrada"
+                             wire:loading.attr="disabled"
+                             :disabled="! $puedeEntrar"
+                             >ENTRADA</x-boton>
 
                     <x-boton
-                        variante="salida"
-                        tamano="grande"
-                        :class="$claseSalida"
-                        wire:click="marcarSalida"
-                        wire:loading.attr="disabled"
-                        :disabled="! $puedeSalir"
-                    >SALIDA</x-boton>
+                             variante="salida"
+                             tamano="grande"
+                             :class="$claseSalida"
+                             wire:click="marcarSalida"
+                             wire:loading.attr="disabled"
+                             :disabled="! $puedeSalir"
+                             >SALIDA</x-boton>
 
                     <p class="text-sm sm:ml-auto sm:max-w-[16rem] sm:text-right
                               {{ $espera || $esperaSalida ? 'font-semibold text-invitado' : 'text-slate-500' }}">
@@ -976,8 +976,8 @@
 
             <div class="mt-4">
                 <x-boton variante="secundario" tamano="chico" wire:click="limpiar">
-                    Cancelar y empezar de nuevo
-                </x-boton>
+                         Cancelar y empezar de nuevo
+                         </x-boton>
             </div>
         </x-tarjeta>
     @endif
@@ -1053,11 +1053,11 @@
                      los botones de la puerta. --}}
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
                     <x-boton type="submit" class="w-full sm:w-auto" wire:loading.attr="disabled">
-                        Guardar y continuar
-                    </x-boton>
+                             Guardar y continuar
+                             </x-boton>
                     <x-boton variante="secundario" class="w-full sm:w-auto" wire:click="limpiar" type="button">
-                        Cancelar
-                    </x-boton>
+                             Cancelar
+                             </x-boton>
                 </div>
             </form>
         </x-tarjeta>

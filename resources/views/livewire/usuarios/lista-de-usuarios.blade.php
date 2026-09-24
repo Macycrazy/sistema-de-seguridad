@@ -110,8 +110,8 @@
                 <div class="flex items-center gap-3">
                     <x-boton type="submit">{{ $editando ? 'Guardar' : 'Crear' }}</x-boton>
                     <x-boton type="button" variante="secundario" wire:click="cerrarFormulario">
-                        Cancelar
-                    </x-boton>
+                             Cancelar
+                             </x-boton>
                     @unless ($editando)
                         <p class="text-sm text-slate-500">
                             Con esa clave entra. Si quiere una suya, la cambia él desde su nombre.
@@ -162,43 +162,43 @@
                                     --}}
                                     @if ($this->puedeGestionar($fila) && auth()->user()->can('gestionar-usuarios'))
                                         <x-boton
-                                            variante="secundario"
-                                            tamano="chico"
-                                            wire:click="editar({{ $fila->id }})"
-                                        >
+                                                 variante="secundario"
+                                                 tamano="chico"
+                                                 wire:click="editar({{ $fila->id }})"
+                                                 >
                                             Editar
                                         </x-boton>
 
                                         <x-boton
-                                            variante="secundario"
-                                            tamano="chico"
-                                            wire:click="abrirCambioDeClave({{ $fila->id }})"
-                                        >
+                                                 variante="secundario"
+                                                 tamano="chico"
+                                                 wire:click="abrirCambioDeClave({{ $fila->id }})"
+                                                 >
                                             Cambio de clave
                                         </x-boton>
 
                                         <x-boton
-                                            variante="secundario"
-                                            tamano="chico"
-                                            wire:click="abrirCambioDeRol({{ $fila->id }})"
-                                        >
+                                                 variante="secundario"
+                                                 tamano="chico"
+                                                 wire:click="abrirCambioDeRol({{ $fila->id }})"
+                                                 >
                                             Cambiar rol
                                         </x-boton>
 
                                         @if ($fila->activo)
                                             <x-boton
-                                                variante="secundario"
-                                                tamano="chico"
-                                                wire:click="desactivar({{ $fila->id }})"
-                                            >
+                                                     variante="secundario"
+                                                     tamano="chico"
+                                                     wire:click="desactivar({{ $fila->id }})"
+                                                     >
                                                 Desactivar
                                             </x-boton>
                                         @else
                                             <x-boton
-                                                variante="secundario"
-                                                tamano="chico"
-                                                wire:click="reactivar({{ $fila->id }})"
-                                            >
+                                                     variante="secundario"
+                                                     tamano="chico"
+                                                     wire:click="reactivar({{ $fila->id }})"
+                                                     >
                                                 Reactivar
                                             </x-boton>
                                         @endif
@@ -207,11 +207,11 @@
                                              anulan), pero se pierde el «quién» de lo que hizo. Por
                                              eso pide confirmación y va aparte. --}}
                                         <x-boton
-                                            variante="peligro"
-                                            tamano="chico"
-                                            wire:click="eliminar({{ $fila->id }})"
-                                            wire:confirm="¿Borrar a {{ $fila->nombre }}? Se pierde su rastro en la auditoría. Si solo quieres quitarle el acceso, usa Desactivar."
-                                        >
+                                                 variante="peligro"
+                                                 tamano="chico"
+                                                 wire:click="eliminar({{ $fila->id }})"
+                                                 wire:confirm="¿Borrar a {{ $fila->nombre }}? Se pierde su rastro en la auditoría. Si solo quieres quitarle el acceso, usa Desactivar."
+                                                 >
                                             Borrar
                                         </x-boton>
                                     @else
@@ -245,11 +245,11 @@
                                         <div class="flex items-center gap-2 pb-6">
                                             <x-boton type="submit" tamano="chico">Guardar</x-boton>
                                             <x-boton
-                                                type="button"
-                                                variante="secundario"
-                                                tamano="chico"
-                                                wire:click="cerrarCambioDeClave"
-                                            >
+                                                     type="button"
+                                                     variante="secundario"
+                                                     tamano="chico"
+                                                     wire:click="cerrarCambioDeClave"
+                                                     >
                                                 Cancelar
                                             </x-boton>
                                         </div>
@@ -277,11 +277,11 @@
                                         <div class="flex items-center gap-2 pb-6">
                                             <x-boton type="submit" tamano="chico">Guardar</x-boton>
                                             <x-boton
-                                                type="button"
-                                                variante="secundario"
-                                                tamano="chico"
-                                                wire:click="cerrarCambioDeRol"
-                                            >
+                                                     type="button"
+                                                     variante="secundario"
+                                                     tamano="chico"
+                                                     wire:click="cerrarCambioDeRol"
+                                                     >
                                                 Cancelar
                                             </x-boton>
                                         </div>

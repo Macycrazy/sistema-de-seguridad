@@ -61,10 +61,10 @@
                         <td class="px-4 py-3 text-slate-600">{{ $oficina->gerencia ?: '—' }}</td>
                         <td class="px-4 py-3 text-right">
                             @can('gestionar-edificio')
-                                <button wire:click="editar({{ $oficina->id }})"
-                                        class="text-sm font-semibold text-parte3 hover:underline">Editar</button>
-                                <button wire:click="eliminar({{ $oficina->id }})"
-                                        class="ml-4 text-sm font-semibold text-alto hover:underline">Quitar</button>
+                                <x-boton tamano="chico" variante="secundario"
+                                         wire:click="editar({{ $oficina->id }})">Editar</x-boton>
+                                <x-boton tamano="chico" variante="peligro" class="ml-4"
+                                         wire:click="eliminar({{ $oficina->id }})">Quitar</x-boton>
                             @else
                                 <span class="text-slate-300">—</span>
                             @endcan

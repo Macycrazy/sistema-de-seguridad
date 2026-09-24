@@ -81,14 +81,12 @@
                         <td class="px-4 py-3 text-right tabular-nums text-slate-600">{{ $unidad->personas_count }}</td>
                         <td class="whitespace-nowrap px-4 py-3 text-right">
                             @can('gestionar-organigrama')
-                                <button wire:click="editar({{ $unidad->id }})"
-                                        class="text-sm font-semibold text-parte3 hover:underline">Editar</button>
-                                <button wire:click="activar({{ $unidad->id }}, {{ $unidad->activo ? 'false' : 'true' }})"
-                                        class="ml-4 text-sm font-semibold text-slate-500 hover:underline">
-                                    {{ $unidad->activo ? 'Desactivar' : 'Reactivar' }}
-                                </button>
-                                <button wire:click="eliminar({{ $unidad->id }})"
-                                        class="ml-4 text-sm font-semibold text-alto hover:underline">Quitar</button>
+                                <x-boton tamano="chico" variante="secundario"
+                                         wire:click="editar({{ $unidad->id }})">Editar</x-boton>
+                                <x-boton tamano="chico" variante="secundario" class="ml-4"
+                                         wire:click="activar({{ $unidad->id }}, {{ $unidad->activo ? 'false' : 'true' }})">{{ $unidad->activo ? 'Desactivar' : 'Reactivar' }}</x-boton>
+                                <x-boton tamano="chico" variante="peligro" class="ml-4"
+                                         wire:click="eliminar({{ $unidad->id }})">Quitar</x-boton>
                             @else
                                 <span class="text-slate-300">—</span>
                             @endcan

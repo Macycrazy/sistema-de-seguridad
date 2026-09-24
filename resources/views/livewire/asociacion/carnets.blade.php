@@ -19,7 +19,7 @@
                      placeholder="http://172.21.140.245:8000" wire:model="url" />
         </div>
         <x-boton wire:click="probar" wire:loading.attr="disabled" wire:target="probar">
-            <span wire:loading.remove wire:target="probar">Probar conexión</span>
+                 <span wire:loading.remove wire:target="probar">Probar conexión</span>
             <span wire:loading wire:target="probar">Probando…</span>
         </x-boton>
     </div>
@@ -47,7 +47,7 @@
                          placeholder="http://carnets/Trabajador_9f2e…" wire:model="qr" />
             </div>
             <x-boton variante="secundario" wire:click="verificar" wire:loading.attr="disabled" wire:target="verificar">
-                <span wire:loading.remove wire:target="verificar">Probar verificación</span>
+                     <span wire:loading.remove wire:target="verificar">Probar verificación</span>
                 <span wire:loading wire:target="verificar">Consultando…</span>
             </x-boton>
         </div>

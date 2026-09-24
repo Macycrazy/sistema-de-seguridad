@@ -36,7 +36,7 @@
         </p>
 
         <x-boton variante="secundario" wire:click="actualizar" wire:loading.attr="disabled" wire:target="actualizar">
-            <span wire:loading.remove wire:target="actualizar">Actualizar</span>
+                 <span wire:loading.remove wire:target="actualizar">Actualizar</span>
             <span wire:loading wire:target="actualizar">Mirando…</span>
         </x-boton>
     </div>

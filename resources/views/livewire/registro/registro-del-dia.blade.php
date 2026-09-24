@@ -18,11 +18,11 @@
         {{-- El wire:target no es opcional: sin él, el botón se deshabilitaba en cada
              pulsación de cualquier filtro, no solo al exportar. --}}
         <x-boton
-            variante="secundario"
-            wire:click="exportar"
-            wire:loading.attr="disabled"
-            wire:target="exportar"
-        >
+                 variante="secundario"
+                 wire:click="exportar"
+                 wire:loading.attr="disabled"
+                 wire:target="exportar"
+                 >
             <span wire:loading.remove wire:target="exportar">Exportar</span>
             <span wire:loading wire:target="exportar">Generando…</span>
         </x-boton>
@@ -104,8 +104,8 @@
 
                     @unless ($this->esHoy())
                         <x-boton variante="secundario" tamano="chico" wire:click="verHoy">
-                            Volver a hoy
-                        </x-boton>
+                                 Volver a hoy
+                                 </x-boton>
                     @endunless
                 </div>
 

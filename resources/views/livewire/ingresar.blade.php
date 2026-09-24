@@ -55,7 +55,7 @@
             />
 
             <x-boton type="submit" class="w-full" wire:loading.attr="disabled">
-                <span wire:loading.remove wire:target="entrar">Entrar</span>
+                     <span wire:loading.remove wire:target="entrar">Entrar</span>
                 <span wire:loading wire:target="entrar">Entrando…</span>
             </x-boton>
         </form>

@@ -86,10 +86,10 @@
                         </td>
                         <td class="whitespace-nowrap px-4 py-3 text-right">
                             @if ($visita->estaEsperada() && auth()->user()->can('gestionar-visitas'))
-                                <button wire:click="marcarLlegada({{ $visita->id }})"
-                                        class="text-sm font-semibold text-parte2 hover:underline">Llegó</button>
-                                <button wire:click="cancelar({{ $visita->id }})"
-                                        class="ml-4 text-sm font-semibold text-alto hover:underline">Cancelar</button>
+                                <x-boton tamano="chico" variante="secundario"
+                                         wire:click="marcarLlegada({{ $visita->id }})">Llegó</x-boton>
+                                <x-boton tamano="chico" variante="peligro" class="ml-4"
+                                         wire:click="cancelar({{ $visita->id }})">Cancelar</x-boton>
                             @else
                                 <span class="text-xs text-slate-400">—</span>
                             @endif

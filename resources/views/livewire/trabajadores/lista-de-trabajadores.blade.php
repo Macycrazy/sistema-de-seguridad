@@ -40,18 +40,13 @@
         @if (! $this->verInvitados() && auth()->user()->can('gestionar-personal'))
             <div class="flex flex-wrap items-center gap-3">
                 {{-- La plantilla en blanco, para que la carga masiva salga normalizada. --}}
-                <button type="button" wire:click="descargarPlantilla"
-                        class="text-sm font-semibold text-parte3 hover:underline">
-                    Descargar plantilla
-                </button>
+                <x-boton tamano="chico" variante="secundario"
+                         type="button" wire:click="descargarPlantilla">Descargar plantilla</x-boton>
 
                 {{-- Comparar con el carnets. Se pulsa: es una llamada por la red y esta pantalla
                      se abre muchas veces al día para buscar a alguien, no para cotejar. --}}
-                <button type="button" wire:click="cotejarConCarnets"
-                        class="text-sm font-semibold text-parte3 hover:underline">
-                    <span wire:loading.remove wire:target="cotejarConCarnets">Comparar con carnets</span>
-                    <span wire:loading wire:target="cotejarConCarnets">Preguntando…</span>
-                </button>
+                <x-boton tamano="chico" variante="secundario"
+                         type="button" wire:click="cotejarConCarnets"><span wire:loading.remove wire:target="cotejarConCarnets">Comparar con carnets</span> <span wire:loading wire:target="cotejarConCarnets">Preguntando…</span></x-boton>
 
                 {{-- Importar: subir el Excel y cargar en bloque. --}}
                 <form wire:submit="importar" class="flex items-center gap-2">
@@ -60,7 +55,7 @@
                         <input type="file" wire:model="archivo" class="sr-only" accept=".xlsx,.xls,.csv">
                     </label>
                     <x-boton type="submit" variante="secundario" wire:loading.attr="disabled" wire:target="archivo,importar">
-                        <span wire:loading.remove wire:target="archivo,importar">Importar</span>
+                             <span wire:loading.remove wire:target="archivo,importar">Importar</span>
                         <span wire:loading wire:target="archivo,importar">Cargando…</span>
                     </x-boton>
                 </form>
@@ -191,11 +186,9 @@
                         </p>
 
                         @can('gestionar-personal')
-                            <button type="button" wire:click="desactivarTodosComoEnCarnets"
-                                    wire:confirm="¿Desactivar a los {{ $inactivosAlla->count() }}? Su histórico se conserva y se puede deshacer."
-                                    class="text-sm font-semibold text-alto hover:underline">
-                                Desactivar todos
-                            </button>
+                            <x-boton tamano="chico" variante="peligro"
+                                     type="button" wire:click="desactivarTodosComoEnCarnets"
+                                     wire:confirm="¿Desactivar a los {{ $inactivosAlla->count() }}? Su histórico se conserva y se puede deshacer.">Desactivar todos</x-boton>
                         @endcan
                     </div>
                     <p class="mt-0.5 text-xs text-slate-500">
@@ -310,10 +303,8 @@
                         wire:model.live="filtroEstado" />
         </div>
         @if ($busqueda !== '' || $filtroEnte !== '' || $filtroGerencia !== '' || $filtroEstado !== '')
-            <button type="button" wire:click="limpiarFiltros"
-                    class="pb-2.5 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:underline">
-                Limpiar filtros
-            </button>
+            <x-boton tamano="chico" variante="secundario" class="pb-2.5"
+                     type="button" wire:click="limpiarFiltros">Limpiar filtros</x-boton>
         @endif
     </div>
 
@@ -437,23 +428,23 @@
                         <td class="px-4 py-3 text-right">
                             @can('gestionar-personal')
                                 <div class="flex items-center justify-end gap-3">
-                                    <button wire:click="editar({{ $p->id }})"
-                                            class="text-sm font-semibold text-parte3 hover:underline">Editar</button>
+                                    <x-boton tamano="chico" variante="secundario"
+                                             wire:click="editar({{ $p->id }})">Editar</x-boton>
                                     @if ($p->activo)
-                                        <button wire:click="desactivar({{ $p->id }})"
-                                                class="text-sm font-semibold text-alto hover:underline">Desactivar</button>
+                                        <x-boton tamano="chico" variante="peligro"
+                                                 wire:click="desactivar({{ $p->id }})">Desactivar</x-boton>
                                     @else
-                                        <button wire:click="reactivar({{ $p->id }})"
-                                                class="text-sm font-semibold text-parte3 hover:underline">Reactivar</button>
+                                        <x-boton tamano="chico" variante="secundario"
+                                                 wire:click="reactivar({{ $p->id }})">Reactivar</x-boton>
 
                                         {{-- Ya no trabaja aquí, pero vuelve: a un trámite, a buscar
                                              un papel. Desactivado no se le puede marcar, y darlo de
                                              alta como visita choca con su propia cédula. Esto le
                                              deja entrar como lo que es ahora, sin partir su ficha. --}}
                                         @if (! $this->verInvitados())
-                                            <button wire:click="pasarAVisitas({{ $p->id }})"
-                                                    wire:confirm="¿Pasar a {{ $p->nombre }} a visitas? Deja de ser trabajador y podrá marcar como visitante. Su histórico se conserva."
-                                                    class="text-sm font-semibold text-invitado hover:underline">Pasar a visitas</button>
+                                            <x-boton tamano="chico" variante="secundario"
+                                                     wire:click="pasarAVisitas({{ $p->id }})"
+                                                     wire:confirm="¿Pasar a {{ $p->nombre }} a visitas? Deja de ser trabajador y podrá marcar como visitante. Su histórico se conserva.">Pasar a visitas</x-boton>
                                         @endif
                                     @endif
                                 </div>

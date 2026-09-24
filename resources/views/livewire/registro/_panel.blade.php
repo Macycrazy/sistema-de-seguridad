@@ -16,12 +16,12 @@
             </div>
 
             <x-boton
-                variante="secundario"
-                tamano="chico"
-                wire:click="cerrarPanel"
-                aria-label="Cerrar el histórico"
-                class="shrink-0"
-            >
+                     variante="secundario"
+                     tamano="chico"
+                     wire:click="cerrarPanel"
+                     aria-label="Cerrar el histórico"
+                     class="shrink-0"
+                     >
                 Cerrar
             </x-boton>
         </div>

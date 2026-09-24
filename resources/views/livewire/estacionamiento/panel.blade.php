@@ -38,7 +38,7 @@
         </p>
 
         <x-boton variante="secundario" wire:click="actualizar" wire:loading.attr="disabled" wire:target="actualizar">
-            <span wire:loading.remove wire:target="actualizar">Actualizar</span>
+                 <span wire:loading.remove wire:target="actualizar">Actualizar</span>
             <span wire:loading wire:target="actualizar">Mirando…</span>
         </x-boton>
     </div>
@@ -295,14 +295,14 @@
                                      esto, abrir «Anotar vehículo» y buscarlo en el
                                      desplegable, y nada lo decía. --}}
                                 @if ($this->flotaDisponible->contains('id', $f->id))
-                                    <button wire:click="anotarDeLaFlota({{ $f->id }})"
-                                            class="text-sm font-semibold text-parte1 hover:underline">Anotar entrada</button>
+                                    <x-boton tamano="chico" variante="secundario"
+                                             wire:click="anotarDeLaFlota({{ $f->id }})">Anotar entrada</x-boton>
                                 @else
                                     <span class="font-mono text-xs uppercase tracking-widest text-slate-400">está dentro</span>
                                 @endif
 
-                                <button wire:click="eliminarFlota({{ $f->id }})" wire:confirm="¿Quitar {{ $f->placa }} de la flota?"
-                                        class="text-sm font-semibold text-alto hover:underline">Quitar</button>
+                                <x-boton tamano="chico" variante="peligro"
+                                         wire:click="eliminarFlota({{ $f->id }})" wire:confirm="¿Quitar {{ $f->placa }} de la flota?">Quitar</x-boton>
                             </span>
                         </li>
                     @endforeach

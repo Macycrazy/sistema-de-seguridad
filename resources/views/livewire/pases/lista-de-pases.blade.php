@@ -176,13 +176,11 @@
                                         <x-boton tamano="chico" wire:click="recuperar({{ $entrega->id }})"
                                                  wire:loading.attr="disabled">Recuperar</x-boton>
                                     @else
-                                        <button wire:click="habilitar({{ $pase->id }}, {{ $pase->activo ? 'false' : 'true' }})"
-                                                class="text-sm font-semibold text-slate-500 hover:underline">
-                                            {{ $pase->activo ? 'Deshabilitar' : 'Habilitar' }}
-                                        </button>
-                                        <button wire:click="eliminar({{ $pase->id }})"
-                                                wire:confirm="¿Quitar el pase {{ $pase->codigo }} del catálogo?"
-                                                class="text-sm font-semibold text-alto hover:underline">Quitar</button>
+                                        <x-boton tamano="chico" variante="secundario"
+                                                 wire:click="habilitar({{ $pase->id }}, {{ $pase->activo ? 'false' : 'true' }})">{{ $pase->activo ? 'Deshabilitar' : 'Habilitar' }}</x-boton>
+                                        <x-boton tamano="chico" variante="peligro"
+                                                 wire:click="eliminar({{ $pase->id }})"
+                                                 wire:confirm="¿Quitar el pase {{ $pase->codigo }} del catálogo?">Quitar</x-boton>
                                     @endif
                                 </span>
                             @endcan
